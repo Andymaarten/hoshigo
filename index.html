@@ -46,11 +46,18 @@ a{color:inherit}
 .entry hr{width:180px;margin:14px 0 12px;border:0;border-top:1.5px solid var(--ink)}
 .def{font-size:19px;line-height:1.35}
 .hero{display:flex;flex-direction:column;padding-bottom:24px}
-.stamp{align-self:flex-end;width:116px;height:116px;margin-top:16px}
-.stamp circle{fill:var(--accent)}
+.stamp-slot{align-self:flex-end;width:116px;height:116px;margin-top:16px;flex-shrink:0}
+.stamp{all:unset;display:block;width:116px;height:116px;cursor:pointer;position:relative;z-index:50;transition:width .18s ease,height .18s ease,transform .18s ease}
+.stamp circle{fill:var(--accent);transition:fill .15s ease}
 .stamp text{fill:var(--ink);font-family:var(--display);font-size:10.5px;font-weight:700;letter-spacing:1.5px}
-h1{margin:-28px 0 0;font-size:clamp(72px,22vw,168px);line-height:.9;font-weight:900;letter-spacing:-.05em;color:var(--accent)}
-.lede{margin:20px 0 0;font-size:20px;line-height:26px;font-weight:500}
+.stamp:hover circle,.stamp:focus-visible circle{fill:var(--ink)}
+.stamp:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+.stamp.pinned{position:fixed;top:max(14px,env(safe-area-inset-top,0px));right:max(20px,env(safe-area-inset-right,0px));width:78px;height:78px}
+@media (min-width:720px){.stamp.pinned{width:92px;height:92px}}
+h1{margin:-16px 0 0;font-size:clamp(52px,15vw,116px);line-height:.9;font-weight:900;letter-spacing:-.05em;color:var(--accent)}
+.lede{margin:16px 0 0;font-size:20px;line-height:26px;font-weight:500}
+.bio{margin:10px 0 0;max-width:46ch;font-family:var(--serif);font-size:17px;line-height:1.45;color:var(--muted)}
+.bio strong{color:var(--ink);font-weight:600}
 
 section{padding:40px 0}
 h2{margin:0 0 20px;font-size:clamp(52px,14vw,96px);line-height:.9;font-weight:900;letter-spacing:-.05em;color:var(--accent)}
@@ -74,11 +81,15 @@ h2{margin:0 0 20px;font-size:clamp(52px,14vw,96px);line-height:.9;font-weight:90
 .by{font-size:13px;line-height:17px;color:var(--muted)}
 .added{font-family:var(--serif);font-style:italic;font-size:13px;line-height:17px;color:var(--muted)}
 
-footer{margin-top:40px;background:var(--brown);color:var(--brown-fg);clip-path:polygon(0 14px,3% 6px,7% 12px,11% 3px,16% 10px,21% 5px,26% 13px,31% 4px,36% 11px,42% 6px,47% 14px,52% 3px,58% 10px,63% 5px,68% 12px,74% 4px,79% 11px,84% 6px,89% 13px,94% 5px,100% 11px,100% 100%,0 100%)}
-footer .inner{max-width:1200px;margin:0 auto;padding:68px max(24px,env(safe-area-inset-right,0px)) 48px max(24px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:24px}
+footer{margin-top:64px;border-top:1.5px solid var(--ink);background:var(--brown);color:var(--brown-fg)}
+footer .inner{max-width:1200px;margin:0 auto;padding:56px max(24px,env(safe-area-inset-right,0px)) 48px max(24px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:24px}
 footer p{margin:0;font-size:34px;line-height:1.05;font-weight:800;letter-spacing:-.03em;max-width:12ch}
 .cta{align-self:flex-start;display:inline-flex;align-items:center;min-height:52px;padding:0 22px;background:var(--accent);color:#fff;font-size:17px;font-weight:700;text-decoration:none}
-.mark{margin-top:24px;font-size:15px;font-weight:800}
+footer .brand{margin-top:24px;padding-top:24px;border-top:1px solid rgba(241,230,210,.25);font-family:var(--serif)}
+footer .word{font-size:40px;color:var(--brown-fg)}
+footer .word .tittle::after{background:var(--ground)}
+footer .gloss{color:rgba(241,230,210,.7)}
+footer .gloss .ja{color:var(--brown-fg)}
 
 /* note sheet */
 dialog.sheet{border:0;padding:0;margin:auto auto 0;width:100%;max-width:560px;max-height:85vh;background:var(--ground);color:var(--ink);font-family:var(--display)}
@@ -96,7 +107,10 @@ dialog.sheet::backdrop{background:rgba(10,10,9,.5)}
 .sheet .meta{font-size:15px;line-height:20px;color:var(--muted)}
 .note{margin:6px 0 0;font-family:var(--serif);font-style:italic;font-size:21px;line-height:1.35}
 .note.empty{color:var(--muted);font-size:17px}
-.go{align-self:flex-start;display:inline-flex;align-items:center;min-height:48px;padding:0 18px;margin-top:8px;border:2px solid var(--ink);color:var(--ink);font-size:16px;font-weight:700;text-decoration:none}
+.go{align-self:flex-start;display:inline-flex;align-items:center;min-height:48px;padding:0 18px;margin-top:8px;border:2px solid var(--ink);color:var(--ink);font-size:16px;font-weight:700;text-decoration:none;background:none;cursor:pointer;font-family:inherit}
+#add-form{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+.link-input{width:100%;min-height:48px;padding:0 14px;border:2px solid var(--ink);background:var(--ground);color:var(--ink);font-family:var(--display);font-size:16px}
+.link-input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -115,13 +129,18 @@ dialog.sheet::backdrop{background:rgba(10,10,9,.5)}
       <a href="#"><span>Explore</span></a>
     </nav>
     </div>
-    <svg class="stamp" viewBox="0 0 116 116" aria-hidden="true">
-      <defs><path id="ring" d="M58,58 m-47,0 a47,47 0 1,1 94,0 a47,47 0 1,1 -94,0"/></defs>
-      <circle cx="58" cy="58" r="30"/>
-      <text><textPath href="#ring" textLength="292">only five stars · only five stars · </textPath></text>
-    </svg>
+    <div class="stamp-slot">
+    <button class="stamp" id="add-btn" type="button" aria-haspopup="dialog" aria-label="Press here to add a hoshigo">
+      <svg viewBox="0 0 116 116" aria-hidden="true" focusable="false">
+        <defs><path id="ring" d="M58,58 m-47,0 a47,47 0 1,1 94,0 a47,47 0 1,1 -94,0"/></defs>
+        <circle cx="58" cy="58" r="30"/>
+        <text><textPath href="#ring" textLength="292">press here to add a hoshigo · press here to add a hoshigo · </textPath></text>
+      </svg>
+    </button>
+    </div>
     <h1>andreas.</h1>
     <p class="lede">Five five-stars per list.</p>
+    <p class="bio">Founder of <strong>hoshigo</strong>. Looks only for recommendations given by people he knows.</p>
   </header>
   <main id="lists"></main>
 </div>
@@ -130,7 +149,10 @@ dialog.sheet::backdrop{background:rgba(10,10,9,.5)}
   <div class="inner">
     <p>Keep your own five-star page.</p>
     <a class="cta" href="#">Start your page</a>
-    <span class="mark">hoshigo 星5</span>
+    <div class="brand">
+      <div class="word" aria-label="hoshigo">hosh<span class="tittle">ı</span>go</div>
+      <div class="gloss"><span class="ja" lang="ja">星5</span><span>[ho.ɕi.ɡo]</span></div>
+    </div>
   </div>
 </footer>
 
@@ -147,16 +169,30 @@ dialog.sheet::backdrop{background:rgba(10,10,9,.5)}
   </div>
 </dialog>
 
+<dialog class="sheet" id="add-sheet" aria-labelledby="add-title">
+  <div class="sheet-in">
+    <button class="close" id="add-close" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4l12 12M16 4L4 16"/></svg>
+    </button>
+    <h3 id="add-title">Add a hoshigo</h3>
+    <div class="meta">Paste a link to a film, album, book, essay or thing you'd give five stars.</div>
+    <form id="add-form">
+      <input class="link-input" id="add-url" type="url" inputmode="url" placeholder="https://…" required>
+      <button class="go" type="submit">Add</button>
+    </form>
+  </div>
+</dialog>
+
 <script>
 // One list per category, max five items. note: "" until written. img: null until a cover is added.
 const ADDED = '21 Sep 2026';
 const DATA = [
   { cat: 'films', shape: 'tall', source: 'Letterboxd', items: [
     { t: 'The Secret of Kells', by: 'Tomm Moore', y: 2009, url: 'https://letterboxd.com/film/the-secret-of-kells/', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0IDkhYJeg-Y1VJ5oYl1BdDlJov94_1jme1Eh2GctUCA&s=10' },
-    { t: 'Sirât', by: 'Oliver Laxe', y: 2025, url: 'https://letterboxd.com/film/sirat-2025/' },
-    { t: 'No Other Choice', by: 'Park Chan-wook', y: 2025, url: 'https://letterboxd.com/film/no-other-choice-2025/' },
-    { t: 'I Swear', by: 'Kirk Jones', y: 2025, url: 'https://letterboxd.com/film/i-swear/' },
-    { t: 'Wolfwalkers', by: 'Tomm Moore & Ross Stewart', y: 2020, url: 'https://letterboxd.com/film/wolfwalkers/' }
+    { t: 'Sirât', by: 'Oliver Laxe', y: 2025, url: 'https://letterboxd.com/film/sirat-2025/', img: 'https://upload.wikimedia.org/wikipedia/en/9/91/Sirat_2025.jpeg' },
+    { t: 'No Other Choice', by: 'Park Chan-wook', y: 2025, url: 'https://letterboxd.com/film/no-other-choice-2025/', img: 'https://upload.wikimedia.org/wikipedia/en/1/12/No_Other_Choice_film_poster.jpeg' },
+    { t: 'I Swear', by: 'Kirk Jones', y: 2025, url: 'https://letterboxd.com/film/i-swear/', img: 'https://upload.wikimedia.org/wikipedia/en/5/57/I_Swear_film_poster.jpg' },
+    { t: 'Wolfwalkers', by: 'Tomm Moore & Ross Stewart', y: 2020, url: 'https://letterboxd.com/film/wolfwalkers/', img: 'https://upload.wikimedia.org/wikipedia/en/6/60/Wolfwalkers.png' }
   ]},
   { cat: 'albums', shape: 'square', source: 'Spotify', items: [
     { t: 'Happy Today', by: 'Jeff Parker', y: 2026, url: 'https://open.spotify.com/album/1kHIfy3OzO6LiVmilaxre1', img: 'https://i.scdn.co/image/ab67616d0000b27386823611df896e2f08642e8f' },
@@ -166,21 +202,21 @@ const DATA = [
     { t: 'Kate Simko & London Electronic Orchestra', by: 'Kate Simko', y: 2016, url: 'https://open.spotify.com/album/7Bp97g4nrxVcW8kGNffnwy', img: 'https://i.scdn.co/image/ab67616d0000b273c38aa763064823f9a7a46fa1' }
   ]},
   { cat: 'books', shape: 'tall', source: 'Goodreads', items: [
-    { t: 'The Tao of Pooh', by: 'Benjamin Hoff', y: 1982, url: 'https://www.goodreads.com/book/show/48757.The_Tao_of_Pooh' },
-    { t: 'How to Blow Up a Pipeline', by: 'Andreas Malm', y: 2021, url: 'https://www.goodreads.com/book/show/51686708-how-to-blow-up-a-pipeline' },
-    { t: 'Ik zeg geen vaarwel', by: 'Han Kang', y: 2021, url: 'https://www.goodreads.com/book/show/75341731-ik-zeg-geen-vaarwel' },
-    { t: 'Neuromancer', by: 'William Gibson', y: 1984, url: 'https://www.goodreads.com/book/show/6088007-neuromancer' },
-    { t: 'Brief Answers to the Big Questions', by: 'Stephen Hawking', y: 2018, url: 'https://www.goodreads.com/book/show/40277241-brief-answers-to-the-big-questions' }
+    { t: 'The Tao of Pooh', by: 'Benjamin Hoff', y: 1982, url: 'https://www.goodreads.com/book/show/48757.The_Tao_of_Pooh', img: 'https://upload.wikimedia.org/wikipedia/en/a/a4/The_Tao_of_Pooh%28book%29_cover.jpg' },
+    { t: 'How to Blow Up a Pipeline', by: 'Andreas Malm', y: 2021, url: 'https://www.goodreads.com/book/show/51686708-how-to-blow-up-a-pipeline', img: 'https://upload.wikimedia.org/wikipedia/en/3/34/How_to_Blow_Up_a_Pipeline_%28Cover%29.jpg' },
+    { t: 'Ik zeg geen vaarwel', by: 'Han Kang', y: 2021, url: 'https://www.goodreads.com/book/show/75341731-ik-zeg-geen-vaarwel', img: 'https://upload.wikimedia.org/wikipedia/en/e/e0/%22We_Do_Not_Part%22_by_Han_Kang_book_cover.jpg' },
+    { t: 'Neuromancer', by: 'William Gibson', y: 1984, url: 'https://www.goodreads.com/book/show/6088007-neuromancer', img: 'https://upload.wikimedia.org/wikipedia/en/4/4b/Neuromancer_%28Book%29.jpg' },
+    { t: 'Brief Answers to the Big Questions', by: 'Stephen Hawking', y: 2018, url: 'https://www.goodreads.com/book/show/40277241-brief-answers-to-the-big-questions', img: 'https://upload.wikimedia.org/wikipedia/en/6/61/BriefAnswersToTheBigQuestions-BookCover.png' }
   ]},
   { cat: 'essays', shape: 'square', items: [
-    { t: 'The I in the Internet', by: 'Jia Tolentino', y: 2020, src: 'CCCB Lab', url: 'https://www.cccb.org/en/w/articles/the-i-in-the-internet' },
-    { t: 'Stranger in the Village', by: 'James Baldwin', y: 1953, src: "Harper's", url: 'https://harpers.org/archive/1953/10/stranger-in-the-village/' },
+    { t: 'The I in the Internet', by: 'Jia Tolentino', y: 2020, src: 'CCCB Lab', url: 'https://www.cccb.org/en/w/articles/the-i-in-the-internet', img: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/Jia_Tolentino_2024.jpg/330px-Jia_Tolentino_2024.jpg' },
+    { t: 'Stranger in the Village', by: 'James Baldwin', y: 1953, src: "Harper's", url: 'https://harpers.org/archive/1953/10/stranger-in-the-village/', img: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f3/James_Baldwin_37_Allan_Warren_%28cropped%29.jpg/330px-James_Baldwin_37_Allan_Warren_%28cropped%29.jpg' },
     { t: 'The AI-Powered, Totally Autonomous Future of War Is Here', by: 'Will Knight', y: 2023, src: 'Wired', url: 'https://www.wired.com/story/ai-powered-totally-autonomous-future-of-war-is-here/' }
   ]},
   { cat: 'things', shape: 'photo', items: [
-    { t: 'TP-7', by: 'teenage engineering', src: 'teenage engineering', url: 'https://teenage.engineering/products/tp-7' },
+    { t: 'TP-7', by: 'teenage engineering', src: 'teenage engineering', url: 'https://teenage.engineering/products/tp-7', img: 'https://assets.teenage.engineering/_img/645bb28938efc47f2e731f5e_1024.webp' },
     { t: 'X-E5', by: 'Fujifilm', src: 'Fujifilm', url: 'https://www.fujifilm-x.com/global/products/cameras/x-e5/' },
-    { t: 'Sleevenote', by: 'music app', src: 'Sleevenote', url: 'https://sleevenote.com' }
+    { t: 'Sleevenote', by: 'music app', src: 'Sleevenote', url: 'https://sleevenote.com', img: 'https://ph-files.imgix.net/b451f6fe-09ca-4490-9c74-fc5558e9a0cb.jpeg?auto=format&fit=crop&h=512&w=512' }
   ]}
 ];
 
@@ -232,6 +268,34 @@ function openSheet(item, group) {
 }
 document.getElementById('close').addEventListener('click', () => sheet.close());
 sheet.addEventListener('click', e => { if (e.target === sheet) sheet.close(); });
+
+// sticky stamp: pins to the top once the hero scrolls out of view
+const stampBtn = document.getElementById('add-btn');
+const stampSlot = document.querySelector('.stamp-slot');
+function updateStampPin() {
+  const threshold = stampSlot.getBoundingClientRect().top + window.scrollY - 12;
+  stampBtn.classList.toggle('pinned', window.scrollY > threshold);
+}
+updateStampPin();
+window.addEventListener('scroll', updateStampPin, { passive: true });
+window.addEventListener('resize', updateStampPin);
+
+// add-a-hoshigo sheet
+const addSheet = document.getElementById('add-sheet');
+const addForm = document.getElementById('add-form');
+const addUrl = document.getElementById('add-url');
+stampBtn.addEventListener('click', () => {
+  addUrl.value = '';
+  if (typeof addSheet.showModal === 'function') addSheet.showModal(); else addSheet.setAttribute('open', '');
+  addUrl.focus();
+});
+document.getElementById('add-close').addEventListener('click', () => addSheet.close());
+addSheet.addEventListener('click', e => { if (e.target === addSheet) addSheet.close(); });
+addForm.addEventListener('submit', e => {
+  e.preventDefault();
+  // TODO: wire up to storage once hoshigo has a backend
+  addSheet.close();
+});
 </script>
 </body>
 </html>
