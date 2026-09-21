@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>andreas. — hoshigo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800;900&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap">
+<style>
+:root{
+  --ground:#EFE7D8; --ink:#1D1C1A; --muted:#5B574F; --accent:#D8321F;
+  --block:#2A2622; --block-fg:#EFE7D8; --brown:#5E3F2B; --brown-fg:#F1E6D2; --photo:#B9B2A6; --rule:rgba(29,28,26,.22);
+  --display:'Schibsted Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  box-sizing:border-box;
+  color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  background:var(--ground);
+}
+/* alternative look: ?look=duotone */
+:root[data-look="duotone"]{ --block:#17337F; --block-fg:#F1C84E; --photo:#F1C84E; }
+
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background-color:var(--ground);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .27 0 0 0 0 .18 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");color:var(--ink);font-family:var(--display);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+
+.page{max-width:960px;margin:0 auto;padding:24px max(24px,env(safe-area-inset-right,0px)) 0 max(24px,env(safe-area-inset-left,0px))}
+
+.entry{display:flex;flex-direction:column;font-family:var(--serif);color:var(--ink)}
+.word{font-size:56px;line-height:1;font-weight:400;letter-spacing:-.01em}
+.gloss{margin-top:8px;font-size:15px;line-height:20px;color:var(--muted);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.gloss .ja{font-family:'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',var(--serif);color:var(--ink);font-size:17px}
+.entry hr{width:180px;margin:14px 0 12px;border:0;border-top:1.5px solid var(--ink)}
+.def{font-size:19px;line-height:1.35}
+.hero{display:flex;flex-direction:column;padding-bottom:24px}
+.stamp{align-self:flex-end;width:116px;height:116px;margin-top:16px}
+.stamp circle{fill:var(--accent)}
+.stamp text{fill:var(--ink);font-family:var(--display);font-size:10.5px;font-weight:700;letter-spacing:1.5px}
+h1{margin:-28px 0 0;font-size:clamp(72px,22vw,168px);line-height:.9;font-weight:900;letter-spacing:-.05em;color:var(--accent)}
+.lede{margin:20px 0 0;font-size:20px;line-height:26px;font-weight:500}
+
+section{padding:40px 0}
+h2{margin:0 0 20px;font-size:clamp(52px,14vw,96px);line-height:.9;font-weight:900;letter-spacing:-.05em;color:var(--accent)}
+
+.grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 16px}
+@media (min-width:720px){.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:28px 24px}}
+
+.item{all:unset;box-sizing:border-box;display:flex;gap:10px;align-items:flex-start;width:100%;min-height:52px;cursor:pointer}
+.item:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+.thumb{flex-shrink:0;width:52px;height:52px;padding:5px;display:flex;align-items:flex-end;background:var(--block);color:var(--block-fg);font-size:10px;font-weight:700;overflow:hidden;position:relative}
+.thumb.tall{height:78px}
+.thumb.photo{background:var(--photo)}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.1)}
+.item:hover .thumb{outline:2px solid var(--accent);outline-offset:2px}
+.txt{min-width:0;display:flex;flex-direction:column;gap:2px}
+.title{font-size:15px;line-height:19px;font-weight:700;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.by{font-size:13px;line-height:17px;color:var(--muted)}
+.added{font-family:var(--serif);font-style:italic;font-size:13px;line-height:17px;color:var(--muted)}
+
+footer{margin-top:40px;background:var(--brown);color:var(--brown-fg);clip-path:polygon(0 14px,3% 6px,7% 12px,11% 3px,16% 10px,21% 5px,26% 13px,31% 4px,36% 11px,42% 6px,47% 14px,52% 3px,58% 10px,63% 5px,68% 12px,74% 4px,79% 11px,84% 6px,89% 13px,94% 5px,100% 11px,100% 100%,0 100%)}
+footer .inner{max-width:960px;margin:0 auto;padding:68px max(24px,env(safe-area-inset-right,0px)) 48px max(24px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:24px}
+footer p{margin:0;font-size:34px;line-height:1.05;font-weight:800;letter-spacing:-.03em;max-width:12ch}
+.cta{align-self:flex-start;display:inline-flex;align-items:center;min-height:52px;padding:0 22px;background:var(--accent);color:#fff;font-size:17px;font-weight:700;text-decoration:none}
+.mark{margin-top:24px;font-size:15px;font-weight:800}
+
+/* note sheet */
+dialog.sheet{border:0;padding:0;margin:auto auto 0;width:100%;max-width:560px;max-height:85vh;background:var(--ground);color:var(--ink);font-family:var(--display)}
+dialog.sheet::backdrop{background:rgba(10,10,9,.5)}
+@media (min-width:720px){dialog.sheet{margin:auto}}
+.sheet[open]{animation:rise .22s ease-out}
+@keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet[open]{animation:none}}
+.sheet-in{position:relative;padding:28px 24px calc(28px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+.close{all:unset;position:absolute;top:12px;right:12px;width:44px;height:44px;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.close:focus-visible{outline:2px solid var(--ink)}
+.sheet .big{width:120px;height:120px;font-size:14px;padding:10px}
+.sheet .big.tall{height:180px}
+.sheet h3{margin:6px 0 0;font-size:30px;line-height:1.05;font-weight:800;letter-spacing:-.03em;padding-right:36px}
+.sheet .meta{font-size:15px;line-height:20px;color:var(--muted)}
+.note{margin:6px 0 0;font-family:var(--serif);font-style:italic;font-size:21px;line-height:1.35}
+.note.empty{color:var(--muted);font-size:17px}
+.go{align-self:flex-start;display:inline-flex;align-items:center;min-height:48px;padding:0 18px;margin-top:8px;border:2px solid var(--ink);color:var(--ink);font-size:16px;font-weight:700;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="hero">
+    <div class="entry">
+      <div class="word">hoshigo</div>
+      <div class="gloss"><span class="ja" lang="ja">星5</span><span>[ho.ɕi.ɡo]</span><i>noun</i></div>
+      <hr>
+      <div class="def"><i>Japanese.</i> five stars.</div>
+    </div>
+    <svg class="stamp" viewBox="0 0 116 116" aria-hidden="true">
+      <defs><path id="ring" d="M58,58 m-47,0 a47,47 0 1,1 94,0 a47,47 0 1,1 -94,0"/></defs>
+      <circle cx="58" cy="58" r="30"/>
+      <text><textPath href="#ring" textLength="292">only five stars · only five stars · </textPath></text>
+    </svg>
+    <h1>andreas.</h1>
+    <p class="lede">Five five-stars per list.</p>
+  </header>
+  <main id="lists"></main>
+</div>
+
+<footer>
+  <div class="inner">
+    <p>Keep your own five-star page.</p>
+    <a class="cta" href="#">Start your page</a>
+    <span class="mark">hoshigo 星5</span>
+  </div>
+</footer>
+
+<dialog class="sheet" id="sheet" aria-labelledby="sheet-title">
+  <div class="sheet-in">
+    <button class="close" id="close" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4l12 12M16 4L4 16"/></svg>
+    </button>
+    <div class="thumb big" id="s-thumb"></div>
+    <h3 id="sheet-title"></h3>
+    <div class="meta" id="s-meta"></div>
+    <p class="note" id="s-note"></p>
+    <a class="go" id="s-go" target="_blank" rel="noopener"></a>
+  </div>
+</dialog>
+
+<script>
+// One list per category, max five items. note: "" until written. img: null until a cover is added.
+const ADDED = '21 Sep 2026';
+const DATA = [
+  { cat: 'films', shape: 'tall', source: 'Letterboxd', items: [
+    { t: 'The Secret of Kells', by: 'Tomm Moore', y: 2009, url: 'https://letterboxd.com/film/the-secret-of-kells/' },
+    { t: 'Sirât', by: 'Oliver Laxe', y: 2025, url: 'https://letterboxd.com/film/sirat-2025/' },
+    { t: 'No Other Choice', by: 'Park Chan-wook', y: 2025, url: 'https://letterboxd.com/film/no-other-choice-2025/' },
+    { t: 'I Swear', by: 'Kirk Jones', y: 2025, url: 'https://letterboxd.com/film/i-swear/' },
+    { t: 'Wolfwalkers', by: 'Tomm Moore & Ross Stewart', y: 2020, url: 'https://letterboxd.com/film/wolfwalkers/' }
+  ]},
+  { cat: 'albums', shape: 'square', source: 'Spotify', items: [
+    { t: 'Happy Today', by: 'Jeff Parker', y: 2026, url: 'https://open.spotify.com/album/1kHIfy3OzO6LiVmilaxre1', img: 'https://i.scdn.co/image/ab67616d0000b27386823611df896e2f08642e8f' },
+    { t: 'A Love Supreme', by: 'John Coltrane', y: 1965, url: 'https://open.spotify.com/album/7Eoz7hJvaX1eFkbpQxC5PA', img: 'https://i.scdn.co/image/ab67616d0000b273ea42191f549dce4d9c8ecd1a' },
+    { t: 'Before the Dawn Heals Us', by: 'M83', y: 2005, url: 'https://open.spotify.com/album/0rqPrhpgzR8NrwU86RzE0O', img: 'https://i.scdn.co/image/ab67616d0000b27374f191c31d940086608366f1' },
+    { t: "The Naked Island (L'île nue)", by: 'Hikaru Hayashi', y: 2013, url: 'https://open.spotify.com/album/03wKtgSpPh0ACuXh0GWeKM', img: 'https://i.scdn.co/image/ab67616d0000b273787e572139c1e3e6202a008c' },
+    { t: 'Kate Simko & London Electronic Orchestra', by: 'Kate Simko', y: 2016, url: 'https://open.spotify.com/album/7Bp97g4nrxVcW8kGNffnwy', img: 'https://i.scdn.co/image/ab67616d0000b273c38aa763064823f9a7a46fa1' }
+  ]},
+  { cat: 'books', shape: 'tall', source: 'Goodreads', items: [
+    { t: 'The Tao of Pooh', by: 'Benjamin Hoff', y: 1982, url: 'https://www.goodreads.com/book/show/48757.The_Tao_of_Pooh' },
+    { t: 'How to Blow Up a Pipeline', by: 'Andreas Malm', y: 2021, url: 'https://www.goodreads.com/book/show/51686708-how-to-blow-up-a-pipeline' },
+    { t: 'Ik zeg geen vaarwel', by: 'Han Kang', y: 2021, url: 'https://www.goodreads.com/book/show/75341731-ik-zeg-geen-vaarwel' },
+    { t: 'Neuromancer', by: 'William Gibson', y: 1984, url: 'https://www.goodreads.com/book/show/6088007-neuromancer' },
+    { t: 'Brief Answers to the Big Questions', by: 'Stephen Hawking', y: 2018, url: 'https://www.goodreads.com/book/show/40277241-brief-answers-to-the-big-questions' }
+  ]},
+  { cat: 'essays', shape: 'square', items: [
+    { t: 'The I in the Internet', by: 'Jia Tolentino', y: 2020, src: 'CCCB Lab', url: 'https://www.cccb.org/en/w/articles/the-i-in-the-internet' },
+    { t: 'Stranger in the Village', by: 'James Baldwin', y: 1953, src: "Harper's", url: 'https://harpers.org/archive/1953/10/stranger-in-the-village/' },
+    { t: 'The AI-Powered, Totally Autonomous Future of War Is Here', by: 'Will Knight', y: 2023, src: 'Wired', url: 'https://www.wired.com/story/ai-powered-totally-autonomous-future-of-war-is-here/' }
+  ]},
+  { cat: 'things', shape: 'photo', items: [
+    { t: 'TP-7', by: 'teenage engineering', src: 'teenage engineering', url: 'https://teenage.engineering/products/tp-7' },
+    { t: 'X-E5', by: 'Fujifilm', src: 'Fujifilm', url: 'https://www.fujifilm-x.com/global/products/cameras/x-e5/' },
+    { t: 'Sleevenote', by: 'music app', src: 'Sleevenote', url: 'https://sleevenote.com' }
+  ]}
+];
+
+const look = new URLSearchParams(location.search).get('look');
+if (look === 'duotone') document.documentElement.dataset.look = 'duotone';
+
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+function thumb(item, shape, big) {
+  const d = el('div', 'thumb' + (shape === 'tall' ? ' tall' : '') + (shape === 'photo' ? ' photo' : '') + (big ? ' big' : ''));
+  if (item.y) d.textContent = item.y;
+  if (item.img) { const i = el('img'); i.alt = ''; i.onerror = () => i.remove(); i.src = item.img; d.append(i); }
+  return d;
+}
+
+const lists = document.getElementById('lists');
+let total = 0;
+DATA.forEach(group => {
+  const s = el('section'); s.setAttribute('aria-labelledby', 'h-' + group.cat);
+  const h = el('h2', null, group.cat); h.id = 'h-' + group.cat; s.append(h);
+  const ul = el('ul', 'grid');
+  group.items.slice(0, 5).forEach(item => {
+    total++;
+    const li = el('li');
+    const b = el('button', 'item'); b.type = 'button';
+    const txt = el('div', 'txt');
+    txt.append(el('span', 'title', item.t), el('span', 'by', item.by), el('span', 'added', ADDED));
+    b.append(thumb(item, group.shape), txt);
+    b.addEventListener('click', () => openSheet(item, group));
+    li.append(b); ul.append(li);
+  });
+  s.append(ul); lists.append(s);
+});
+
+const sheet = document.getElementById('sheet');
+function openSheet(item, group) {
+  document.getElementById('s-thumb').replaceWith(Object.assign(thumb(item, group.shape, true), { id: 's-thumb' }));
+  document.getElementById('sheet-title').textContent = item.t;
+  const meta = [item.by, item.y].filter(Boolean).join(', ');
+  document.getElementById('s-meta').textContent = meta + '\nadded ' + ADDED;
+  document.getElementById('s-meta').style.whiteSpace = 'pre-line';
+  const note = document.getElementById('s-note');
+  note.textContent = item.note || 'No note yet.';
+  note.classList.toggle('empty', !item.note);
+  const go = document.getElementById('s-go');
+  go.href = item.url;
+  go.textContent = 'Open on ' + (group.source || item.src || 'source');
+  if (typeof sheet.showModal === 'function') sheet.showModal(); else sheet.setAttribute('open', '');
+}
+document.getElementById('close').addEventListener('click', () => sheet.close());
+sheet.addEventListener('click', e => { if (e.target === sheet) sheet.close(); });
+</script>
+</body>
+</html>
