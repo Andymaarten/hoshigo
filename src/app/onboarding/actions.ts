@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { parseSocialLinksPayload } from "@/lib/social-links";
 
 const HANDLE_RE = /^[a-z0-9_-]{2,30}$/;
 
@@ -9,6 +10,7 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
   const handle = String(formData.get("handle") || "").trim().toLowerCase();
   const displayName = String(formData.get("display_name") || "").trim();
   const bio = String(formData.get("bio") || "").trim();
+  const socialLinks = parseSocialLinksPayload(String(formData.get("social_links") || ""));
 
   if (!HANDLE_RE.test(handle)) {
     return "Handle must be 2–30 characters: lowercase letters, numbers, - or _.";
@@ -22,7 +24,7 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
 
   const { error } = await supabase
     .from("profiles")
-    .update({ handle, display_name: displayName || null, bio: bio || null })
+    .update({ handle, display_name: displayName || null, bio: bio || null, social_links: socialLinks })
     .eq("id", user.id);
 
   if (error) {

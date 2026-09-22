@@ -1,36 +1,23 @@
 "use client";
 
 import { useActionState } from "react";
-import { saveHandle } from "./actions";
+import { saveProfile } from "./actions";
 import SocialLinksEditor from "@/components/SocialLinksEditor";
 import type { SocialLink } from "@/lib/supabase/types";
 
-export default function OnboardingForm({
-  initialHandle,
+export default function SettingsForm({
   initialBio,
   initialName,
-  initialSocialLinks = [],
+  initialSocialLinks,
 }: {
-  initialHandle: string;
   initialBio: string;
   initialName: string;
-  initialSocialLinks?: SocialLink[];
+  initialSocialLinks: SocialLink[];
 }) {
-  const [error, action, pending] = useActionState(saveHandle, null);
+  const [error, action, pending] = useActionState(saveProfile, null);
 
   return (
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div className="field">
-        <label htmlFor="handle">Handle</label>
-        <input
-          id="handle"
-          name="handle"
-          required
-          pattern="[a-z0-9_-]{2,30}"
-          defaultValue={initialHandle}
-          placeholder="andreas"
-        />
-      </div>
       <div className="field">
         <label htmlFor="display_name">Name</label>
         <input id="display_name" name="display_name" defaultValue={initialName} placeholder="Andreas" />
@@ -42,7 +29,7 @@ export default function OnboardingForm({
       <SocialLinksEditor initialLinks={initialSocialLinks} />
       {error && <p className="error">{error}</p>}
       <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>
-        {pending ? "Saving…" : "Start your hoshigo"}
+        {pending ? "Saving…" : "Save changes"}
       </button>
     </form>
   );
