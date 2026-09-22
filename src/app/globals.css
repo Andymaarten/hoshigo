@@ -776,6 +776,48 @@ footer .cta {
   margin-top: 18px;
 }
 
+.prev-page {
+  margin-bottom: 18px;
+  font-size: 14px;
+  min-height: 40px;
+  padding: 0 16px;
+}
+
+.nav-thumb {
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 2px solid var(--ink);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.nav-tile:hover .nav-thumb {
+  outline: none;
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.nav-tile .title {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 13px;
+}
+
+.nav-tile.locked .nav-thumb {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.nav-tile.locked:hover .nav-thumb {
+  background: var(--accent);
+  color: var(--ground);
+}
+
+.nav-tile.locked .title {
+  color: var(--accent);
+}
+
 .match-list,
 .friend-list {
   list-style: none;
