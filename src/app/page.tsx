@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import SiteFooter from "@/components/SiteFooter";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -44,20 +45,13 @@ export default async function HomePage() {
               <span>Log in</span>
             </Link>
             <Link href="/login" className="btn">
-              Start your hoshigo
+              Start / Login
             </Link>
           </nav>
         </div>
       </header>
 
-      <footer>
-        <div className="inner">
-          <p>Keep your own five-star page.</p>
-          <Link href="/login" className="cta">
-            Start your hoshigo
-          </Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

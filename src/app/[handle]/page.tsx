@@ -5,6 +5,7 @@ import type { Category, Item, Profile } from "@/lib/supabase/types";
 import CategorySection from "./CategorySection";
 import AddStamp from "./AddStamp";
 import { signOut } from "./actions";
+import SiteFooter from "@/components/SiteFooter";
 
 export default async function ProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
@@ -66,14 +67,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               </form>
             ) : (
               <Link href="/login" className="btn">
-                Start your hoshigo
+                Start / Login
               </Link>
             )}
           </nav>
         </div>
         {isOwner && <AddStamp handle={handle} categories={categories ?? []} />}
         <h1>{profile.display_name || profile.handle}.</h1>
-        <p className="lede">Five five-stars per list.</p>
         {profile.bio && <p className="bio">{profile.bio}</p>}
       </header>
 
@@ -96,14 +96,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         )}
       </main>
 
-      <footer>
-        <div className="inner">
-          <p>Keep your own five-star page.</p>
-          <Link href="/login" className="cta">
-            Start your hoshigo
-          </Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
