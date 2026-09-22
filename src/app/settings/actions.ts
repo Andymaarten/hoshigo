@@ -9,6 +9,7 @@ export async function saveProfile(_prev: string | null, formData: FormData) {
   const displayName = String(formData.get("display_name") || "").trim();
   const bio = String(formData.get("bio") || "").trim();
   const socialLinks = parseSocialLinksPayload(String(formData.get("social_links") || ""));
+  const isPrivate = formData.get("is_private") === "on";
 
   const supabase = await createClient();
   const {
@@ -18,7 +19,7 @@ export async function saveProfile(_prev: string | null, formData: FormData) {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .update({ display_name: displayName || null, bio: bio || null, social_links: socialLinks })
+    .update({ display_name: displayName || null, bio: bio || null, social_links: socialLinks, is_private: isPrivate })
     .eq("id", user.id)
     .select("handle")
     .single();

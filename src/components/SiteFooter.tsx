@@ -9,7 +9,7 @@ export default function SiteFooter({ loggedIn = false }: { loggedIn?: boolean })
         </div>
         {!loggedIn && (
           <div className="footer-msg">
-            <p>Keep your own five-star page.</p>
+            <p>Keep your own five star page.</p>
             <Link href="/login" className="cta">
               Start / Login
             </Link>

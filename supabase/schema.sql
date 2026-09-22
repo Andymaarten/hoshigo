@@ -14,6 +14,12 @@ create table if not exists public.profiles (
 -- {platform, handle, url} entries per profile with no cross-referencing needed.
 alter table public.profiles add column if not exists social_links jsonb not null default '[]';
 
+-- a private profile is hidden from everyone except its owner. There's no real
+-- friends system yet, so "visible to friends" can't be enforced today — this
+-- starts conservative (owner-only) rather than accidentally public; loosen the
+-- RLS policies below to also allow accepted friends once that table exists.
+alter table public.profiles add column if not exists is_private boolean not null default false;
+
 create table if not exists public.categories (
   id serial primary key,
   slug text unique not null,
@@ -127,7 +133,7 @@ create policy "any logged-in user can register a work" on public.works
 
 drop policy if exists "profiles are publicly readable" on public.profiles;
 create policy "profiles are publicly readable" on public.profiles
-  for select using (true);
+  for select using (not is_private or auth.uid() = id);
 drop policy if exists "users can update their own profile" on public.profiles;
 create policy "users can update their own profile" on public.profiles
   for update using (auth.uid() = id);
@@ -138,7 +144,12 @@ create policy "categories are publicly readable" on public.categories
 
 drop policy if exists "items are publicly readable" on public.items;
 create policy "items are publicly readable" on public.items
-  for select using (true);
+  for select using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = items.profile_id and (not p.is_private or auth.uid() = p.id)
+    )
+  );
 drop policy if exists "users can insert their own items" on public.items;
 create policy "users can insert their own items" on public.items
   for insert with check (auth.uid() = profile_id);

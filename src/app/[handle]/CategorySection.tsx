@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Category, Item } from "@/lib/supabase/types";
 import { deleteItem, updateNote } from "./actions";
+import LockIcon from "@/components/icons/LockIcon";
 
 const PAGE_SIZE = 5;
 
@@ -15,6 +16,10 @@ const SHAPE: Record<string, "tall" | "photo" | undefined> = {
   games: "photo",
   podcasts: "photo",
 };
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+}
 
 function Thumb({ item, shape, big }: { item: Item; shape?: "tall" | "photo"; big?: boolean }) {
   return (
@@ -90,6 +95,7 @@ export default function CategorySection({
               <div className="txt">
                 <span className="title">{item.title}</span>
                 <span className="by">{item.by}</span>
+                <span className="date">{formatDate(item.created_at)}</span>
               </div>
             </button>
           </li>
@@ -118,7 +124,7 @@ export default function CategorySection({
           <li>
             <Link href="/pricing" className="item nav-tile locked">
               <div className="thumb nav-thumb" aria-hidden="true">
-                🔒
+                <LockIcon />
               </div>
               <div className="txt">
                 <span className="title">See more</span>

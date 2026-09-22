@@ -16,7 +16,7 @@ const serif = Newsreader({
 
 export const metadata: Metadata = {
   title: "hoshigo",
-  description: "Five five-stars per list.",
+  description: "Five five stars per list.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

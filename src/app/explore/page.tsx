@@ -2,13 +2,17 @@ import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/lib/supabase/types";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
-import MatchRow from "@/components/MatchRow";
+import MatchSection from "@/components/MatchSection";
 
 const FAKE_PEOPLE = [
-  { handle: "user2", displayName: "Mei Sato" },
-  { handle: "user3", displayName: "Jonas Bergström" },
-  { handle: "user4", displayName: "Priya Nair" },
-  { handle: "user5", displayName: "Tomás Rivera" },
+  { handle: "user2", displayName: "Mei Sato", bio: "Letterboxd completionist. I will talk about Bong Joon Ho unprompted." },
+  { handle: "user3", displayName: "Jonas Bergström", bio: "Reads one more chapter than I should every night." },
+  { handle: "user4", displayName: "Priya Nair", bio: "Podcasts on 2x, vinyl at 33⅓. Contradictions welcome." },
+  { handle: "user5", displayName: "Tomás Rivera", bio: "Collector of things nobody else notices are beautiful." },
+  { handle: "user6", displayName: "Anna Kowalski", bio: "Will fight you about the best Kieślowski film." },
+  { handle: "user7", displayName: "Sam Okafor", bio: "Essays over novels, always. Newsletter addict." },
+  { handle: "user8", displayName: "Lena Fischer", bio: "Album of the year lists start in January for me." },
+  { handle: "user9", displayName: "Diego Fuentes", bio: "If it's not five stars it's not on the list." },
 ];
 
 function placeholderMatches(categoryId: number) {
@@ -16,9 +20,7 @@ function placeholderMatches(categoryId: number) {
     const seed = categoryId * 7 + i * 13;
     const pct = 62 + (seed % 35);
     return { ...person, matchPercent: pct };
-  })
-    .sort((a, b) => b.matchPercent - a.matchPercent)
-    .slice(0, 3);
+  }).sort((a, b) => b.matchPercent - a.matchPercent);
 }
 
 export default async function ExplorePage() {
@@ -41,10 +43,7 @@ export default async function ExplorePage() {
           </div>
           <SiteNav loggedIn={!!user?.user} handle={myHandle} />
         </div>
-        <div className="kicker">
-          <span className="dot" aria-hidden="true" />
-          explore
-        </div>
+        <div className="kicker">explore</div>
         <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>find your taste twins.</h1>
         <p className="bio">
           People whose five stars line up with yours, by category. Matching isn&apos;t live yet — these are placeholder
@@ -54,14 +53,12 @@ export default async function ExplorePage() {
 
       <main>
         {(categories ?? []).map((category) => (
-          <section key={category.id} aria-labelledby={`explore-${category.slug}`}>
-            <h2 id={`explore-${category.slug}`}>{category.label}</h2>
-            <ul className="match-list">
-              {placeholderMatches(category.id).map((m) => (
-                <MatchRow key={m.handle} handle={m.handle} displayName={m.displayName} matchPercent={m.matchPercent} />
-              ))}
-            </ul>
-          </section>
+          <MatchSection
+            key={category.id}
+            categorySlug={category.slug}
+            categoryLabel={category.label}
+            matches={placeholderMatches(category.id)}
+          />
         ))}
       </main>
 

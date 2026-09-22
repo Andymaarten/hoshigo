@@ -13,6 +13,7 @@ export interface Profile {
   bio: string | null;
   theme: Theme;
   social_links: SocialLink[];
+  is_private: boolean;
   created_at: string;
 }
 

@@ -58,6 +58,10 @@ a {
   margin-top: auto;
 }
 
+#lists {
+  padding-bottom: 56px;
+}
+
 .entry {
   display: flex;
   flex-direction: column;
@@ -294,7 +298,11 @@ h1 {
 .stamp.pinned {
   position: fixed;
   top: 14px;
-  right: 20px;
+  /* .page is centered with a max-width, so a plain `right: 20px` (viewport-relative)
+     drifts away from the unpinned stamp's position once the viewport is wider than
+     that max-width. Match .page's actual right inset (its side padding, plus half
+     of any leftover centering gap) so the icon doesn't jump sideways when it pins. */
+  right: calc(max(0px, (100vw - 1200px) / 2) + 24px);
   width: 78px;
   height: 78px;
 }
@@ -485,6 +493,14 @@ h2 {
 .by {
   font-size: 13px;
   line-height: 17px;
+  color: var(--muted);
+}
+
+.date {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12px;
+  line-height: 16px;
   color: var(--muted);
 }
 
