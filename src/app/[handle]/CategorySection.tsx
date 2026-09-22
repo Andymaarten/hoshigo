@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Category, Item } from "@/lib/supabase/types";
 import { deleteItem, updateNote } from "./actions";
 import LockIcon from "@/components/icons/LockIcon";
+import EditItem from "./EditItem";
 
 // The first page shows 5 items. Every page after that gives up one grid slot
 // to a "previous" tile (instead of a separate button above the grid, which
@@ -53,11 +54,13 @@ export default function CategorySection({
   items,
   handle,
   isOwner,
+  allCategories,
 }: {
   category: Category;
   items: Item[];
   handle: string;
   isOwner: boolean;
+  allCategories: Category[];
 }) {
   const shape = SHAPE[category.slug];
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -65,6 +68,7 @@ export default function CategorySection({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(0);
+  const [editing, setEditing] = useState(false);
 
   const pageSize = page === 0 ? FIRST_PAGE_SIZE : NEXT_PAGE_SIZE;
   const pageStart = page === 0 ? 0 : FIRST_PAGE_SIZE + (page - 1) * NEXT_PAGE_SIZE;
@@ -105,6 +109,7 @@ export default function CategorySection({
   function open(item: Item) {
     setActive(item);
     setNote(item.note ?? "");
+    setEditing(false);
     dialogRef.current?.showModal();
   }
 
@@ -193,7 +198,20 @@ export default function CategorySection({
           <button type="button" className="close" aria-label="Close" onClick={() => dialogRef.current?.close()}>
             ×
           </button>
-          {active && (
+          {active && editing && (
+            <EditItem
+              handle={handle}
+              item={active}
+              categories={allCategories}
+              onCancel={() => setEditing(false)}
+              onDone={() => {
+                setEditing(false);
+                dialogRef.current?.close();
+              }}
+            />
+          )}
+
+          {active && !editing && (
             <>
               <Thumb item={active} shape={shape} big />
               <h3 id={`sheet-title-${category.slug}`}>{active.title}</h3>
@@ -227,6 +245,9 @@ export default function CategorySection({
                       }}
                     >
                       {saving ? "Saving…" : "Save note"}
+                    </button>
+                    <button type="button" className="btn" onClick={() => setEditing(true)}>
+                      Edit
                     </button>
                     <button
                       type="button"

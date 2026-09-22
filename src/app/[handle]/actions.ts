@@ -62,6 +62,40 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
   return null;
 }
 
+export async function updateItem(handle: string, _prev: string | null, formData: FormData) {
+  const { supabase, user } = await requireUser();
+
+  const itemId = String(formData.get("item_id") || "").trim();
+  const categoryId = Number(formData.get("category_id"));
+  const title = String(formData.get("title") || "").trim();
+  const by = String(formData.get("by") || "").trim();
+  const yearRaw = String(formData.get("year") || "").trim();
+  const imageUrl = String(formData.get("image_url") || "").trim();
+  const note = String(formData.get("note") || "").trim();
+
+  if (!itemId) return "Missing item.";
+  if (!title || !categoryId) return "Title and category are required.";
+  if (imageUrl && !safeHttpUrl(imageUrl)) return "That image URL doesn't look like a valid web address.";
+
+  const { error } = await supabase
+    .from("items")
+    .update({
+      category_id: categoryId,
+      title,
+      by: by || null,
+      year: yearRaw ? Number(yearRaw) : null,
+      image_url: imageUrl || null,
+      note: note || null,
+    })
+    .eq("id", itemId)
+    .eq("profile_id", user.id);
+
+  if (error) return error.message;
+
+  revalidatePath(`/${handle}`);
+  return null;
+}
+
 export async function deleteItem(handle: string, itemId: string) {
   const { supabase } = await requireUser();
   await supabase.from("items").delete().eq("id", itemId);

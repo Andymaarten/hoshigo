@@ -90,6 +90,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               items={itemsByCategory.get(category.id) ?? []}
               handle={handle}
               isOwner={isOwner}
+              allCategories={categories ?? []}
             />
           ))}
         {isOwner && (items ?? []).length === 0 && (
