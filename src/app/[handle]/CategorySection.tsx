@@ -197,7 +197,16 @@ export default function CategorySection({
         ))}
       </ul>
 
-      <dialog ref={dialogRef} className="sheet" aria-labelledby={`sheet-title-${category.slug}`}>
+      <dialog
+        ref={dialogRef}
+        className="sheet"
+        aria-labelledby={`sheet-title-${category.slug}`}
+        onClick={(e) => {
+          // A click that lands on the <dialog> element itself (not any of its
+          // children) means it hit the backdrop — same as pressing the × close.
+          if (e.target === e.currentTarget) dialogRef.current?.close();
+        }}
+      >
         <div className="sheet-in">
           <button type="button" className="close" aria-label="Close" onClick={() => dialogRef.current?.close()}>
             ×

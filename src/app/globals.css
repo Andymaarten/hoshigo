@@ -364,7 +364,7 @@ h1 {
 }
 
 .hero-prompt {
-  margin: 26px 0 0;
+  margin: 56px 0 0;
   font-family: var(--serif);
   font-style: italic;
   font-size: 16px;
@@ -1078,6 +1078,11 @@ footer .cta {
 .friend-name {
   font-weight: 700;
   font-size: 16px;
+}
+
+.match-blur {
+  filter: blur(4px);
+  user-select: none;
 }
 
 .match-handle,

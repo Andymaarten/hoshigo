@@ -209,7 +209,14 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
         </button>
       </div>
 
-      <dialog ref={dialogRef} className="sheet" aria-labelledby="add-title">
+      <dialog
+        ref={dialogRef}
+        className="sheet"
+        aria-labelledby="add-title"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) dialogRef.current?.close();
+        }}
+      >
         <div className="sheet-in">
           <button type="button" className="close" aria-label="Close" onClick={() => dialogRef.current?.close()}>
             ×
