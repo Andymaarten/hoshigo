@@ -132,14 +132,19 @@ async function fromSpotifyOEmbed(url: string) {
 const HOSTNAME_CATEGORY: [RegExp, string][] = [
   [/letterboxd\.com$/, "films"],
   [/imdb\.com$/, "films"], // fromImdbId() overrides this with "tv" when it's actually a series
+  [/rottentomatoes\.com$/, "films"],
+  [/metacritic\.com$/, "films"], // og:type/og:site_name are both missing on Metacritic pages
   [/open\.spotify\.com$/, "albums"], // fromSpotifyOEmbed() overrides with songs/podcasts by path
   [/music\.apple\.com$/, "albums"],
   [/bandcamp\.com$/, "albums"],
   [/discogs\.com$/, "albums"],
   [/musicbrainz\.org$/, "albums"],
   [/allmusic\.com$/, "albums"],
+  [/(www\.)?last\.fm$/, "albums"],
+  [/rateyourmusic\.com$/, "albums"],
   [/goodreads\.com$/, "books"],
   [/openlibrary\.org$/, "books"],
+  [/books\.google\.com$/, "books"], // safety net; og:type "book" already covers most Google Books pages
   [/podcasts\.apple\.com$/, "podcasts"],
 ];
 
@@ -196,8 +201,25 @@ export async function GET(request: NextRequest) {
 
     let title = metaTag(html, "og:title") || html.match(/<title>([^<]+)<\/title>/i)?.[1] || null;
     const image_url = metaTag(html, "og:image");
-    const source_label = metaTag(html, "og:site_name") || parsed.hostname.replace(/^www\./, "");
+    const ogSiteName = metaTag(html, "og:site_name");
+    const source_label = ogSiteName || parsed.hostname.replace(/^www\./, "");
     const ogType = metaTag(html, "og:type");
+
+    // Several sites append their own name to <title>/og:title (e.g. Rotten Tomatoes: "Parasite
+    // (2019) | Rotten Tomatoes", Apple Music: "Album by Artist on Apple Music", Metacritic:
+    // "Parasite Reviews - Metacritic") — strip that before any of the year/by parsing below, or
+    // it corrupts the canonical-catalog search. Metacritic has no og:site_name, so its suffix is
+    // hardcoded rather than derived from source_label like the others.
+    if (title) {
+      const escapedSite = (ogSiteName || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      title = title.trim();
+      if (escapedSite) title = title.replace(new RegExp(`\\s*[|\\-–]\\s*${escapedSite}\\s*$`, "i"), "").trim();
+      title = title
+        .replace(/\s+on\s+Apple Music\s*$/i, "")
+        .replace(/\s+Reviews\s*[-–]\s*Metacritic\s*$/i, "")
+        .trim();
+    }
+
     const yearMatch = title?.match(/\b(19|20)\d{2}\b/);
 
     // Bandcamp (and a few others) format og:title as "Album, by Artist" — split it out
