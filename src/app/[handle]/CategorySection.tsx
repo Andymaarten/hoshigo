@@ -72,6 +72,10 @@ export default function CategorySection({
   // later page with fewer real items gets invisible placeholder cells instead.
   const filledSlots = (showPrevTile ? 1 : 0) + visibleItems.length + (showNextTile || showLockTile ? 1 : 0);
   const placeholderCount = Math.max(0, FIRST_PAGE_SIZE - filledSlots);
+  // The prev/next/lock tiles reuse .thumb's box, so they need the same shape modifier as real
+  // items in this category or they render as a plain square instead of matching aspect ratio
+  // (e.g. books/films/tv are taller than wide).
+  const navThumbClass = `thumb nav-thumb${shape === "tall" ? " tall" : ""}${shape === "photo" ? " photo" : ""}`;
 
   // Prefetch the next page's cover images so "next" never has a loading delay —
   // only relevant while pagination actually still works (i.e. for the owner).
@@ -105,7 +109,7 @@ export default function CategorySection({
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               aria-label={`Show previous ${pageStart} items`}
             >
-              <div className="thumb nav-thumb" aria-hidden="true">
+              <div className={navThumbClass} aria-hidden="true">
                 ←
               </div>
               <div className="txt">
@@ -137,7 +141,7 @@ export default function CategorySection({
               onClick={() => setPage((p) => p + 1)}
               aria-label={`Show next ${Math.min(NEXT_PAGE_SIZE, items.length - pageStart - pageSize)} items`}
             >
-              <div className="thumb nav-thumb" aria-hidden="true">
+              <div className={navThumbClass} aria-hidden="true">
                 →
               </div>
               <div className="txt">
@@ -151,7 +155,7 @@ export default function CategorySection({
         {showLockTile && (
           <li>
             <Link href="/pricing" className="item nav-tile locked">
-              <div className="thumb nav-thumb" aria-hidden="true">
+              <div className={navThumbClass} aria-hidden="true">
                 <LockIcon />
               </div>
               <div className="txt">
