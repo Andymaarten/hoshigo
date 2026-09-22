@@ -65,19 +65,27 @@ export default async function HomePage({
         </div>
       </header>
 
-      <p className="hero-prompt">
-        Press one of the hoshigo below for a preview.
-        <span className="hero-prompt-sub">
-          <i>Japanese.</i> five stars. A place to curate everything you give five stars.
-        </span>
-      </p>
+      <p className="hero-prompt">Press one of the hoshigo&apos;s below to get inspired.</p>
 
       <HeroField />
 
-      <div className="hero-footline">
-        <div className="hero-outline">hoshigo</div>
-        <div className="hero-tag">星五 · no. 5000</div>
-      </div>
+      <section className="prose">
+        <p>
+          hoshigo comes from Japanese: <i>hoshi</i>, star, and <i>go</i>, five. Five stars.
+        </p>
+        <p>
+          It&apos;s a personal place to keep the handful of things you&apos;d actually give five stars. Films, books,
+          essays, albums.
+        </p>
+        <p>
+          We&apos;re not traditional social media. No ads. No algorithm deciding what you see and trying to make you
+          stay longer. We like you to be gone within a few minutes.
+        </p>
+        <p>
+          hoshigo is by people, for people. No AI, no bots. Only verified profiles of real people with real taste:
+          every page here belongs to someone.
+        </p>
+      </section>
 
       <SiteFooter />
     </div>
@@ -102,7 +110,7 @@ const HERO_DOTS: Array<[number, number, number]> = [
   [90, 88, 54],
 ];
 
-const RING_TEXT = "Press here to visit this hoshigo · Press here to visit this hoshigo · ";
+const RING_TEXT = "Press here to visit this hoshigo";
 
 function HeroField() {
   return (
@@ -117,11 +125,15 @@ function HeroField() {
           <span className="hero-disc">
             {s >= 70 && (
               <svg className="hero-ring" viewBox="0 0 116 116" aria-hidden="true" focusable="false">
+                {/* Only the top half of the ring is used — text following the full
+                    circle read upside-down along the bottom half, which was the
+                    alignment problem. A left-to-right arc over just the top reads
+                    cleanly and never flips. */}
                 <defs>
-                  <path id={`hero-ring-${i}`} d="M58,58 m-47,0 a47,47 0 1,1 94,0 a47,47 0 1,1 -94,0" />
+                  <path id={`hero-ring-${i}`} d="M11,58 a47,47 0 1,1 94,0" />
                 </defs>
                 <text>
-                  <textPath href={`#hero-ring-${i}`} textLength="292">
+                  <textPath href={`#hero-ring-${i}`} textLength="146" startOffset="0">
                     {RING_TEXT}
                   </textPath>
                 </text>
