@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Category, Item, Profile } from "@/lib/supabase/types";
 import CategorySection from "./CategorySection";
 import AddStamp from "./AddStamp";
-import { signOut } from "./actions";
 import SiteFooter from "@/components/SiteFooter";
+import SiteNav from "@/components/SiteNav";
 
 export default async function ProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
@@ -20,6 +19,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   if (!profile) notFound();
 
   const isOwner = user?.user?.id === profile.id;
+
+  let myHandle: string | undefined;
+  if (user?.user) {
+    myHandle = isOwner
+      ? profile.handle
+      : (await supabase.from("profiles").select("handle").eq("id", user.user.id).single()).data?.handle;
+  }
 
   const { data: items } = await supabase
     .from("items")
@@ -55,22 +61,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               <i>Japanese.</i> five stars.
             </div>
           </div>
-          <nav className="menu" aria-label="Main">
-            <Link href="/about">
-              <span>About</span>
-            </Link>
-            {isOwner ? (
-              <form action={signOut}>
-                <button type="submit" className="btn">
-                  Log out
-                </button>
-              </form>
-            ) : (
-              <Link href="/login" className="btn">
-                Start / Login
-              </Link>
-            )}
-          </nav>
+          <SiteNav loggedIn={!!user?.user} handle={myHandle} />
         </div>
         {isOwner && <AddStamp handle={handle} categories={categories ?? []} />}
         <h1>{profile.display_name || profile.handle}.</h1>

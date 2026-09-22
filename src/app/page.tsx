@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteFooter from "@/components/SiteFooter";
+import SiteNav from "@/components/SiteNav";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -40,14 +41,8 @@ export default async function HomePage() {
               .
             </div>
           </div>
-          <nav className="menu" aria-label="Main">
-            <Link href="/login">
-              <span>Log in</span>
-            </Link>
-            <Link href="/login" className="btn">
-              Start / Login
-            </Link>
-          </nav>
+          <SiteNav />
+
         </div>
       </header>
 

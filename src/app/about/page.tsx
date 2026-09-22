@@ -1,5 +1,6 @@
 import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
+import SiteNav from "@/components/SiteNav";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AboutPage() {
@@ -8,12 +9,17 @@ export default async function AboutPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const myHandle = user ? (await supabase.from("profiles").select("handle").eq("id", user.id).single()).data?.handle : undefined;
+
   return (
     <div className="page">
       <header className="hero">
-        <Link href="/" className="word" aria-label="hoshigo">
-          hosh<span className="tittle">ı</span>go
-        </Link>
+        <div className="masthead">
+          <Link href="/" className="word" aria-label="hoshigo">
+            hosh<span className="tittle">ı</span>go
+          </Link>
+          <SiteNav loggedIn={!!user} handle={myHandle} />
+        </div>
         <div className="kicker">
           <span className="dot" aria-hidden="true" />
           manifesto
@@ -26,16 +32,16 @@ export default async function AboutPage() {
           hoshigo comes from Japanese: <i>hoshi</i>, star, and <i>go</i>, five. Five stars.
         </p>
         <p>
-          It&apos;s a personal place to keep the handful of things you&apos;d actually give five stars. A film, a
-          book, a restaurant. Nothing else.
+          It&apos;s a personal place to keep the handful of things you&apos;d actually give five stars. Films, books,
+          essays, albums.
         </p>
         <p>
-          We&apos;re not traditional social media. No ads. No algorithm deciding what you see or how long you stay.
-          No feed to scroll, no follower count to chase.
+          We&apos;re not traditional social media. No ads. No algorithm deciding what you see and trying to make you
+          stay longer. We like you to be gone within a few minutes.
         </p>
         <p>
-          By people, for people. No AI, no bots. Only verified profiles of real people with real taste. Every page
-          here belongs to someone.
+          hoshigo is by people, for people. No AI, no bots. Only verified profiles of real people with real taste:
+          every page here belongs to someone.
         </p>
       </section>
 

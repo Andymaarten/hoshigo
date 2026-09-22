@@ -453,57 +453,40 @@ footer {
 footer .inner {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px;
+  display: flex;
+  align-items: stretch;
+  border: 1.5px solid var(--ink);
+  background: var(--ground);
+}
+
+footer .footer-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 20px 32px;
+  border-right: 1.5px solid var(--ink);
+  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", var(--serif);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+footer .footer-msg {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 24px;
-  border: 1.5px solid var(--ink);
-  padding: 40px 32px;
-  position: relative;
-  background: var(--ground);
-}
-
-footer .footer-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: none;
-}
-
-footer .footer-word {
-  font-family: var(--serif);
-  font-size: 28px;
-  line-height: 1;
-  color: var(--ink);
-}
-
-footer .footer-ja-tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 40px;
-  padding: 4px 10px;
-  border: 1.5px solid var(--ink);
-  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", var(--serif);
-  font-size: 15px;
-}
-
-footer .copy {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 12px;
+  gap: 16px;
+  padding: 20px 28px;
 }
 
 footer p {
   margin: 0;
-  font-size: 34px;
-  line-height: 1.05;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  max-width: 14ch;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 footer .cta {
@@ -514,7 +497,7 @@ footer .cta {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin: 24px 0 14px;
+  margin: 24px 0 28px;
 }
 
 .mode-tab {
@@ -534,46 +517,13 @@ footer .cta {
   background: transparent;
 }
 
-.mode-tab-tag {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
 .mode-tab.active {
   background: var(--ink);
   color: var(--ground);
 }
 
-.mode-tab.active .mode-tab-tag {
-  color: var(--ground);
-  opacity: 0.65;
-}
-
 .mode-tab:not(.active):hover {
   background: rgba(29, 28, 26, 0.06);
-}
-
-.mode-hint {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 0 0 28px;
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 16px;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
-.mode-hint .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex: none;
-  margin-top: 8px;
 }
 
 .btn {

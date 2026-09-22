@@ -3,26 +3,12 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { signInWithPassword, signUpWithPassword, sendMagicLink } from "./actions";
+import SiteNav from "@/components/SiteNav";
 
 const MODES = [
-  {
-    key: "login" as const,
-    label: "Log in",
-    tag: "01",
-    hint: "Already have an account. Sign in with your email and password.",
-  },
-  {
-    key: "signup" as const,
-    label: "Sign up",
-    tag: "02",
-    hint: "New here. Create an account with an email and password.",
-  },
-  {
-    key: "magic" as const,
-    label: "Magic link",
-    tag: "03",
-    hint: "No password needed. We'll email you a one-time link to sign in.",
-  },
+  { key: "login" as const, label: "Log in" },
+  { key: "signup" as const, label: "Sign up" },
+  { key: "magic" as const, label: "Magic link" },
 ];
 
 export default function LoginPage() {
@@ -32,14 +18,16 @@ export default function LoginPage() {
     null
   );
   const [magicState, magicAction, magicPending] = useActionState(sendMagicLink, null);
-  const active = MODES.find((m) => m.key === mode)!;
 
   return (
     <div className="page">
       <header className="hero">
-        <Link href="/" className="word" aria-label="hoshigo">
-          hosh<span className="tittle">ı</span>go
-        </Link>
+        <div className="masthead">
+          <Link href="/" className="word" aria-label="hoshigo">
+            hosh<span className="tittle">ı</span>go
+          </Link>
+          <SiteNav />
+        </div>
         <p className="lede">{mode === "signup" ? "Start your hoshigo." : "Welcome back."}</p>
       </header>
 
@@ -54,15 +42,10 @@ export default function LoginPage() {
               className={`mode-tab${mode === m.key ? " active" : ""}`}
               onClick={() => setMode(m.key)}
             >
-              <span className="mode-tab-tag">{m.tag}</span>
               {m.label}
             </button>
           ))}
         </div>
-        <p className="mode-hint">
-          <span className="dot" aria-hidden="true" />
-          {active.hint}
-        </p>
 
         {mode === "magic" ? (
           <form action={magicAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
