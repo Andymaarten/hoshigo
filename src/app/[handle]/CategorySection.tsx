@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import type { Category, Item } from "@/lib/supabase/types";
-import { addItem, deleteItem, updateNote } from "./actions";
+import { deleteItem, updateNote } from "./actions";
 
 function Thumb({ item, big }: { item: Item; big?: boolean }) {
   return (
@@ -105,10 +105,6 @@ export default function CategorySection({
   handle: string;
   isOwner: boolean;
 }) {
-  const [adding, setAdding] = useState(false);
-  const boundAdd = addItem.bind(null, handle);
-  const [error, action, pending] = useActionState(boundAdd, null);
-
   const featured = items.find((i) => i.featured) || items[0];
   const rest = items.filter((i) => i !== featured);
 
@@ -116,78 +112,32 @@ export default function CategorySection({
     <section aria-labelledby={`h-${category.slug}`}>
       <h2 id={`h-${category.slug}`}>{category.label}</h2>
 
-      {featured ? (
-        <div className="spread">
-          <div className="item" style={{ cursor: "default" }}>
-            <Thumb item={featured} big />
-            <div className="txt">
-              <span className="title">{featured.title}</span>
-              <span className="by">{featured.by}</span>
-              {isOwner && (
-                <button
-                  type="button"
-                  className="btn"
-                  style={{ marginTop: 8, alignSelf: "flex-start", fontSize: 13 }}
-                  onClick={() => deleteItem(handle, featured.id)}
-                >
-                  Delete
-                </button>
-              )}
-            </div>
+      <div className="spread">
+        <div className="item" style={{ cursor: "default" }}>
+          <Thumb item={featured} big />
+          <div className="txt">
+            <span className="title">{featured.title}</span>
+            <span className="by">{featured.by}</span>
+            {isOwner && (
+              <button
+                type="button"
+                className="btn"
+                style={{ marginTop: 8, alignSelf: "flex-start", fontSize: 13 }}
+                onClick={() => deleteItem(handle, featured.id)}
+              >
+                Delete
+              </button>
+            )}
           </div>
+        </div>
+        {rest.length > 0 && (
           <ul className="rows">
             {rest.map((item) => (
               <Row key={item.id} item={item} handle={handle} isOwner={isOwner} />
             ))}
           </ul>
-        </div>
-      ) : (
-        <p className="bio">Nothing here yet.</p>
-      )}
-
-      {isOwner && (
-        <div style={{ marginTop: 24 }}>
-          <button type="button" className="btn" onClick={() => setAdding((v) => !v)}>
-            {adding ? "Cancel" : `+ add to ${category.label}`}
-          </button>
-          {adding && (
-            <form
-              action={action}
-              style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxWidth: 420 }}
-            >
-              <input type="hidden" name="category_id" value={category.id} />
-              <div className="field">
-                <label>Title</label>
-                <input name="title" required />
-              </div>
-              <div className="field">
-                <label>By</label>
-                <input name="by" />
-              </div>
-              <div className="field">
-                <label>Year</label>
-                <input name="year" inputMode="numeric" />
-              </div>
-              <div className="field">
-                <label>Link</label>
-                <input name="url" type="url" placeholder="https://…" />
-              </div>
-              <div className="field">
-                <label>Image URL</label>
-                <input name="image_url" type="url" placeholder="https://…" />
-              </div>
-              <div className="field">
-                <label>Note</label>
-                <textarea name="note" />
-              </div>
-              {error && <p className="error">{error}</p>}
-              <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>
-                {pending ? "Adding…" : "Add"}
-              </button>
-            </form>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }

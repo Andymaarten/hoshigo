@@ -176,6 +176,109 @@ h1 {
   color: var(--muted);
 }
 
+.stamp-slot {
+  align-self: flex-end;
+  width: 116px;
+  height: 116px;
+  flex-shrink: 0;
+}
+
+.stamp {
+  all: unset;
+  display: block;
+  width: 116px;
+  height: 116px;
+  cursor: pointer;
+  position: relative;
+  z-index: 50;
+  transition: width 0.18s ease, height 0.18s ease;
+}
+
+.stamp circle {
+  fill: #d8321f;
+  transition: fill 0.15s ease;
+}
+
+.stamp text {
+  fill: var(--ink);
+  font-family: var(--display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.stamp:hover circle,
+.stamp:focus-visible circle {
+  fill: #b8280f;
+}
+
+.stamp.pinned {
+  position: fixed;
+  top: 14px;
+  right: 20px;
+  width: 78px;
+  height: 78px;
+}
+
+dialog.sheet {
+  border: 0;
+  padding: 0;
+  margin: max(16px, env(safe-area-inset-top, 0px)) auto auto;
+  width: calc(100% - 32px);
+  max-width: 480px;
+  max-height: 85vh;
+  overflow: auto;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--display);
+}
+
+dialog.sheet::backdrop {
+  background: rgba(10, 10, 9, 0.5);
+}
+
+.sheet-in {
+  position: relative;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sheet-in .close {
+  all: unset;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 22px;
+}
+
+.sheet-in h3 {
+  margin: 6px 0 0;
+  font-size: 26px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  padding-right: 32px;
+}
+
+.field select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 2px solid var(--ink);
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 16px;
+}
+
 .bio strong {
   color: var(--ink);
   font-weight: 600;

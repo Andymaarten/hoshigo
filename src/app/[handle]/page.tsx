@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Category, Item, Profile } from "@/lib/supabase/types";
 import CategorySection from "./CategorySection";
+import AddStamp from "./AddStamp";
 import { signOut } from "./actions";
 
 export default async function ProfilePage({ params }: { params: Promise<{ handle: string }> }) {
@@ -70,21 +71,29 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             )}
           </nav>
         </div>
+        {isOwner && <AddStamp handle={handle} categories={categories ?? []} />}
         <h1>{profile.display_name || profile.handle}.</h1>
         <p className="lede">Five five-stars per list.</p>
         {profile.bio && <p className="bio">{profile.bio}</p>}
       </header>
 
       <main>
-        {(categories ?? []).map((category) => (
-          <CategorySection
-            key={category.id}
-            category={category}
-            items={itemsByCategory.get(category.id) ?? []}
-            handle={handle}
-            isOwner={isOwner}
-          />
-        ))}
+        {(categories ?? [])
+          .filter((category) => (itemsByCategory.get(category.id) ?? []).length > 0)
+          .map((category) => (
+            <CategorySection
+              key={category.id}
+              category={category}
+              items={itemsByCategory.get(category.id) ?? []}
+              handle={handle}
+              isOwner={isOwner}
+            />
+          ))}
+        {isOwner && (items ?? []).length === 0 && (
+          <p className="bio" style={{ marginTop: 40 }}>
+            Nothing yet — press the red stamp above to add your first hoshigo.
+          </p>
+        )}
       </main>
 
       <footer>
