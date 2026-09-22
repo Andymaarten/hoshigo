@@ -36,7 +36,9 @@ insert into public.categories (slug, label, sort_order) values
   ('tv', 'tv', 6),
   ('songs', 'songs', 7),
   ('podcasts', 'podcasts', 8),
-  ('games', 'games', 9)
+  ('games', 'games', 9),
+  ('places', 'places', 10),
+  ('videos', 'videos', 11)
 on conflict (slug) do nothing;
 
 create table if not exists public.items (

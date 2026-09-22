@@ -22,6 +22,8 @@ const SHAPE: Record<string, "tall" | "photo" | undefined> = {
   things: "photo",
   games: "photo",
   podcasts: "photo",
+  places: "photo",
+  videos: "photo",
 };
 
 function formatDate(dateStr: string) {
