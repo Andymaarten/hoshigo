@@ -26,16 +26,45 @@ function decodeHtmlEntities(s: string) {
     .replace(/&gt;/g, ">");
 }
 
-async function fetchWithTimeout(url: string, ms: number) {
+async function fetchWithTimeout(url: string, ms: number, extraHeaders?: Record<string, string>) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ms);
   try {
     return await fetch(url, {
       signal: controller.signal,
-      headers: { "User-Agent": UA, Accept: "text/html" },
+      headers: { "User-Agent": UA, Accept: "text/html", ...extraHeaders },
     });
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+// IMDb actively blocks server-side scraping (returns an empty 202 "please wait" response to
+// non-browser requests) — so instead of fighting that, use the tt-id already in the URL to
+// ask TMDB directly, which resolves it to the same canonical film our own catalog uses anyway.
+async function fromImdbId(url: string) {
+  const key = process.env.TMDB_API_KEY;
+  const idMatch = url.match(/\/title\/(tt\d+)/);
+  if (!key || !idMatch) return null;
+  try {
+    const res = await fetchWithTimeout(
+      `https://api.themoviedb.org/3/find/${idMatch[1]}?external_source=imdb_id`,
+      6000,
+      { Authorization: `Bearer ${key}` }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const movie = data?.movie_results?.[0];
+    if (!movie) return null;
+    return {
+      title: movie.title as string,
+      image_url: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined,
+      year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : undefined,
+      source_label: "IMDb",
+      category_slug: "films",
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -95,6 +124,12 @@ export async function GET(request: NextRequest) {
     if (parsed.hostname.includes("open.spotify.com")) {
       const oembed = await fromSpotifyOEmbed(url);
       if (oembed?.title) return NextResponse.json(oembed);
+    }
+
+    if (parsed.hostname.includes("imdb.com")) {
+      const imdb = await fromImdbId(url);
+      if (imdb?.title) return NextResponse.json(imdb);
+      // fall through to generic scraping if TMDB doesn't have this id either
     }
 
     const res = await fetchWithTimeout(url, 8000);
