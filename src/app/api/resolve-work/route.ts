@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       by: resolved.by,
       year: resolved.year,
       image_url: resolved.image_url,
+      match_confidence: resolved.match_confidence,
     })
     .select("*")
     .single();

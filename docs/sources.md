@@ -243,6 +243,71 @@ getest na de fix).
   match soms fout gaan. Bij twijfel toont de UI wél een editable resultaat vóór opslaan — nooit
   blind opgeslagen.
 
+## Match confidence
+
+Elke rij in `works` krijgt nu een `match_confidence` (`'high'` | `'low'` | `null`,
+`supabase/schema.sql`). Dit bestaat puur om een toekomstige "match mensen op smaak"-feature
+(nu nog een placeholder in `/explore`) alleen te laten leunen op matches waarvan we vrij zeker
+zijn — niet om iets aan de huidige flow te veranderen. Elke resolver in `resolve-work.ts`
+bepaalt dit zelf, op basis van hoe goed de teruggekregen titel (en artiest/auteur, waar van
+toepassing) overeenkomt met de zoekopdracht:
+
+- **`high`** — titel- én artiest/auteur-vergelijking zitten allebei boven een hoge
+  gelijkenis-drempel (≥0.92 resp. ≥0.8, zie `HIGH_TITLE_SIMILARITY`/`HIGH_BY_SIMILARITY` in
+  `resolve-work.ts`) — in de praktijk zo goed als een letterlijke match.
+- **`low`** — een match die is geaccepteerd (titel ≥0.55, artiest/auteur ≥0.35) maar niet aan
+  de `high`-lat voldoet: de gewone fuzzy tekst-zoekopdracht-hit. Dit blijft vandaag de meeste
+  rijen, en dat is prima — de rij is nog steeds bruikbaar om te tonen, alleen (nog) niet
+  bruikbaar als bewijs voor "deze twee mensen houden van hetzelfde nummer".
+- **`null`** (alleen op rijen van vóór deze kolom) — onbekend, behandel hetzelfde als `low`.
+
+Belangrijk: er is geen aparte hoge-vertrouwen-route via directe ID-lookups. `fromImdbId()` en
+`fromDiscogsId()` in `fetch-metadata/route.ts` lezen alleen de titel/jaar van de bron-URL uit
+(scraping-laag) — de daadwerkelijke `works`-rij ontstaat pas in `resolve-work/route.ts`, dat
+altijd via `resolveWork()` — dus altijd via tekst-zoekopdracht — gaat, ook voor een IMDb- of
+Discogs-link. Dat is geen bug: omdat de titel dan al schoon en exact is (rechtstreeks van
+TMDB/Discogs zelf), scoort die tekst-zoekopdracht vrijwel altijd `high` vanzelf via dezelfde
+gelijkenis-toets. Een losse ID-gebaseerde kortere weg zou dus weinig extra betrouwbaarheid
+toevoegen, maar wel een tweede code-pad zijn om te onderhouden.
+
+Als je een `works`-tabel opzoekt: `null`/`low` betekent niet "fout", het betekent alleen "niet
+bevestigd genoeg om blind op te matchen". Toon deze rijen gewoon normaal aan de gebruiker —
+alleen een toekomstige matching-feature moet filteren op `match_confidence = 'high'`.
+
+### Deze ronde: songs-matching verbeterd
+
+`resolveSong()` pakte voorheen blind het eerste MusicBrainz-recording-resultaat (`limit=1`).
+MusicBrainz' recording-search geeft voor bekende nummers regelmatig een live-opname, remix of
+video als eerste (of gelijk gescoorde) hit terug in plaats van de studio-opname — getest en
+bevestigd met "Blinding Lights" / The Weeknd, waar meerdere kandidaten (waaronder een
+livevideo van 2024) op score 100 gelijk staan.
+
+Nu: `limit=8`, elke kandidaat wordt gescoord op titel- én artiestgelijkenis (Dice-coëfficiënt
+over karakter-bigrams, `similarity()`), met een strafpunt voor titels/disambiguaties die
+"live", "remix", "karaoke", "cover version", "demo" e.d. bevatten en een kleine bonus voor een
+bekende releasedatum. De hoogst scorende kandidaat die de gelijkenis-drempel haalt wint; haalt
+niets de drempel, dan levert `resolveSong()` `null` op (geen canonieke match) in plaats van een
+gok. Dezelfde gelijkenis-toets is nu ook toegepast op alle andere resolvers (films, tv, albums,
+boeken, podcasts) — voorheen namen die ook zonder enige check het eerste resultaat.
+
+Onderweg ook een echte bug gevonden en gefixt in `resolveAlbum()`: MusicBrainz' release-group-
+zoekopdracht voor "Random Access Memories" / Daft Punk geeft *drie* release-groups terug op
+dezelfde topscore — het echte album, een "(Vanderway Edit)"-single en een "(drumless
+edition)" — en `limit=1` pakte willekeurig een van de drie (in de praktijk vaak niet het echte
+album). Zelfde scoring-aanpak als songs, plus een bonus voor `primary-type: "Album"` zonder
+`secondary-types` en voor een titel die *letterlijk* (niet alleen na haakjes-strippen) gelijk
+is aan de zoekopdracht. Geverifieerd: nu altijd het echte album.
+
+Getest tegen de live MusicBrainz/TMDB/OpenLibrary-API's (niet gemockt): "Bohemian Rhapsody"/
+Queen, "Hurt"/Johnny Cash (beroemde cover — moet wél matchen, dit is de erkende opname), "Blinding
+Lights"/The Weeknd, "Wonderwall"/Oasis, "Yesterday"/The Beatles, "Creep"/Radiohead, "Africa"/
+Toto — allemaal `high`-confidence correcte matches. Een onzin-titel + onzin-artiest gaf terecht
+`NO MATCH`. Een bestaande titel met een verkeerd gekoppelde artiest ("Bohemian Rhapsody"/Ed
+Sheeran) gaf ook terecht `NO MATCH` in plaats van het Queen-nummer alsnog toe te wijzen aan de
+verkeerde artiestcombinatie. Films (Parasite/2019, The Matrix/1999), tv (Breaking Bad/2008) en
+boeken (Dune/Frank Herbert) bleven allemaal correct en `high`-confidence na de wijziging —
+geen regressie op de bestaande hoge-kwaliteit matches.
+
 ## Uitbreiden
 
 Nieuwe bron toevoegen aan de categorie-herkenning: `HOSTNAME_CATEGORY` in

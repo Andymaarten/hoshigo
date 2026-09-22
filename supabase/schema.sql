@@ -87,6 +87,16 @@ alter table public.works add constraint works_source_check
 
 alter table public.items add column if not exists work_id uuid references public.works (id);
 
+-- How much to trust that this row really is the work it claims to be, so a future
+-- "match people by taste" feature can read only the rows worth basing anything on instead
+-- of silently inheriting whatever the text-search resolver happened to guess. 'high' = an
+-- essentially unambiguous match (near-exact title/artist agreement, or a direct ID lookup);
+-- 'low' = an ordinary fuzzy text-search hit, which is most rows today. Left null on rows
+-- created before this column existed — treat null the same as 'low' (unknown, don't trust
+-- it for matching) rather than assuming it means anything better.
+alter table public.works add column if not exists match_confidence text
+  check (match_confidence in ('high', 'low'));
+
 create table if not exists public.personalize_blocks (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null references public.profiles (id) on delete cascade,
