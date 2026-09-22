@@ -208,12 +208,42 @@ h1 {
 }
 
 .bio {
-  margin: 10px 0 0;
+  margin: 0;
   max-width: 46ch;
   font-family: var(--serif);
   font-size: 17px;
   line-height: 1.45;
   color: var(--muted);
+}
+
+.bio-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.edit-profile-link {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.edit-profile-link:hover {
+  color: var(--ink);
+}
+
+@media (min-width: 720px) {
+  .bio-row {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 24px;
+  }
 }
 
 .stamp-slot {

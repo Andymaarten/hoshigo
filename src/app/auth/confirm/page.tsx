@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +17,7 @@ function AuthConfirmInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const recovering = useRef(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -24,10 +25,15 @@ function AuthConfirmInner() {
     // Password-recovery links resolve to a session too, but should land on the
     // reset-password form instead of onboarding. Supabase fires this specific
     // event for that case (works for both hash- and code-based recovery links).
+    // The flag guards against run()'s plain-session redirect below firing
+    // after this one and overwriting the navigation.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") router.replace("/reset-password");
+      if (event === "PASSWORD_RECOVERY") {
+        recovering.current = true;
+        router.replace("/reset-password");
+      }
     });
 
     async function run() {
@@ -52,7 +58,7 @@ function AuthConfirmInner() {
         setError("That link is invalid or has expired.");
         return;
       }
-      router.replace("/onboarding");
+      if (!recovering.current) router.replace("/onboarding");
     }
 
     run();

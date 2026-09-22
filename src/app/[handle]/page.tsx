@@ -68,14 +68,16 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         </div>
         {isOwner && <AddStamp handle={handle} categories={categories ?? []} />}
         <h1>{profile.display_name || profile.handle}.</h1>
-        {profile.bio && <p className="bio">{profile.bio}</p>}
+        <div className="bio-row">
+          {profile.bio && <p className="bio">{profile.bio}</p>}
+          {isOwner && (
+            <Link href="/settings" className="edit-profile-link">
+              Edit profile
+            </Link>
+          )}
+        </div>
         <ProfileStats {...placeholderCounts(profile.handle)} />
         <ProfileSocialLinks links={profile.social_links ?? []} />
-        {isOwner && (
-          <Link href="/settings" className="btn" style={{ alignSelf: "flex-start", marginTop: 14 }}>
-            Edit profile
-          </Link>
-        )}
       </header>
 
       <main id="lists">
