@@ -24,7 +24,7 @@ export default async function HomePage() {
             </div>
             <div className="gloss">
               <span className="ja" lang="ja">
-                星5
+                星五
               </span>
               <span>[ho.ɕi.ɡo]</span>
               <i>noun</i>

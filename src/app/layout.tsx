@@ -22,6 +22,16 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${serif.variable}`}>
+      <head>
+        {/* Shippori Mincho's Japanese glyph subset isn't in next/font's bundled index yet,
+            so this one loads the ordinary way instead of via next/font/google. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700&display=swap"
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

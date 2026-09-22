@@ -132,9 +132,9 @@ a.word {
 }
 
 .gloss .ja {
-  font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", var(--serif);
+  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", var(--serif);
   color: var(--ink);
-  font-size: 17px;
+  font-size: 18px;
 }
 
 .entry hr {
