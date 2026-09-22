@@ -23,6 +23,7 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
   const url = String(formData.get("url") || "").trim();
   const imageUrl = String(formData.get("image_url") || "").trim();
   const note = String(formData.get("note") || "").trim();
+  const sourceLabel = String(formData.get("source_label") || "").trim();
 
   if (!title || !categoryId) return "Title and category are required.";
 
@@ -35,6 +36,7 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
     url: url || null,
     image_url: imageUrl || null,
     note: note || null,
+    source_label: sourceLabel || null,
   });
 
   if (error) return error.message;

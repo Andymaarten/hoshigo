@@ -4,6 +4,17 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import type { Category } from "@/lib/supabase/types";
 import { addItem } from "./actions";
 
+type Step = "link" | "review";
+
+const emptyFields = {
+  title: "",
+  by: "",
+  year: "",
+  image_url: "",
+  note: "",
+  source_label: "",
+};
+
 export default function AddStamp({ handle, categories }: { handle: string; categories: Category[] }) {
   const [pinned, setPinned] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
@@ -11,6 +22,13 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
   const boundAdd = addItem.bind(null, handle);
   const [error, action, pending] = useActionState(boundAdd, null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  const [step, setStep] = useState<Step>("link");
+  const [categoryId, setCategoryId] = useState(String(categories[0]?.id ?? ""));
+  const [url, setUrl] = useState("");
+  const [fetching, setFetching] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
+  const [fields, setFields] = useState(emptyFields);
 
   useEffect(() => {
     function onScroll() {
@@ -23,13 +41,55 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  function resetForm() {
+    setStep("link");
+    setUrl("");
+    setFields(emptyFields);
+    setFetchFailed(false);
+  }
+
   useEffect(() => {
     if (!pending && !error && formRef.current) {
       formRef.current.reset();
       dialogRef.current?.close();
+      resetForm();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
+
+  function openDialog() {
+    resetForm();
+    dialogRef.current?.showModal();
+  }
+
+  async function goToReview(skipFetch: boolean) {
+    if (skipFetch || !url) {
+      setStep("review");
+      return;
+    }
+    setFetching(true);
+    setFetchFailed(false);
+    try {
+      const res = await fetch(`/api/fetch-metadata?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      if (data.title || data.image_url) {
+        setFields((f) => ({
+          ...f,
+          title: data.title || "",
+          image_url: data.image_url || "",
+          year: data.year ? String(data.year) : "",
+          source_label: data.source_label || "",
+        }));
+      } else {
+        setFetchFailed(true);
+      }
+    } catch {
+      setFetchFailed(true);
+    } finally {
+      setFetching(false);
+      setStep("review");
+    }
+  }
 
   return (
     <>
@@ -39,7 +99,7 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
           className={`stamp${pinned ? " pinned" : ""}`}
           aria-haspopup="dialog"
           aria-label="Press here to add a hoshigo"
-          onClick={() => dialogRef.current?.showModal()}
+          onClick={openDialog}
         >
           <svg viewBox="0 0 116 116" aria-hidden="true" focusable="false">
             <defs>
@@ -61,46 +121,111 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
             ×
           </button>
           <h3 id="add-title">Add a hoshigo</h3>
-          <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div className="field">
-              <label htmlFor="category_id">Category</label>
-              <select id="category_id" name="category_id" required>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
+
+          {step === "link" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div className="field">
+                <label htmlFor="category_id">Category</label>
+                <select id="category_id" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="link-url">Paste a link</label>
+                <input
+                  id="link-url"
+                  type="url"
+                  placeholder="https://…"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <button type="button" className="cta" style={{ border: "none" }} disabled={fetching || !url} onClick={() => goToReview(false)}>
+                {fetching ? "Fetching…" : "Continue"}
+              </button>
+              <button type="button" className="btn" onClick={() => goToReview(true)}>
+                No link — add manually
+              </button>
             </div>
-            <div className="field">
-              <label htmlFor="title">Title</label>
-              <input id="title" name="title" required />
-            </div>
-            <div className="field">
-              <label htmlFor="by">By</label>
-              <input id="by" name="by" />
-            </div>
-            <div className="field">
-              <label htmlFor="year">Year</label>
-              <input id="year" name="year" inputMode="numeric" />
-            </div>
-            <div className="field">
-              <label htmlFor="url">Link</label>
-              <input id="url" name="url" type="url" placeholder="https://…" />
-            </div>
-            <div className="field">
-              <label htmlFor="image_url">Image URL</label>
-              <input id="image_url" name="image_url" type="url" placeholder="https://…" />
-            </div>
-            <div className="field">
-              <label htmlFor="note">Note</label>
-              <textarea id="note" name="note" />
-            </div>
-            {error && <p className="error">{error}</p>}
-            <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>
-              {pending ? "Adding…" : "Add"}
-            </button>
-          </form>
+          )}
+
+          {step === "review" && (
+            <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <input type="hidden" name="category_id" value={categoryId} />
+              <input type="hidden" name="url" value={url} />
+              <input type="hidden" name="source_label" value={fields.source_label} />
+
+              {fetchFailed && (
+                <p className="bio" style={{ fontStyle: "italic" }}>
+                  Couldn&apos;t read that link automatically — fill it in below.
+                </p>
+              )}
+
+              <div className="field">
+                <label htmlFor="title">Title</label>
+                <input
+                  id="title"
+                  name="title"
+                  required
+                  value={fields.title}
+                  onChange={(e) => setFields((f) => ({ ...f, title: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="by">By</label>
+                <input
+                  id="by"
+                  name="by"
+                  value={fields.by}
+                  onChange={(e) => setFields((f) => ({ ...f, by: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="year">Year</label>
+                <input
+                  id="year"
+                  name="year"
+                  inputMode="numeric"
+                  value={fields.year}
+                  onChange={(e) => setFields((f) => ({ ...f, year: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="image_url">Image URL</label>
+                <input
+                  id="image_url"
+                  name="image_url"
+                  type="url"
+                  placeholder="https://…"
+                  value={fields.image_url}
+                  onChange={(e) => setFields((f) => ({ ...f, image_url: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="note">Note</label>
+                <textarea
+                  id="note"
+                  name="note"
+                  value={fields.note}
+                  onChange={(e) => setFields((f) => ({ ...f, note: e.target.value }))}
+                />
+              </div>
+              {error && <p className="error">{error}</p>}
+              <div style={{ display: "flex", gap: 10 }}>
+                <button type="button" className="btn" onClick={() => setStep("link")}>
+                  Back
+                </button>
+                <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>
+                  {pending ? "Adding…" : "Add"}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </dialog>
     </>
