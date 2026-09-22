@@ -67,6 +67,12 @@ export default function CategorySection({
   const showLockTile = !isOwner && hasNextPage;
   const gridId = `grid-${category.slug}`;
 
+  // The grid should always occupy the same number of cells (FIRST_PAGE_SIZE) so
+  // paging back and forth never changes the section's height or row count — a
+  // later page with fewer real items gets invisible placeholder cells instead.
+  const filledSlots = (showPrevTile ? 1 : 0) + visibleItems.length + (showNextTile || showLockTile ? 1 : 0);
+  const placeholderCount = Math.max(0, FIRST_PAGE_SIZE - filledSlots);
+
   // Prefetch the next page's cover images so "next" never has a loading delay —
   // only relevant while pagination actually still works (i.e. for the owner).
   useEffect(() => {
@@ -97,13 +103,14 @@ export default function CategorySection({
               type="button"
               className="item nav-tile"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
-              aria-label="Show previous items"
+              aria-label={`Show previous ${pageStart} items`}
             >
               <div className="thumb nav-thumb" aria-hidden="true">
                 ←
               </div>
               <div className="txt">
                 <span className="title">Previous</span>
+                <span className="by">{pageStart} more</span>
               </div>
             </button>
           </li>
@@ -154,6 +161,15 @@ export default function CategorySection({
             </Link>
           </li>
         )}
+
+        {Array.from({ length: placeholderCount }).map((_, i) => (
+          <li key={`placeholder-${i}`} aria-hidden="true" className="item grid-placeholder">
+            <div className={`thumb${shape === "tall" ? " tall" : ""}${shape === "photo" ? " photo" : ""}`} />
+            <div className="txt">
+              <span className="title">&nbsp;</span>
+            </div>
+          </li>
+        ))}
       </ul>
 
       <dialog ref={dialogRef} className="sheet" aria-labelledby={`sheet-title-${category.slug}`}>

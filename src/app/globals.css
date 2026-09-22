@@ -840,6 +840,11 @@ footer .cta {
   color: var(--accent);
 }
 
+.grid-placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .nav-tile.locked:hover .nav-thumb {
   background: var(--accent);
   color: var(--ground);
