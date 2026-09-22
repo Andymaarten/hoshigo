@@ -40,7 +40,7 @@ export default function SocialLinksEditor({
       </span>
 
       {rows.map((row, i) => (
-        <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
           <div className="field" style={{ minWidth: 140 }}>
             <label htmlFor={`social-platform-${i}`}>Platform</label>
             <select
@@ -64,15 +64,20 @@ export default function SocialLinksEditor({
               placeholder={row.platform === "website" ? "yoursite.com" : "yourhandle"}
             />
           </div>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => removeRow(i)}
-            aria-label={`Remove ${row.platform || "link"} entry`}
-            style={{ minHeight: 46 }}
-          >
-            Remove
-          </button>
+          <div className="field">
+            <label htmlFor={`social-remove-${i}`} aria-hidden style={{ visibility: "hidden" }}>
+              Remove
+            </label>
+            <button
+              id={`social-remove-${i}`}
+              type="button"
+              className="btn"
+              onClick={() => removeRow(i)}
+              aria-label={`Remove ${row.platform || "link"} entry`}
+            >
+              Remove
+            </button>
+          </div>
         </div>
       ))}
 

@@ -1,11 +1,16 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { signOut } from "@/app/[handle]/actions";
 
 export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boolean; handle?: string }) {
+  const pathname = usePathname();
+
   return (
     <nav className="menu" aria-label="Main">
       {loggedIn && handle && (
-        <Link href={`/${handle}`}>
+        <Link href={`/${handle}`} aria-current={pathname === `/${handle}` ? "page" : undefined}>
           <span>My hoshigo</span>
         </Link>
       )}
@@ -16,14 +21,14 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
           </button>
         </form>
       ) : (
-        <Link href="/login">
+        <Link href="/login" aria-current={pathname === "/login" ? "page" : undefined}>
           <span>Login</span>
         </Link>
       )}
-      <Link href="/friends">
+      <Link href="/friends" aria-current={pathname === "/friends" ? "page" : undefined}>
         <span>Friends</span>
       </Link>
-      <Link href="/explore">
+      <Link href="/explore" aria-current={pathname === "/explore" ? "page" : undefined}>
         <span>Explore</span>
       </Link>
     </nav>
