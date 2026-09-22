@@ -74,6 +74,7 @@ a {
 }
 
 .word {
+  font-family: var(--serif);
   font-size: 56px;
   line-height: 1;
   font-weight: 400;
@@ -464,30 +465,36 @@ footer .inner {
   background: var(--ground);
 }
 
-footer .label {
+footer .footer-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-family: var(--display);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin: 0 0 14px;
+  gap: 10px;
+  flex: none;
 }
 
-footer .label .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex: none;
+footer .footer-word {
+  font-family: var(--serif);
+  font-size: 28px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+footer .footer-ja-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 4px 10px;
+  border: 1.5px solid var(--ink);
+  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", var(--serif);
+  font-size: 15px;
 }
 
 footer .copy {
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
 }
 
 footer p {
@@ -666,9 +673,6 @@ footer .cta {
   font-size: 18px;
   line-height: 1.6;
   max-width: 62ch;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
   margin-top: 40px;
 }
 
@@ -676,21 +680,6 @@ footer .cta {
   margin: 0 0 20px;
 }
 
-.prose-item {
-  border-left: 2px solid var(--ink);
-  padding-left: 20px;
-}
-
-.prose-tag {
-  font-family: var(--display);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin: 0 0 10px !important;
-}
-
-.prose-item p:last-child {
+.prose p:last-child {
   margin-bottom: 0;
 }

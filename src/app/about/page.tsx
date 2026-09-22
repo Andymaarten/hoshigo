@@ -1,7 +1,13 @@
 import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
+import { createClient } from "@/lib/supabase/server";
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <div className="page">
       <header className="hero">
@@ -16,28 +22,24 @@ export default function AboutPage() {
       </header>
 
       <section className="prose">
-        <div className="prose-item">
-          <p className="prose-tag">01 — no scrolling</p>
-          <p>
-            <strong>Our goal is that you put your phone back down quickly.</strong> hoshigo isn&apos;t built to keep
-            you scrolling — it&apos;s a place to note the handful of things you&apos;d give five stars, and then get
-            on with your day.
-          </p>
-        </div>
-        <div className="prose-item">
-          <p className="prose-tag">02 — no attention economy</p>
-          <p>
-            We&apos;re not Facebook, Instagram or Snapchat. There are no ads here, and no algorithm that makes money
-            the longer you stay. We&apos;re not optimizing for your attention.
-          </p>
-        </div>
-        <div className="prose-item">
-          <p className="prose-tag">03 — no AI slop</p>
-          <p>AI agents can&apos;t make a profile on hoshigo — every page here belongs to a real person.</p>
-        </div>
+        <p>
+          hoshigo comes from Japanese: <i>hoshi</i>, star, and <i>go</i>, five. Five stars.
+        </p>
+        <p>
+          It&apos;s a personal place to keep the handful of things you&apos;d actually give five stars. A film, a
+          book, a restaurant. Nothing else.
+        </p>
+        <p>
+          We&apos;re not traditional social media. No ads. No algorithm deciding what you see or how long you stay.
+          No feed to scroll, no follower count to chase.
+        </p>
+        <p>
+          By people, for people. No AI, no bots. Only verified profiles of real people with real taste. Every page
+          here belongs to someone.
+        </p>
       </section>
 
-      <SiteFooter />
+      <SiteFooter loggedIn={!!user} />
     </div>
   );
 }

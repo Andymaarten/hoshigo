@@ -96,7 +96,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         )}
       </main>
 
-      <SiteFooter />
+      <SiteFooter loggedIn={!!user?.user} />
     </div>
   );
 }
