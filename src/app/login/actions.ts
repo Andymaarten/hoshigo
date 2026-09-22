@@ -54,7 +54,11 @@ export async function sendPasswordReset(_prev: string | null, formData: FormData
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/confirm`,
   });
-  if (error) return error.message;
+  // Deliberately show the same message whether or not the email is registered — telling a
+  // visitor "that email isn't known to us" lets anyone check who has an account (email
+  // enumeration), and Supabase itself only returns that specific error for unknown users, not
+  // for real failures (bad request shape, rate limiting, etc. fail closed elsewhere already).
+  if (error && !/user not found|not.*(registered|known)/i.test(error.message)) return error.message;
 
   return "Check your email for a reset link.";
 }
