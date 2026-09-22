@@ -503,6 +503,72 @@ footer .cta {
   flex: none;
 }
 
+.mode-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 24px 0 14px;
+}
+
+.mode-tab {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 2px solid var(--ink);
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--ink);
+  background: transparent;
+}
+
+.mode-tab-tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.mode-tab.active {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.mode-tab.active .mode-tab-tag {
+  color: var(--ground);
+  opacity: 0.65;
+}
+
+.mode-tab:not(.active):hover {
+  background: rgba(29, 28, 26, 0.06);
+}
+
+.mode-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 28px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.mode-hint .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+  margin-top: 8px;
+}
+
 .btn {
   all: unset;
   box-sizing: border-box;
