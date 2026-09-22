@@ -17,17 +17,31 @@ function metaTag(html: string, property: string): string | null {
   return null;
 }
 
+// Junk images that turn up constantly in raw page HTML but are never the actual content
+// photo — nav icons, ad/tracking pixels, sprite sheets, avatars, badges. Checked against the
+// URL itself since there's no other signal available (no alt text scoring, no layout info).
+const JUNK_IMAGE_RE = /(sprite|[-_.]icon|favicon|logo|pixel|tracking|avatar|badge|placeholder)/i;
+
+// Some CMSes/themes lazy-load images and only populate `src` once the image scrolls into
+// view via JS — the real URL sits in one of these data-* attributes instead until then, which
+// a plain server-side fetch never sees populated in `src`. Checked in this order (most to
+// least common) so the first match wins per <img>.
+const LAZY_SRC_ATTRS = ["data-src", "data-lazy-src", "data-original"];
+
 // Collects candidate photos beyond just the single chosen og:image, so the add-a-hoshigo
 // form can offer a "next photo" cycle (like a WhatsApp/LinkedIn link preview) for the
 // non-canonical categories (essays/things) where the scraped image is often just a guess —
 // canonical categories get their cover art from the authoritative catalog instead, so this
-// is never used there. Pulls every og:image tag (some pages list several) plus the first
-// handful of in-page <img> tags as a fallback, deduped, capped at a small count.
+// is never used there. Pulls every og:image tag (some pages list several), falls back to
+// twitter:image when a page sets that but no og:image at all, then the first handful of
+// in-page <img>/<picture><source> tags (including common lazy-load attributes), deduped,
+// junk-filtered, capped at a small count.
 function collectImageCandidates(html: string, primary: string | null): string[] {
   const seen = new Set<string>();
   const candidates: string[] = [];
   const add = (url: string | undefined | null) => {
     if (!url || seen.has(url) || !/^https?:\/\//.test(url)) return;
+    if (JUNK_IMAGE_RE.test(url)) return;
     seen.add(url);
     candidates.push(url);
   };
@@ -36,10 +50,41 @@ function collectImageCandidates(html: string, primary: string | null): string[] 
   const ogImageRe = /<meta[^>]+property=["']og:image(?::url)?["'][^>]+content=["']([^"']+)["']/gi;
   for (const m of html.matchAll(ogImageRe)) add(decodeHtmlEntities(m[1]));
 
-  const imgRe = /<img[^>]+src=["']([^"']+)["']/gi;
+  // Many sites set twitter:image even without og:image — worth checking regardless of
+  // whether og:image was present, since it sometimes points at a different (better) crop.
+  const twitterImage = metaTag(html, "twitter:image") || metaTag(html, "twitter:image:src");
+  add(twitterImage);
+
+  // <picture><source srcset="a.jpg 1x, b.jpg 2x"> — take the first (usually smallest, but
+  // still a real content image) candidate URL out of the srcset list.
+  const srcsetRe = /<source[^>]+srcset=["']([^"']+)["']/gi;
+  for (const m of html.matchAll(srcsetRe)) {
+    if (candidates.length >= 6) break;
+    // Split only on a comma followed by whitespace-then-URL, not any comma — CDNs like
+    // Cloudinary/imgix embed commas inside the transform path of the URL itself
+    // (".../image/fetch/w_424,c_limit,.../foo.jpg 424w"), so a naive split(",") truncates
+    // those URLs mid-string.
+    const first = m[1].split(/,\s*(?=https?:\/\/)/)[0]?.trim().split(/\s+/)[0];
+    add(decodeHtmlEntities(first));
+  }
+
+  const imgRe = /<img\b[^>]*>/gi;
   for (const m of html.matchAll(imgRe)) {
     if (candidates.length >= 6) break;
-    add(decodeHtmlEntities(m[1]));
+    const tag = m[0];
+    // Skip images explicitly sized as tiny in markup — these are almost always nav/UI
+    // chrome (menu glyphs, spacer gifs), never the actual content photo.
+    const width = Number(tag.match(/\bwidth=["']?(\d+)/)?.[1]);
+    const height = Number(tag.match(/\bheight=["']?(\d+)/)?.[1]);
+    if ((width && width <= 32) || (height && height <= 32)) continue;
+    let src = tag.match(/\bsrc=["']([^"']+)["']/)?.[1];
+    if (!src) {
+      for (const attr of LAZY_SRC_ATTRS) {
+        src = tag.match(new RegExp(`${attr}=["']([^"']+)["']`))?.[1];
+        if (src) break;
+      }
+    }
+    add(decodeHtmlEntities(src ?? ""));
   }
 
   return candidates.slice(0, 6);

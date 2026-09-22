@@ -355,6 +355,13 @@ getest na de fix).
   (`<title>` is letterlijk `"Instagram"`) — zelfde categorie beperking als Google Maps' korte
   links/Trakt.tv. Categorie-detectie werkt wel (pad-gescoped op `/explore/locations/`). Zie de
   "Places"-sectie hierboven voor het volledige testresultaat.
+- **Sleevenote (`sleevenote.com`)**: client-gerenderde Inertia/Vue-SPA — og:image én
+  twitter:image zijn beide expliciet leeg (`content=""`), geen enkele `<img>`-tag in de
+  server-HTML. Titel komt wel mee (`og:title`), maar geen enkele foto-kandidaat is mogelijk
+  zonder headless browser. Zie de "Deze ronde"-sectie hierboven voor het volledige testresultaat.
+- **Rotring (`rotring.com`)**: Cloudflare bot-challenge, 403 op elke server-side fetch (ook met
+  Googlebot/Twitterbot/facebookexternalhit-UA's) — zelfde categorie als AllMusic/RateYourMusic/
+  TripAdvisor. Geen og-tags, geen titel, geen sleutelloze publieke API bekend.
 - **Titel-ambiguïteit**: een titel als "Parasite" bestaat meerdere keren in elke catalogus. We
   geven het gedetecteerde jaar altijd mee als filter om dit te verkleinen; zonder jaar kan een
   match soms fout gaan. Bij twijfel toont de UI wél een editable resultaat vóór opslaan — nooit
@@ -460,6 +467,78 @@ drempel. Dit is puur voorbereidend werk: er is nog geen feature die deze kolom d
 gebruikt om "mensen die hetzelfde linkten" te tonen (zelfde status als `match_confidence` zelf
 toen dat werd toegevoegd) — alleen de garantie dat de data er correct en consistent inzit voor
 wanneer die feature gebouwd wordt.
+
+## Deze ronde: zwakke image-detectie voor niet-canonieke links onderzocht
+
+De product owner testte twee echte links die geen enkele catalogus raken en viel op hoe zwak
+`collectImageCandidates()` het deed: `sleevenote.com` en
+`rotring.com/500-new-colours.html`. Beide **live getest** (echte `curl`, ruwe HTML bekeken,
+daarna end-to-end door de eigen dev-server's `/api/fetch-metadata`) vóórdat er iets werd
+aangepast.
+
+### `sleevenote.com` — geen ontbrekende parsing-logica, gewoon geen data server-side
+
+Ruwe HTML bekeken: dit is een client-gerenderde Inertia/Vue-app (`data-page="{...}"`-shell,
+`app-*.js`/`app-*.css` bundles). De og-tags zijn er wél, maar leeg: `<meta property="og:image"
+content="" />` en `<meta property="twitter:image" content="" />` — allebei letterlijk een lege
+string, geen ontbrekende tag. Er staat geen enkele `<img>`-tag in de server-HTML (bevestigd:
+`grep -o '<img'` op de ruwe response gaf nul treffers). Er is dus niets om te parsen, met welke
+heuristiek dan ook — geen `data-src`, geen `<picture>`, geen achtergrond-CSS, gewoon leeg. Dit is
+hetzelfde patroon als Trakt.tv (zie Bekende beperkingen): een SPA die de echte content pas na
+JavaScript invult. **Bevestigd onopgelost geval, niet op te lossen zonder headless browser.**
+Live getest ná de fix van deze ronde: `title: "Sleevenote"`, geen `image_url`/`image_urls` — het
+formulier valt terug op handmatige foto-upload, wat hier ook het eerlijke antwoord is.
+
+### `rotring.com` — Cloudflare bot-afweer, geen HTML komt binnen
+
+`curl` naar de productpagina gaf **403** met een Cloudflare "Just a moment..."-challenge-pagina
+(`cf-mitigated: challenge`-header, `content-security-policy` met `challenges.cloudflare.com`) —
+géén og-tags, géén `<img>`-tags, helemaal geen echte pagina-inhoud. Getest met vier verschillende
+User-Agents (gewone browser-UA, Googlebot, facebookexternalhit, Twitterbot) — allemaal 403. Zelfde
+categorie als AllMusic/RateYourMusic/TripAdvisor/StoryGraph: een bot-afweer die zelfs crawler-UA's
+blokkeert, geen sleutelloze publieke API bekend voor Rotring. **Bevestigd geblokkeerd geval**, niet
+gerelateerd aan de image-parsing-logica — `fetchWithTimeout()` krijgt hier gewoon nooit bruikbare
+HTML te zien, `res.ok` is `false`, dus de route geeft `{}` terug (client valt terug op handmatig
+invullen). Live geverifieerd ná de fix: nog steeds `{}`, zoals verwacht.
+
+### Wel: `collectImageCandidates()` generiek verbeterd
+
+Beide voorbeeldlinks bleken dus confirmed-blocked/SPA-leeg, en dus niet met betere HTML-parsing
+op te lossen — maar de vier concrete zwaktes die de product owner noemde (lazy-load, `<picture>`/
+`srcset`, tracking/nav-rommel, geen `twitter:image`-fallback) zijn wel degelijk echte gaten voor
+*andere* niet-canonieke sites, dus toch toegevoegd en tegen bestaande werkende bronnen getest om
+regressie uit te sluiten:
+
+- **`data-src`/`data-lazy-src`/`data-original`** als `<img>`-bron gelezen wanneer `src` ontbreekt
+  (lazy-loading-patroon dat veel CMS-thema's gebruiken).
+- **`<picture><source srcset="...">`** nu ook gelezen — eerste kandidaat-URL uit de srcset-lijst.
+  Let op: de split moet gebeuren op `,` gevolgd door een URL (`/,\s*(?=https?:\/\/)/`), niet op
+  elke komma — CDN's als Cloudinary/imgix zetten komma's ín het transform-pad van de URL zelf
+  (`.../image/fetch/w_424,c_limit,.../foo.jpg 424w`), dus een naïeve `split(",")` sneed de URL
+  middendoor af. **Gevonden tijdens het testen** tegen een echte Substack-post
+  (`theremightbecupcakes.substack.com/p/movin-right-along`): eerste poging gaf kapotte,
+  afgekapte URL's terug (`.../image/fetch/$s_!7CtT!`) — nu gefixt en herbevestigd met volledige,
+  geldige URL's.
+- **Junk-filter op de URL zelf**: `sprite`, `icon`, `favicon`, `logo`, `pixel`, `tracking`,
+  `avatar`, `badge`, `placeholder` — geen alt-text of layout-info beschikbaar server-side, dus dit
+  is de enige haalbare heuristiek. Ving live een `grey-placeholder.png` op een BBC-artikel weg die
+  er zonder filter tussen had gestaan.
+- **Tiny-image-filter**: `<img>`-tags met een expliciete `width`/`height` ≤32px worden
+  overgeslagen (bijna altijd UI-chrome, nooit de content-foto).
+- **`twitter:image`/`twitter:image:src`-fallback**: altijd gecheckt, ook als `og:image` al
+  aanwezig is (soms wijst twitter:image naar een andere/betere crop) — maar levert niks extra op
+  als de site, zoals Sleevenote, ook daar een lege string zet.
+
+**Regressietest** (drie bestaande werkende bronnen, allemaal live opnieuw getest ná de wijziging):
+
+| Bron | Resultaat |
+|---|---|
+| Wait But Why | ✅ og:image + 5 extra kandidaten via srcset, zelfde titel als voorheen, geen kapotte URL's |
+| Substack (`theremightbecupcakes.substack.com/p/movin-right-along`) | ✅ primaire image_url correct (subscribe-card-crop via twitter:image-achtige og:image), srcset-kandidaten nu volledige geldige URL's (was kapot vóór de comma-split-fix hierboven) |
+| BBC News (`bbc.com/news/articles/crn45d8dd2wdo`) | ✅ og:image + 5 extra kandidaten, `grey-placeholder.png` correct weggefilterd door de junk-regex |
+
+Geen regressie op titel/categorie/canonieke-match-logica — alleen `collectImageCandidates()` is
+aangeraakt, de rest van de route is ongewijzigd.
 
 ## Uitbreiden
 
