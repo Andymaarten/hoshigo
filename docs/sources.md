@@ -34,7 +34,8 @@ Hoe een geplakte link wordt afgehandeld, van beste naar slechtste geval:
 |---|---|---|
 | Spotify | ✅ hostname + eigen oEmbed | ✅ MusicBrainz (titel+artiest search) |
 | Bandcamp | ✅ hostname | ✅ MusicBrainz — titel/artiest gesplitst uit Bandcamp's "Album, by Artist"-titelformaat |
-| Discogs | ✅ hostname | ✅ resolved direct via Discogs' publieke API (site zelf blokkeert scraping net als IMDb, zelfde Cloudflare-uitdaging) |
+| Discogs | ✅ hostname | ✅ resolved direct via Discogs' publieke API (site zelf blokkeert scraping net als IMDb, zelfde Cloudflare-uitdaging) — werkt nu voor **beide** URL-vormen: `/release/<id>` (specifieke persing, `artists_sort`-veld) én `/master/<id>` (release-group-pagina, `artists[0].name`-veld); eerder gaf `/master/` een lege response omdat alleen het release-regex-patroon bestond |
+| Bandcamp (custom domain) | ✅ `<meta name="generator" content="Bandcamp">` als fallback | ✅ getest: `musique.coeurdepirate.com/album/blonde` (artiest-eigen domein, geen `*.bandcamp.com`-hostname) → title/artist/cover correct via bestaande "X, by Y"-og:site_name-split, categorie nu ook herkend via de generator-meta-tag die Bandcamp altijd zet ongeacht domein |
 | Apple Music | ✅ hostname | ✅ getest: `music.apple.com/us/album/random-access-memories/617154241` → og:title `"Random Access Memories by Daft Punk on Apple Music"`, `" on Apple Music"`-suffix wordt gestript vóór de bestaande "X, by Y"-split → MusicBrainz-match op titel+artiest correct |
 | MusicBrainz zelf | ✅ hostname | ✅ (uiteraard) |
 | AllMusic | ✅ hostname | ❌ blokkeert server-side fetch (403), geen publieke API gevonden — zie beperkingen |
@@ -78,12 +79,38 @@ waarde.
 | Bron | Categorie-detectie | Canonieke match |
 |---|---|---|
 | Apple Podcasts | ✅ hostname | ✅ iTunes Search API (geen key nodig) |
-| Spotify (show/episode-link) | ✅ padherkenning | resolver nog niet aangesloten voor podcasts via Spotify, categorie wordt wel goed herkend |
+| Spotify (show/episode-link) | ✅ padherkenning | ✅ **opgelost deze ronde** — zie hieronder |
 
 Getest met: Apple Podcasts-link naar "This American Life" → categorie "podcasts", titel + cover
 correct. **Let op:** het jaarveld laten we bewust leeg bij podcasts — iTunes' `releaseDate` voor
 een show is de datum van de laatste aflevering, niet de startdatum, en dat als "jaar" tonen zou
 actief misleidend zijn geweest (kwam eerst naar boven als bug: toonde "2026").
+
+### Spotify-podcasts: bug gevonden en opgelost
+
+Het probleem zat niet in de resolver (`resolveWork("podcasts", title)` → `resolvePodcast()` →
+iTunes Search werkte al voor elke categorie, ook podcasts van Spotify) maar in de **titel die
+Spotify's eigen oEmbed-endpoint teruggeeft**: voor een `/show/<id>`-link is dat niet de
+show-naam maar de titel van de nieuwste (of vastgepinde "Trailer") aflevering, en voor een
+`/episode/<id>`-link is het de aflevering-titel — geen van beide is bruikbaar als zoekterm voor
+een podcast-catalogus. Getest en bevestigd met drie shows (Joe Rogan Experience, Lex Fridman
+Podcast, een NL true-crime-podcast): oEmbed gaf steeds `"#1767 - James Lindsay"`,
+`"#2555 - Ron White"`, `"Trailer"` — nooit de show-naam.
+
+`open.spotify.com`-pagina's zijn met een gewone fetch een lege client-rendered SPA-shell (geen
+og-tags), maar Spotify serveert wél een volledig server-gerenderde pagina aan crawler-UA's
+(bevestigd met een Googlebot-UA): daar staat op `/show/`-pagina's `og:title` = de echte
+show-naam, en op `/episode/`-pagina's staat de show-naam in `og:description` in het patroon
+`"<Show Name> · Episode"`. Nieuwe functie `fromSpotifyPodcast()` in
+`src/app/api/fetch-metadata/route.ts` doet deze Googlebot-UA-fetch voor `/show/` en `/episode/`
+Spotify-links vóórdat oEmbed geprobeerd wordt (oEmbed blijft de fallback als de SSR-fetch om wat
+reden dan ook faalt, en blijft ongewijzigd voor `/track/`-links, die album/song-flow is niet
+geraakt).
+
+Geverifieerd end-to-end: `open.spotify.com/show/6rz0PtkHkAnjK0jwAkB7AK` → title
+"De Brand in het Landhuis" → iTunes Search vindt exact deze podcast. Idem voor een JRE-episode:
+`open.spotify.com/episode/2rYwwE7hcpgsDo9vRVHxAI` → title "The Joe Rogan Experience" (uit
+og:description geparsed, niet de episode-titel) → iTunes Search matcht correct.
 
 ## Videogames
 
@@ -98,6 +125,38 @@ canoniek ID-systeem zoals TMDB/MusicBrainz). Titel/afbeelding komen rechtstreeks
 Open Graph-tags van de pagina; categorie wordt herkend via `og:type` (`article` → essays,
 `product` → things). Dit blijft "tier 2", en dat is oké — er is simpelweg geen "waar record"
 om tegenaan te matchen.
+
+Getest deze ronde (allemaal `og:type: article`, categorie "essays" correct herkend):
+
+| Bron | Resultaat |
+|---|---|
+| Wait But Why | ✅ `waitbutwhy.com/.../artificial-intelligence-revolution-1.html` → titel + cover schoon |
+| Substack (elk blog erop) | ✅ `theremightbecupcakes.substack.com/p/...` → titel schoon, `source_label` = hostinstantie zelf (geen og:site_name, geen probleem) |
+| NPR | ✅ `npr.org/2019/10/22/...` — hier zat de HTML-entity-bug (zie hieronder), nu correct: `'Parasite' Is A Genre-Bending Look At Capitalism` |
+| Wikipedia | ⚠️ og:type is altijd "website", dus categorie blijft (bewust) niet herkend — zie Bekende beperkingen. Titel werd wel getoond mét " - Wikipedia"-suffix, nu gestript (zie hieronder) |
+| New York Times | ❌ blokkeert (DataDome-uitdaging, 403 op elke server-side fetch, ook met browser-UA) |
+| Medium | ❌ blokkeert (403 op elke server-side fetch) |
+| Etsy | ❌ blokkeert (403) |
+| IKEA (productpagina) | ⚠️ og:type "product" werkt in principe, maar een niet meer bestaande product-id redirect't naar een generieke "Products"-pagina — niet verder getest met een geldige id, geen bug in onze code |
+| Amazon | zie bestaande beperking hieronder (audiobook-pagina's via Audible werken wél, zie Boeken-achtige noot) |
+
+**Extra gevonden**: Audible (`audible.com/pd/...`) wordt niet expliciet in de hostname-map
+gedekt, maar werkt al via de `og:type: "book"`-vangnet-regel → categorie "books", titel schoon.
+Audiobook-vermeldingen zijn dus al bruikbaar zonder extra werk.
+
+## Deze ronde: generieke titel-fixes
+
+- **HTML-entities**: `decodeHtmlEntities()` decodeerde alleen `&amp; &quot; &#39; &lt; &gt;`
+  letterlijk. Veel CMS'en (WordPress, Substack, NPR) coderen leestekens als numerieke entities
+  (`&#039;`, `&#8217;`) in plaats van de named-vorm — kwam als `&#039;Parasite&#039;` letterlijk
+  in de titel terecht. Nu generiek: decimale (`&#\d+;`) én hex (`&#x[0-9a-f]+;`) numerieke
+  entities via `String.fromCodePoint`, plus een paar veelvoorkomende named entities
+  (`&apos; &nbsp; &ndash; &mdash;`) die nog ontbraken.
+- **Wikipedia-titel-suffix**: og:title eindigt altijd op `" - Wikipedia"` (geen og:site_name om
+  dit generiek te stripping, zelfde situatie als Metacritic) — nu hardcoded gestript, zelfde
+  patroon als de Metacritic-regel. Wikipedia's categorie blijft bewust niet herkend (zie
+  beperkingen), maar de titel wordt overal getoond waar fetch-metadata's output gebruikt wordt
+  (ook tier-3 fallback), dus de opschoning heeft nog steeds waarde.
 
 ## Bekende beperkingen
 
@@ -123,6 +182,10 @@ om tegenaan te matchen.
   Product Advertising API, maar die vereist een Amazon Associates-account en keys die we niet
   hebben; niet op te lossen zonder die registratie.
 - **StoryGraph**: 403 op elke server-side fetch, geen publieke API bekend.
+- **New York Times**: blokkeert met een DataDome-uitdaging (403), ook met een realistische
+  browser-UA. Geen sleutelloze publieke API bekend voor artikelmetadata.
+- **Medium, Etsy**: allebei 403 op elke server-side fetch, zelfde categorie probleem als
+  AllMusic/RateYourMusic/StoryGraph — geen workaround binnen deze sessie gevonden.
 - **Wikipedia (film/boek/album-pagina's)**: og:type is altijd `"website"` ongeacht het onderwerp
   van het artikel — Wikipedia host alle categorieën onder één domein, dus er is geen betrouwbare
   hostname- of og:type-regel die "dit is een film" van "dit is een boek" onderscheidt zonder de
