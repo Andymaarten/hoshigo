@@ -11,8 +11,8 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
       )}
       {loggedIn ? (
         <form action={signOut}>
-          <button type="submit" className="btn">
-            Log out
+          <button type="submit" className="menu-link">
+            <span>Log out</span>
           </button>
         </form>
       ) : (
