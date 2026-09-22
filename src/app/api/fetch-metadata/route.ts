@@ -68,6 +68,31 @@ async function fromImdbId(url: string) {
   }
 }
 
+// Discogs sits behind a Cloudflare bot challenge (403 "Just a moment..." to any non-browser
+// fetch) — same story as IMDb. Its release API is public and needs no key, so use that instead.
+async function fromDiscogsId(url: string) {
+  const idMatch = url.match(/\/release\/(\d+)/);
+  if (!idMatch) return null;
+  try {
+    const res = await fetchWithTimeout(`https://api.discogs.com/releases/${idMatch[1]}`, 6000, {
+      "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.title) return null;
+    return {
+      title: data.title as string,
+      by: data.artists_sort as string | undefined,
+      image_url: data.images?.[0]?.uri as string | undefined,
+      year: data.year || undefined,
+      source_label: "Discogs",
+      category_slug: "albums",
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function fromSpotifyOEmbed(url: string) {
   const res = await fetchWithTimeout(`https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`, 6000);
   if (!res.ok) return null;
@@ -130,6 +155,11 @@ export async function GET(request: NextRequest) {
       const imdb = await fromImdbId(url);
       if (imdb?.title) return NextResponse.json(imdb);
       // fall through to generic scraping if TMDB doesn't have this id either
+    }
+
+    if (parsed.hostname.includes("discogs.com")) {
+      const discogs = await fromDiscogsId(url);
+      if (discogs?.title) return NextResponse.json(discogs);
     }
 
     const res = await fetchWithTimeout(url, 8000);
