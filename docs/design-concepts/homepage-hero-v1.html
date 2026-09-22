@@ -1,0 +1,114 @@
+<!-- v1: the IBM poster rotated a quarter turn into a tall portrait column of stamps beside the existing masthead copy — restrained, keeps the dictionary entry as the reading anchor. -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>hoshigo — hero concept v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Schibsted+Grotesk:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ground:#efe7d8; --ink:#1d1c1a; --muted:#5b574f; --accent:#d8321f;
+  --accent-deep:#93210f; --rule:rgba(29,28,26,.22);
+  --display:"Schibsted Grotesk",Helvetica,Arial,sans-serif;
+  --serif:"Newsreader",Georgia,serif;
+  box-sizing:border-box;
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--display);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+.page{max-width:1200px;margin:0 auto;padding:24px 24px 64px}
+
+.word{font-family:var(--serif);font-size:56px;line-height:1;letter-spacing:-.01em}
+.tittle{position:relative;display:inline-block}
+.tittle::after{content:"";position:absolute;left:50%;top:.03em;width:.15em;height:.15em;border-radius:50%;background:var(--accent);transform:translateX(-50%)}
+.gloss{margin-top:8px;font-size:15px;color:var(--muted);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.gloss .ja{font-family:var(--serif);color:var(--ink);font-size:18px}
+hr.rule{width:180px;margin:14px 0 12px;border:0;border-top:1.5px solid var(--ink)}
+.def{font-family:var(--serif);font-size:19px;line-height:1.35;max-width:46ch}
+
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:48px;align-items:start;padding-top:8px}
+
+/* --- the rotated poster block --- */
+.poster{position:relative;border:1.5px solid var(--ink);background:var(--ground);padding:30px 26px 22px;overflow:hidden}
+.poster::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 6px rgba(29,28,26,.05)}
+.field{position:relative;height:520px;--k:1}
+.dot{position:absolute;display:block;border-radius:50%;text-decoration:none;
+  transform:translate(-50%,-50%);transition:transform .16s cubic-bezier(.2,.7,.3,1),filter .16s ease}
+.dot .disc{display:block;width:100%;height:100%;border-radius:50%;background:var(--accent);
+  box-shadow:
+    0 8px 0 0 var(--accent-deep),
+    0 10px 0 2px rgba(29,28,26,.10),
+    0 18px 22px -8px rgba(29,28,26,.35);
+  transition:box-shadow .16s ease,background .16s ease}
+.dot:hover{transform:translate(-50%,calc(-50% + 4px))}
+.dot:hover .disc,.dot:focus-visible .disc{background:#e23a25;box-shadow:0 4px 0 0 var(--accent-deep),0 5px 0 2px rgba(29,28,26,.10),0 10px 14px -8px rgba(29,28,26,.35)}
+.dot:active{transform:translate(-50%,calc(-50% + 8px))}
+.dot:active .disc{box-shadow:0 1px 0 0 var(--accent-deep),0 2px 0 2px rgba(29,28,26,.10)}
+.dot .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.poster-type{margin-top:18px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;border-top:1.5px solid var(--ink);padding-top:12px}
+.outline{font-size:52px;font-weight:900;letter-spacing:-.04em;line-height:.95;padding-bottom:4px;color:transparent;
+  -webkit-text-stroke:2px var(--ink);text-transform:lowercase}
+.poster-no{font-size:12px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+
+.prompt{margin:22px 0 0;font-family:var(--serif);font-size:20px;line-height:1.35;max-width:34ch}
+.prompt b{font-family:var(--display);font-weight:700;font-style:normal}
+
+@media (max-width:900px){
+  .hero{grid-template-columns:minmax(0,1fr);gap:32px}
+  .word{font-size:44px}
+  .field{height:440px;--k:.78}
+  .outline{font-size:40px}
+}
+@media (max-width:420px){
+  .page{padding:20px 16px 48px}
+  .word{font-size:38px}
+  .def{font-size:17px}
+  .field{height:400px;--k:.62}
+  .poster{padding:20px 16px 16px}
+  .outline{font-size:30px;-webkit-text-stroke-width:1.5px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hero">
+    <div>
+      <div class="word">hosh<span class="tittle">ı</span>go</div>
+      <div class="gloss"><span class="ja" lang="ja">星五</span><span>[ho.ɕi.ɡo]</span><i>noun</i></div>
+      <hr class="rule" />
+      <p class="def"><i>Japanese.</i> five stars. A place where you can curate everything that you give five stars. Nobody’s selling your attention here — see <a href="#" style="text-decoration:underline">what we’re about</a>.</p>
+      <p class="prompt"><b>Press one of the hoshigo’s below for a preview.</b></p>
+    </div>
+
+    <div class="poster">
+      <div class="field" id="field"></div>
+      <div class="poster-type">
+        <div class="outline">hoshigo</div>
+        <div class="poster-no">五 / 5000</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Quarter-turned poster grid: the reference's landscape rows become columns.
+const dots = [
+  [24,7,80],[70,10,54],
+  [33,25,60],[77,26,78],
+  [22,42,72],
+  [68,58,64],[31,60,48],
+  [36,76,74],[75,78,58],
+  [50,93,64]
+];
+const f = document.getElementById('field');
+f.innerHTML = dots.map(([x,y,s])=>
+  `<a class="dot" href="/testuser" style="left:${x}%;top:${y}%;width:calc(${s}px * var(--k));height:calc(${s}px * var(--k))">
+     <span class="disc"></span><span class="sr">Preview a hoshigo profile</span></a>`).join('');
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!-- v3: the bolder departure — a full-bleed earthy brown band (hoshigo's existing --brown token) with the reference's literal cream crescent shadow under each disc, sitting inside the cream page like a tipped-in poster plate. -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>hoshigo — hero concept v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Schibsted+Grotesk:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ground:#efe7d8; --ink:#1d1c1a; --muted:#5b574f; --accent:#d8321f;
+  --brown:#5e3f2b; --brown-fg:#f1e6d2; --accent-deep:#93210f;
+  --display:"Schibsted Grotesk",Helvetica,Arial,sans-serif;
+  --serif:"Newsreader",Georgia,serif;
+  box-sizing:border-box;
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--display);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--brown-fg);outline-offset:4px}
+.page{max-width:1200px;margin:0 auto;padding:24px 24px 64px}
+
+.topbar{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+.word{font-family:var(--serif);font-size:46px;line-height:1}
+.tittle{position:relative;display:inline-block}
+.tittle::after{content:"";position:absolute;left:50%;top:.03em;width:.15em;height:.15em;border-radius:50%;background:var(--accent);transform:translateX(-50%)}
+.menu{display:flex;gap:14px;font-size:15px;font-weight:700}
+.menu a{text-decoration:none}
+.def{font-family:var(--serif);font-size:18px;line-height:1.35;max-width:52ch;color:var(--muted);margin:10px 0 0}
+
+/* --- plate --- */
+.plate{margin-top:22px;background:var(--brown);color:var(--brown-fg);padding:30px 28px 22px;position:relative;overflow:hidden}
+.plate::after{content:"";position:absolute;inset:10px;border:1px solid rgba(241,230,210,.28);pointer-events:none}
+.prompt{margin:0 0 6px;font-size:clamp(18px,2.2vw,24px);font-weight:700;line-height:1.2;max-width:26ch;position:relative;z-index:1}
+.field{position:relative;height:min(58vh,500px);margin-top:10px;--k:1}
+.dot{position:absolute;display:block;border-radius:50%;text-decoration:none;transform:translate(-50%,-50%);
+  transition:transform .16s cubic-bezier(.2,.7,.3,1)}
+.disc{display:block;width:100%;height:100%;border-radius:50%;background:var(--accent);
+  box-shadow:
+    6px 10px 0 0 var(--brown-fg),          /* the reference's cream crescent */
+    0 9px 0 0 var(--accent-deep),
+    0 22px 26px -12px rgba(0,0,0,.45);
+  transition:box-shadow .16s ease,background .16s ease}
+.dot:hover{transform:translate(-50%,calc(-50% + 5px))}
+.dot:hover .disc,.dot:focus-visible .disc{background:#ef4429;box-shadow:3px 5px 0 0 var(--brown-fg),0 4px 0 0 var(--accent-deep),0 10px 14px -12px rgba(0,0,0,.45)}
+.dot:active{transform:translate(-50%,calc(-50% + 9px))}
+.dot:active .disc{box-shadow:1px 2px 0 0 var(--brown-fg),0 1px 0 0 var(--accent-deep)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.plate-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;position:relative;z-index:1;
+  border-top:1px solid rgba(241,230,210,.35);padding-top:12px}
+.outline{font-size:clamp(40px,8vw,96px);font-weight:900;letter-spacing:-.05em;line-height:.95;padding-bottom:4px;
+  color:transparent;-webkit-text-stroke:2.5px var(--brown-fg)}
+.tag{font-size:12px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;opacity:.75;white-space:nowrap}
+
+@media (max-width:640px){
+  .page{padding:20px 16px 48px}
+  .word{font-size:34px}
+  .plate{padding:22px 16px 16px}
+  .field{height:430px;--k:.5}
+  .outline{-webkit-text-stroke-width:1.5px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="word">hosh<span class="tittle">ı</span>go</div>
+    <nav class="menu"><a href="#"><span>about</span></a><a href="#"><span>sign in</span></a><a href="#"><span>join</span></a></nav>
+  </div>
+  <p class="def"><i>Japanese.</i> five stars. A place where you can curate everything that you give five stars.</p>
+
+  <div class="plate">
+    <p class="prompt">Press one of the hoshigo’s below for a preview.</p>
+    <div class="field" id="field"></div>
+    <div class="plate-foot">
+      <div class="outline">hoshigo</div>
+      <div class="tag">星五 · no. 5000</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const dots = [
+  [14,14,88],[38,10,64],[62,17,96],[86,11,58],
+  [24,44,70],[52,48,112],[80,42,64],
+  [16,74,60],[44,82,86],[70,74,72],[90,86,50]
+];
+document.getElementById('field').innerHTML = dots.map(([x,y,s])=>
+  `<a class="dot" href="/testuser" style="left:${x}%;top:${y}%;width:calc(${s}px * var(--k));height:calc(${s}px * var(--k))">
+     <span class="disc"></span><span class="sr">Preview a hoshigo profile</span></a>`).join('');
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!-- v2: full-bleed poster hero — the rotated stamp field takes the whole top of the page, wordmark demoted to a corner, with the real ring-text stamp motif on the larger discs. -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>hoshigo — hero concept v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Schibsted+Grotesk:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ground:#efe7d8; --ink:#1d1c1a; --muted:#5b574f; --accent:#d8321f;
+  --accent-deep:#93210f; --rule:rgba(29,28,26,.22);
+  --display:"Schibsted Grotesk",Helvetica,Arial,sans-serif;
+  --serif:"Newsreader",Georgia,serif;
+  box-sizing:border-box;
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--display);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+.page{max-width:1200px;margin:0 auto;padding:24px 24px 64px}
+
+.topbar{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;
+  border-bottom:1.5px solid var(--ink);padding-bottom:12px}
+.word{font-family:var(--serif);font-size:40px;line-height:1}
+.tittle{position:relative;display:inline-block}
+.tittle::after{content:"";position:absolute;left:50%;top:.03em;width:.15em;height:.15em;border-radius:50%;background:var(--accent);transform:translateX(-50%)}
+.menu{display:flex;gap:14px;font-size:15px;font-weight:700}
+.menu a{text-decoration:none}
+.menu a:hover{background:rgba(42,38,34,.1)}
+
+.prompt{margin:26px 0 0;font-size:clamp(19px,2.4vw,26px);font-weight:700;line-height:1.2;max-width:22ch}
+.prompt .sub{display:block;margin-top:6px;font-family:var(--serif);font-weight:400;font-size:17px;color:var(--muted);max-width:40ch}
+
+/* --- the field --- */
+.field{position:relative;width:100%;height:min(62vh,560px);margin-top:14px;--k:1}
+.dot{position:absolute;display:block;border-radius:50%;text-decoration:none;transform:translate(-50%,-50%);
+  transition:transform .16s cubic-bezier(.2,.7,.3,1)}
+.disc{position:relative;display:block;width:100%;height:100%;border-radius:50%;background:var(--accent);
+  box-shadow:0 10px 0 0 var(--accent-deep),0 12px 0 2px rgba(29,28,26,.10),0 24px 28px -10px rgba(29,28,26,.38);
+  transition:box-shadow .16s ease,background .16s ease}
+.dot:hover{transform:translate(-50%,calc(-50% + 5px))}
+.dot:hover .disc,.dot:focus-visible .disc{background:#e23a25;box-shadow:0 5px 0 0 var(--accent-deep),0 6px 0 2px rgba(29,28,26,.10),0 12px 16px -10px rgba(29,28,26,.38)}
+.dot:active{transform:translate(-50%,calc(-50% + 10px))}
+.dot:active .disc{box-shadow:0 1px 0 0 var(--accent-deep),0 2px 0 2px rgba(29,28,26,.10)}
+.ring{position:absolute;inset:-26%;width:152%;height:152%;pointer-events:none;opacity:0;transition:opacity .18s ease,transform .5s ease;transform:rotate(-12deg)}
+.ring text{fill:var(--ink);font-family:var(--display);font-size:9.5px;font-weight:700;letter-spacing:1.6px}
+.dot:hover .ring,.dot:focus-visible .ring{opacity:1;transform:rotate(8deg)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.footline{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
+  border-top:1.5px solid var(--ink);padding-top:14px;margin-top:8px}
+.outline{font-size:clamp(44px,9vw,116px);font-weight:900;letter-spacing:-.05em;line-height:.95;padding-bottom:4px;
+  color:transparent;-webkit-text-stroke:2.5px var(--ink)}
+.tag{font-size:12px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+
+@media (max-width:640px){
+  .page{padding:20px 16px 48px}
+  .word{font-size:32px}
+  .field{height:430px;--k:.5}
+  .outline{-webkit-text-stroke-width:1.5px}
+  .prompt{font-size:19px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="word">hosh<span class="tittle">ı</span>go</div>
+    <nav class="menu"><a href="#"><span>about</span></a><a href="#"><span>sign in</span></a><a href="#"><span>join</span></a></nav>
+  </div>
+
+  <p class="prompt">Press one of the hoshigo’s below for a preview.
+    <span class="sub"><i>Japanese.</i> five stars. A place to curate everything you give five stars.</span></p>
+
+  <div class="field" id="field"></div>
+
+  <div class="footline">
+    <div class="outline">hoshigo</div>
+    <div class="tag">星五 · no. 5000</div>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <path id="ringpath" d="M58,58 m-47,0 a47,47 0 1,1 94,0 a47,47 0 1,1 -94,0" />
+</defs></svg>
+
+<script>
+// Reference grid quarter-turned: the poster's 4 landscape rows read as 4 columns here,
+// one disc left deliberately alone off-centre.
+const dots = [
+  [12,18,96],[34,12,70],[57,20,84],[80,14,62],
+  [20,46,74],[46,52,120],[72,44,68],
+  [14,78,66],[40,86,92],[68,76,78],[90,88,54]
+];
+const ring = `<svg class="ring" viewBox="0 0 116 116" aria-hidden="true"><use href="#ringpath" x="0" y="0" fill="none"/><text><textPath href="#ringpath" textLength="292">press here for a preview · press here for a preview · </textPath></text></svg>`;
+document.getElementById('field').innerHTML = dots.map(([x,y,s])=>
+  `<a class="dot" href="/testuser" style="left:${x}%;top:${y}%;width:calc(${s}px * var(--k));height:calc(${s}px * var(--k))">
+     <span class="disc">${s>=74?ring:''}</span><span class="sr">Preview a hoshigo profile</span></a>`).join('');
+</script>
+</body>
+</html>
