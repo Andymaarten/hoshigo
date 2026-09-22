@@ -42,6 +42,8 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
   const [workId, setWorkId] = useState("");
   const [matchedVia, setMatchedVia] = useState<string | null>(null);
   const [matching, setMatching] = useState(false);
+  const [imageCandidates, setImageCandidates] = useState<string[]>([]);
+  const [imageIndex, setImageIndex] = useState(0);
 
   function resetForm() {
     setStep("link");
@@ -52,6 +54,15 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     setCategoryId(String(categories[0]?.id ?? ""));
     setWorkId("");
     setMatchedVia(null);
+    setImageCandidates([]);
+    setImageIndex(0);
+  }
+
+  function cyclePhoto(direction: 1 | -1) {
+    if (imageCandidates.length < 2) return;
+    const next = (imageIndex + direction + imageCandidates.length) % imageCandidates.length;
+    setImageIndex(next);
+    setFields((f) => ({ ...f, image_url: imageCandidates[next] }));
   }
 
   async function lookUpCanonical(title: string, catId: string, by?: string, year?: string) {
@@ -138,6 +149,8 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
           year: data.year ? String(data.year) : "",
           source_label: data.source_label || "",
         }));
+        setImageCandidates(data.image_urls || []);
+        setImageIndex(0);
         const match = categories.find((c) => c.slug === data.category_slug);
         if (match) {
           detectedCategoryId = String(match.id);
@@ -311,6 +324,30 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                   value={fields.image_url}
                   onChange={(e) => setFields((f) => ({ ...f, image_url: e.target.value }))}
                 />
+                {/* Canonical matches (albums/films/etc) get their cover from the catalog, not
+                    the scraped page, so cycling through page photos only makes sense here for
+                    the non-canonical categories (essays/things) where this is the actual photo. */}
+                {!matchedVia && imageCandidates.length > 1 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+                    {fields.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={fields.image_url}
+                        alt=""
+                        style={{ width: 44, height: 44, objectFit: "cover", border: "2px solid var(--ink)" }}
+                      />
+                    )}
+                    <button type="button" className="btn" style={{ minHeight: 36, padding: "0 10px" }} onClick={() => cyclePhoto(-1)}>
+                      ‹
+                    </button>
+                    <span style={{ fontSize: 13, color: "var(--muted)" }}>
+                      {imageIndex + 1} / {imageCandidates.length}
+                    </span>
+                    <button type="button" className="btn" style={{ minHeight: 36, padding: "0 10px" }} onClick={() => cyclePhoto(1)}>
+                      ›
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="field">
                 <label htmlFor="note">Note</label>

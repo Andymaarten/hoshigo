@@ -17,6 +17,34 @@ function metaTag(html: string, property: string): string | null {
   return null;
 }
 
+// Collects candidate photos beyond just the single chosen og:image, so the add-a-hoshigo
+// form can offer a "next photo" cycle (like a WhatsApp/LinkedIn link preview) for the
+// non-canonical categories (essays/things) where the scraped image is often just a guess —
+// canonical categories get their cover art from the authoritative catalog instead, so this
+// is never used there. Pulls every og:image tag (some pages list several) plus the first
+// handful of in-page <img> tags as a fallback, deduped, capped at a small count.
+function collectImageCandidates(html: string, primary: string | null): string[] {
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+  const add = (url: string | undefined | null) => {
+    if (!url || seen.has(url) || !/^https?:\/\//.test(url)) return;
+    seen.add(url);
+    candidates.push(url);
+  };
+
+  add(primary);
+  const ogImageRe = /<meta[^>]+property=["']og:image(?::url)?["'][^>]+content=["']([^"']+)["']/gi;
+  for (const m of html.matchAll(ogImageRe)) add(decodeHtmlEntities(m[1]));
+
+  const imgRe = /<img[^>]+src=["']([^"']+)["']/gi;
+  for (const m of html.matchAll(imgRe)) {
+    if (candidates.length >= 6) break;
+    add(decodeHtmlEntities(m[1]));
+  }
+
+  return candidates.slice(0, 6);
+}
+
 function decodeHtmlEntities(s: string) {
   return s
     .replace(/&quot;/g, '"')
@@ -273,6 +301,7 @@ export async function GET(request: NextRequest) {
 
     let title = metaTag(html, "og:title") || html.match(/<title>([^<]+)<\/title>/i)?.[1] || null;
     const image_url = metaTag(html, "og:image");
+    const image_urls = collectImageCandidates(html, image_url);
     const ogSiteName = metaTag(html, "og:site_name");
     const source_label = ogSiteName || parsed.hostname.replace(/^www\./, "");
     const ogType = metaTag(html, "og:type");
@@ -342,6 +371,7 @@ export async function GET(request: NextRequest) {
       title: title ? decodeHtmlEntities(title).trim() : undefined,
       by: by ? decodeHtmlEntities(by).trim() : undefined,
       image_url: image_url || undefined,
+      image_urls: image_urls.length > 1 ? image_urls : undefined,
       source_label,
       year: yearMatch ? Number(yearMatch[0]) : undefined,
       category_slug: guessCategorySlug(parsed.hostname, parsed.pathname, ogType, generator),
