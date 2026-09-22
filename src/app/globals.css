@@ -527,7 +527,7 @@ footer .cta {
   all: unset;
   box-sizing: border-box;
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   min-height: 46px;
   padding: 0 16px;
