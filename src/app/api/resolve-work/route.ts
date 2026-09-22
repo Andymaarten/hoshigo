@@ -9,12 +9,12 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
 
-  const { category_id, category_slug, title, by, year } = await request.json();
-  if (!category_id || !category_slug || !title) {
+  const { category_id, category_slug, title, by, year, url } = await request.json();
+  if (!category_id || !category_slug || (!title && category_slug !== "videos")) {
     return NextResponse.json({ error: "Missing category or title" }, { status: 400 });
   }
 
-  const resolved = await resolveWork(category_slug, title, by, year);
+  const resolved = await resolveWork(category_slug, title, by, year, url);
   if (!resolved) return NextResponse.json({ work: null });
 
   // reuse an existing canonical row for this source+id if we've seen it before,

@@ -57,6 +57,13 @@ create table if not exists public.items (
   created_at timestamptz not null default now()
 );
 
+-- Normalized form of `url`, used only for exact-link identity in categories with no
+-- canonical database (essays, things, etc.) — see docs/sources.md "Non-canonical
+-- categories: exact-link matching". Two items with the same non-null normalized_url are
+-- a confirmed same-link match; this is intentionally separate from works/match_confidence,
+-- which is for canonical-catalog identity, not raw-link identity.
+alter table public.items add column if not exists normalized_url text;
+
 -- only one featured item per profile per category
 create unique index if not exists items_one_featured_per_category
   on public.items (profile_id, category_id)
@@ -72,7 +79,7 @@ create table if not exists public.works (
   -- independent numeric namespaces and can collide, e.g. movie 100 != tv 100).
   -- musicbrainz covers both albums (release-group MBID) and songs (recording MBID) —
   -- MBIDs are globally unique UUIDs regardless of entity type, so no collision risk there.
-  source text not null check (source in ('tmdb', 'tmdb_tv', 'musicbrainz', 'openlibrary', 'itunes', 'igdb')),
+  source text not null check (source in ('tmdb', 'tmdb_tv', 'musicbrainz', 'openlibrary', 'itunes', 'igdb', 'youtube', 'nominatim')),
   source_id text not null,
   title text not null,
   by text,
@@ -85,7 +92,7 @@ create table if not exists public.works (
 -- widen the source check for databases created before tv/songs/podcasts/games existed
 alter table public.works drop constraint if exists works_source_check;
 alter table public.works add constraint works_source_check
-  check (source in ('tmdb', 'tmdb_tv', 'musicbrainz', 'openlibrary', 'itunes', 'igdb'));
+  check (source in ('tmdb', 'tmdb_tv', 'musicbrainz', 'openlibrary', 'itunes', 'igdb', 'youtube', 'nominatim'));
 
 alter table public.items add column if not exists work_id uuid references public.works (id);
 

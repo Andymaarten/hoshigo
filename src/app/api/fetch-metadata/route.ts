@@ -210,6 +210,24 @@ async function fromSpotifyPodcast(url: string) {
   }
 }
 
+// YouTube's oEmbed (no API key needed) gives the exact video title/author/thumbnail from the
+// video id already in the URL — no search ambiguity, same certainty class as fromImdbId/
+// fromDiscogsId below. The actual `works` registration (source 'youtube', match_confidence
+// 'high') happens in resolve-work.ts's resolveVideo(), not here — this just gets the raw
+// title/thumbnail on screen fast, same division of labor as the other fromXId() helpers.
+async function fromYoutubeOEmbed(url: string) {
+  const res = await fetchWithTimeout(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`, 6000);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return {
+    title: data.title as string | undefined,
+    by: data.author_name as string | undefined,
+    image_url: data.thumbnail_url as string | undefined,
+    source_label: "YouTube",
+    category_slug: "videos",
+  };
+}
+
 // known providers first (most reliable), then a generic og:type fallback
 const HOSTNAME_CATEGORY: [RegExp, string][] = [
   [/letterboxd\.com$/, "films"],
@@ -230,12 +248,21 @@ const HOSTNAME_CATEGORY: [RegExp, string][] = [
   [/books\.google\.com$/, "books"], // safety net; og:type "book" already covers most Google Books pages
   [/podcasts\.apple\.com$/, "podcasts"],
   [/pocketcasts\.com$/, "podcasts"], // og:type is generic "website" here, no signal to fall back on
+  [/(^|\.)youtube\.com$/, "videos"],
+  [/(^|\.)youtu\.be$/, "videos"],
+  // Google Maps links are the obvious first "this is a place" signal — see docs/sources.md
+  // for why maps.google.com itself doesn't yield usable metadata via a plain fetch.
+  [/(^|\.)maps\.google\.com$/, "places"],
+  [/maps\.app\.goo\.gl$/, "places"],
 ];
 
 const OG_TYPE_CATEGORY: [RegExp, string][] = [
   [/^video\.tv_show/, "tv"],
   [/^video\.episode/, "tv"],
-  [/^video\./, "films"],
+  [/^video\.movie/, "films"],
+  // any other video.* og:type (e.g. Vimeo's "video.other") has no ID-based resolver, but
+  // still falls through here so it's at least categorized correctly — tier 2, same as essays.
+  [/^video\./, "videos"],
   [/^music\.song/, "songs"],
   [/^music\./, "albums"],
   [/^book/, "books"],
@@ -252,6 +279,10 @@ function guessCategorySlug(
   if (/themoviedb\.org$/.test(hostname)) return path.startsWith("/tv/") ? "tv" : "films";
   // JustWatch paths are "/<locale>/tv-show/<slug>" or "/<locale>/movie/<slug>"
   if (/justwatch\.com$/.test(hostname)) return /\/tv-show\//.test(path) ? "tv" : "films";
+  // google.com/maps/... and goo.gl/maps/... — bare google.com/goo.gl hostnames are too broad
+  // to map generically (docs, search, etc.), so gate on the /maps/ path specifically.
+  if (/(^|\.)google\.[a-z.]+$/.test(hostname) && /^\/maps\//.test(path)) return "places";
+  if (/(^|\.)goo\.gl$/.test(hostname) && /^\/maps\//.test(path)) return "places";
   for (const [re, slug] of HOSTNAME_CATEGORY) if (re.test(hostname)) return slug;
   if (ogType) for (const [re, slug] of OG_TYPE_CATEGORY) if (re.test(ogType)) return slug;
   if (generator && /^bandcamp$/i.test(generator)) return "albums";
@@ -293,6 +324,12 @@ export async function GET(request: NextRequest) {
     if (parsed.hostname.includes("discogs.com")) {
       const discogs = await fromDiscogsId(url);
       if (discogs?.title) return NextResponse.json(discogs);
+    }
+
+    if (/(^|\.)youtube\.com$/.test(parsed.hostname) || /(^|\.)youtu\.be$/.test(parsed.hostname)) {
+      const youtube = await fromYoutubeOEmbed(url);
+      if (youtube?.title) return NextResponse.json(youtube);
+      // fall through to generic scraping if oEmbed fails (e.g. private/deleted video)
     }
 
     const res = await fetchWithTimeout(url, 8000);
