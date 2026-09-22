@@ -13,6 +13,19 @@ async function requireUser() {
   return { supabase, user };
 }
 
+// Only allow http(s) links — anything typed into these fields is later rendered as an
+// <a href> / <img src>, so a "javascript:" or "data:" scheme here would run for every
+// visitor who opens the link, not just the person who typed it.
+function safeHttpUrl(raw: string): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function addItem(handle: string, _prev: string | null, formData: FormData) {
   const { supabase, user } = await requireUser();
 
@@ -27,6 +40,8 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
   const workId = String(formData.get("work_id") || "").trim();
 
   if (!title || !categoryId) return "Title and category are required.";
+  if (url && !safeHttpUrl(url)) return "That link doesn't look like a valid web address.";
+  if (imageUrl && !safeHttpUrl(imageUrl)) return "That image URL doesn't look like a valid web address.";
 
   const { error } = await supabase.from("items").insert({
     profile_id: user.id,

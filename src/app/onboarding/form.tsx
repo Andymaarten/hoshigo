@@ -26,7 +26,7 @@ export default function OnboardingForm({
           id="handle"
           name="handle"
           required
-          pattern="[a-z0-9_-]{2,30}"
+          pattern="[a-z0-9_\-]{2,30}"
           defaultValue={initialHandle}
           placeholder="andreas"
         />
