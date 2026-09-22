@@ -1,0 +1,108 @@
+-- Run this once in the Supabase SQL editor (Project → SQL Editor → New query).
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  handle text unique not null check (handle ~ '^[a-z0-9_-]{2,30}$'),
+  display_name text,
+  bio text,
+  theme text not null default 'default' check (theme in ('default', 'duotone', 'noir', 'sage', 'blush')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.categories (
+  id serial primary key,
+  slug text unique not null,
+  label text not null,
+  sort_order int not null default 0
+);
+
+insert into public.categories (slug, label, sort_order) values
+  ('films', 'films', 1),
+  ('albums', 'albums', 2),
+  ('books', 'books', 3),
+  ('essays', 'essays', 4),
+  ('things', 'things', 5)
+on conflict (slug) do nothing;
+
+create table if not exists public.items (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references public.profiles (id) on delete cascade,
+  category_id int not null references public.categories (id),
+  title text not null,
+  by text,
+  year int,
+  url text,
+  image_url text,
+  note text,
+  featured boolean not null default false,
+  source_label text,
+  position int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- only one featured item per profile per category
+create unique index if not exists items_one_featured_per_category
+  on public.items (profile_id, category_id)
+  where featured;
+
+create table if not exists public.personalize_blocks (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references public.profiles (id) on delete cascade,
+  type text not null check (type in ('text', 'image')),
+  content text not null,
+  x int not null default 0,
+  y int not null default 0,
+  w int not null default 190,
+  h int not null default 100,
+  created_at timestamptz not null default now()
+);
+
+-- keep a profile row in sync with auth.users automatically
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, handle)
+  values (new.id, 'user-' || substr(new.id::text, 1, 8));
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- Row Level Security
+alter table public.profiles enable row level security;
+alter table public.categories enable row level security;
+alter table public.items enable row level security;
+alter table public.personalize_blocks enable row level security;
+
+create policy "profiles are publicly readable" on public.profiles
+  for select using (true);
+create policy "users can update their own profile" on public.profiles
+  for update using (auth.uid() = id);
+
+create policy "categories are publicly readable" on public.categories
+  for select using (true);
+
+create policy "items are publicly readable" on public.items
+  for select using (true);
+create policy "users can insert their own items" on public.items
+  for insert with check (auth.uid() = profile_id);
+create policy "users can update their own items" on public.items
+  for update using (auth.uid() = profile_id);
+create policy "users can delete their own items" on public.items
+  for delete using (auth.uid() = profile_id);
+
+create policy "personalize blocks are publicly readable" on public.personalize_blocks
+  for select using (true);
+create policy "users can insert their own personalize blocks" on public.personalize_blocks
+  for insert with check (auth.uid() = profile_id);
+create policy "users can update their own personalize blocks" on public.personalize_blocks
+  for update using (auth.uid() = profile_id);
+create policy "users can delete their own personalize blocks" on public.personalize_blocks
+  for delete using (auth.uid() = profile_id);

@@ -1,0 +1,34 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+const HANDLE_RE = /^[a-z0-9_-]{2,30}$/;
+
+export async function saveHandle(_prev: string | null, formData: FormData) {
+  const handle = String(formData.get("handle") || "").trim().toLowerCase();
+  const displayName = String(formData.get("display_name") || "").trim();
+  const bio = String(formData.get("bio") || "").trim();
+
+  if (!HANDLE_RE.test(handle)) {
+    return "Handle must be 2–30 characters: lowercase letters, numbers, - or _.";
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "You need to be logged in.";
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ handle, display_name: displayName || null, bio: bio || null })
+    .eq("id", user.id);
+
+  if (error) {
+    if (error.code === "23505") return "That handle is already taken.";
+    return error.message;
+  }
+
+  redirect(`/${handle}`);
+}
