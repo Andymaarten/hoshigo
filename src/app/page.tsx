@@ -100,22 +100,23 @@ const HERO_PHOTOS = [1, 2, 3, 4, 5].map((n) => `/hero/placeholder-${n}.jpg`);
 
 // Only a handful of stamps are real, clickable hoshigo's — the rest are plain
 // grey noise, so the few red ones actually read as "the few things worth your
-// attention" instead of every circle competing for it. Hand-picked (not an
-// even formula) so the spacing feels organic rather than a visible pattern —
-// a couple per row, irregular column gaps, spread across the whole field.
+// attention" instead of every circle competing for it. Column position varies
+// a lot row to row (not the same one or two columns repeated down the grid,
+// which reads as vertical lines rather than a diffuse scatter) and avoids the
+// far-left/right columns, which bleed off the frame and get clipped.
 // Most preview the seeded demo profile; a few point at the real owner profile.
 const REAL_LINKS = new Map<number, string>([
-  [3, "/testuser"],
-  [13, "/andymaarten"],
-  [20, "/testuser"],
-  [30, "/testuser"],
-  [40, "/andymaarten"],
-  [49, "/testuser"],
-  [57, "/testuser"],
-  [67, "/andymaarten"],
-  [76, "/testuser"],
-  [85, "/testuser"],
-  [98, "/andymaarten"],
+  [4, "/testuser"], // row 0, col 4
+  [14, "/andymaarten"], // row 0, col 14
+  [26, "/testuser"], // row 1, col 8
+  [38, "/testuser"], // row 2, col 2
+  [48, "/andymaarten"], // row 2, col 12
+  [60, "/testuser"], // row 3, col 6
+  [69, "/testuser"], // row 3, col 15
+  [75, "/andymaarten"], // row 4, col 3
+  [82, "/testuser"], // row 4, col 10
+  [97, "/testuser"], // row 5, col 7
+  [104, "/andymaarten"], // row 5, col 14
 ]);
 
 function HeroField() {
