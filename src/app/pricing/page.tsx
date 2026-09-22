@@ -30,12 +30,12 @@ export default async function PricingPage() {
       </header>
 
       <section className="prose">
+        <p>Friends&apos; profiles are always fully open to you. Everything they&apos;ve rated, all of it, any time.</p>
         <p>
-          Every profile shows the first five items in each list for free. hoshigo+ unlocks the rest — the full
-          history of what someone else has starred, not just the newest five.
+          hoshigo+ gives you more: a way to find people whose taste matches yours, and see what else they loved.
+          Once you find them, their whole profile opens up too, not just the first five items in each list.
         </p>
-        <p>We&apos;re also planning matching and recommendations based on shared taste, once that&apos;s ready.</p>
-        <p>hoshigo+ isn&apos;t live yet. This page is a placeholder for what&apos;s coming.</p>
+        <p>We&apos;re not live with hoshigo+ yet. This page is a placeholder for what&apos;s coming.</p>
       </section>
 
       <SiteFooter loggedIn={!!user} />
