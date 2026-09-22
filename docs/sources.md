@@ -130,6 +130,74 @@ Geverifieerd end-to-end: `open.spotify.com/show/6rz0PtkHkAnjK0jwAkB7AK` → titl
 `open.spotify.com/episode/2rYwwE7hcpgsDo9vRVHxAI` → title "The Joe Rogan Experience" (uit
 og:description geparsed, niet de episode-titel) → iTunes Search matcht correct.
 
+## Videos
+
+YouTube (via `youtube.com`/`youtu.be` hostname detection) is the primary source. Unlike every
+other resolver in this file, YouTube needs no fuzzy text search at all — the URL already
+contains the exact video id (`watch?v=<id>`, `youtu.be/<id>`, `/shorts/<id>`), so
+`resolveVideo()` in `resolve-work.ts` extracts the id and calls YouTube's no-auth oEmbed
+endpoint directly, registering a `works` row with `source: 'youtube'`, `source_id: <video id>`,
+`match_confidence: 'high'` — always high, since there's no ambiguity to score. This is the
+first genuinely ID-based canonical route in this codebase (see the "Match confidence" section
+below for why IMDb/Discogs, despite also being ID-based lookups, still go through the ordinary
+text-search path).
+
+**Wiring note**: getting the video id to `resolveWork()` required passing the source `url`
+through `/api/resolve-work` and `AddStamp.tsx`'s `lookUpCanonical()` call (previously only
+`title`/`by`/`year` were sent, since every other resolver works from title text alone). This is
+a narrow, mechanical change — a `url` field threaded through, nothing else touched.
+
+Getest deze ronde (live tegen YouTube's oEmbed): `youtube.com/watch?v=dQw4w9WgXcQ` en
+`youtu.be/dQw4w9WgXcQ` → beide geven identieke titel/artiest/thumbnail terug, `works`-rij met
+`source: 'youtube'`, `match_confidence: 'high'`.
+
+**Fallback voor andere videobronnen** (Vimeo e.d.): geen ID-resolver, maar valt nog steeds
+terug op categorie-herkenning via `og:type` — elke `video.*`-og:type behalve
+`video.tv_show`/`video.episode`/`video.movie` (die al naar tv/films gaan) wordt nu als
+`videos` herkend in plaats van blind "films" (de oude regel ving *elke* `video.*` als films —
+dat was fout voor bijvoorbeeld Vimeo's `video.other`). Niet apart getest tegen een echte
+Vimeo-pagina deze ronde, maar de og:type-regel is dezelfde generieke vangnet-aanpak die al
+bewezen werkt voor Deezer/YouTube Music bij albums.
+
+## Places
+
+Geen ID-systeem beschikbaar zoals bij YouTube — een plaatsnaam is net zo dubbelzinnig als een
+albumtitel, dus `resolvePlace()` in `resolve-work.ts` gebruikt hetzelfde
+`assessMatch`/similarity-patroon als songs/albums/films, tegen OpenStreetMap's Nominatim
+(`nominatim.openstreetmap.org/search`, geen API-key nodig, wel een beschrijvende
+`User-Agent`-header verplicht per hun gebruiksbeleid — zelfde patroon als de bestaande
+MusicBrainz-calls). `match_confidence: 'high'` alleen bij een bijna-letterlijke naam-match,
+verder identiek aan de rest van dit bestand.
+
+**Categorie-detectie**: Google Maps-links zijn het voor de hand liggende eerste signaal
+(`maps.google.com`-hostname, en `google.com/maps/...`/`goo.gl/maps/...`/`maps.app.goo.gl`
+padherkenning — een kale `google.com`- of `goo.gl`-hostnameregel zou veel te breed zijn, dus
+gescoped op het `/maps/`-pad).
+
+**Getest deze ronde, eerlijk beperkt bevonden**: een plain server-side fetch van een Google
+Maps-URL (`google.com/maps/place/Eiffel+Tower/...`) komt wél door (200, geen bot-afweer) maar
+de og-tags zijn voor **elke** plaats identiek generiek: `og:title` is altijd letterlijk
+`"Google Maps"`, `og:image` is een generieke statische kaart-thumbnail rond de coördinaten uit
+de URL, geen plaatsnaam. Google Maps is een zware client-rendered app — de echte plaatsnaam
+wordt pas door JavaScript ingevuld, wat een gewone fetch niet ziet. Dit is een **bevestigd
+geblokkeerd geval**, zelfde categorie als AllMusic/RateYourMusic/StoryGraph: categorie-detectie
+werkt (het wordt correct als "places" herkend), maar er is geen bruikbare titel om aan
+`resolvePlace()` door te geven zonder een headless browser (bewust niet ingebouwd, zie
+Bekende beperkingen). Coördinaten uit de URL zouden in theorie tegen Nominatim's reverse-geocoding
+gebruikt kunnen worden, maar dat is niet gebouwd deze ronde.
+
+**Getest tegen de live Nominatim-API** (niet gemockt): "Eiffel Tower" en "Central Park" (met
+"New York" als context) → beide `high`-confidence matches. Onderweg een echte matching-beperking
+gevonden: Nominatim's data heeft de Eiffel-toren zelf onder haar Franse naam staan ("Tour
+Eiffel"), dus een letterlijke Engelse zoekopdracht "Eiffel Tower" matcht die kandidaat helemaal
+niet (haalt de gelijkenis-drempel niet) en `resolvePlace()` valt terug op een kleine gelijknamige
+berg in Alberta, Canada die wél letterlijk "Eiffel Tower" heet. Een `importance`-gewogen
+tie-break (Nominatim's eigen prominentie-score, zelfde rol als de `primary-type: "Album"`-bonus
+bij `resolveAlbum()`) is toegevoegd voor het geval waarin *meerdere tekstueel gelijkende*
+kandidaten wedijveren, maar lost dit specifieke geval niet op — dat is een taalverschil-probleem
+(vertaalde naam), niet een rangschikkingsprobleem, en blijft dus een bekende beperking i.p.v.
+een verzonnen fix.
+
 ## Videogames
 
 Datamodel (`works.source = 'igdb'`, categorie `games`) staat klaar, resolver nog niet gebouwd —
@@ -238,6 +306,10 @@ getest na de fix).
   paginatekst te parsen (bv. op `"(2019 film)"` vs. `"(novel)"` in de titel, wat fragiel is en
   makkelijk foutief positieve categorieën oplevert). Bewust niet toegevoegd; blijft bij "niet
   herkend → handmatig invullen".
+- **Google Maps**: 200, geen bot-afweer, maar `og:title` is voor elke plaats letterlijk
+  `"Google Maps"` en `og:image` een generieke kaart-thumbnail — geen bruikbare titel via een
+  gewone server-side fetch. Client-rendered app, zelfde categorie beperking als Trakt.tv. Zie
+  de "Places"-sectie hierboven voor het volledige testresultaat.
 - **Titel-ambiguïteit**: een titel als "Parasite" bestaat meerdere keren in elke catalogus. We
   geven het gedetecteerde jaar altijd mee als filter om dit te verkleinen; zonder jaar kan een
   match soms fout gaan. Bij twijfel toont de UI wél een editable resultaat vóór opslaan — nooit
@@ -307,6 +379,42 @@ Sheeran) gaf ook terecht `NO MATCH` in plaats van het Queen-nummer alsnog toe te
 verkeerde artiestcombinatie. Films (Parasite/2019, The Matrix/1999), tv (Breaking Bad/2008) en
 boeken (Dune/Frank Herbert) bleven allemaal correct en `high`-confidence na de wijziging —
 geen regressie op de bestaande hoge-kwaliteit matches.
+
+### Non-canonical categories: exact-link matching
+
+Categorieën zonder canonieke database (essays, things, en elke categorie die nog geen resolver
+heeft — nu ook places/videos totdat hun resolvers volledig dekkend zijn) hadden tot nu toe
+helemaal geen manier om te herkennen dat twee mensen "hetzelfde ding" toevoegden: geen
+`work_id`, geen `match_confidence`, niks. De product owner's expliciete keuze hiervoor: **de
+enige manier waarop twee items in zo'n categorie ooit als match mogen tellen, is een exact
+gelijke link** (na redelijke normalisatie) — geen fuzzy titel-matching, om de simpele reden dat
+er geen catalogus is om een titel tegenaan te controleren, dus elke fuzzy match hier zou pure
+gok zijn. Lagere hitrate dan fuzzy matching, maar kan per ontwerp nooit een fout-positieve match
+opleveren — dezelfde "geen match is beter dan een foute match"-filosofie als de
+`match_confidence`-kolom hierboven.
+
+**Implementatie**: `normalizeUrl()` in `src/lib/normalize-url.ts` strip het `http`/`https`-
+schemaverschil, een `www.`-prefix, een trailing slash, en bekende tracking-queryparams
+(`utm_*`, `ref`, `fbclid`, `gclid`, `mc_cid`, `mc_eid`, `igshid`) — nooit pad of overige
+queryparams, die de daadwerkelijke resource kunnen veranderen. Geeft `null` terug voor alles
+wat niet als geldige `http(s)`-URL parseert. Het resultaat wordt opgeslagen in een nieuwe
+`normalized_url text`-kolom op `public.items` (`supabase/schema.sql`), gevuld in `addItem()`
+(`src/app/[handle]/actions.ts`) wanneer een item met een link wordt toegevoegd. `updateItem()`
+heeft geen `url`-veld in zijn formulier (de link is niet bewerkbaar via de edit-flow), dus daar
+was niets te wiren — als dat ooit verandert, moet dezelfde `normalizeUrl()`-aanroep daar ook bij.
+
+Getest: `https://www.example.com/article/` en `http://example.com/article?utm_source=x` geven
+allebei `example.com/article` terug — bevestigd identiek na normalisatie. Een betekenisvol
+andere URL (`?id=5`) blijft correct apart (`example.com/article?id=5`).
+
+**Belangrijk — dit is expres géén onderdeel van `works`/`match_confidence`**: die tabel is voor
+canonieke-catalogus-identiteit (twee mensen linken "hetzelfde MusicBrainz-album"), dit is voor
+ruwe-link-identiteit (twee mensen linken letterlijk dezelfde URL). Twee rijen in `items` met
+dezelfde niet-lege `normalized_url` zijn een bevestigde match, punt — geen scoring, geen
+drempel. Dit is puur voorbereidend werk: er is nog geen feature die deze kolom daadwerkelijk
+gebruikt om "mensen die hetzelfde linkten" te tonen (zelfde status als `match_confidence` zelf
+toen dat werd toegevoegd) — alleen de garantie dat de data er correct en consistent inzit voor
+wanneer die feature gebouwd wordt.
 
 ## Uitbreiden
 

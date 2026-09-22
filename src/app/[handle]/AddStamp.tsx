@@ -22,6 +22,8 @@ const WORK_SOURCE_LABEL: Record<string, string> = {
   openlibrary: "Open Library",
   itunes: "iTunes",
   igdb: "IGDB",
+  youtube: "YouTube",
+  nominatim: "OpenStreetMap",
 };
 
 export default function AddStamp({ handle, categories }: { handle: string; categories: Category[] }) {
@@ -65,12 +67,13 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     setFields((f) => ({ ...f, image_url: imageCandidates[next] }));
   }
 
-  async function lookUpCanonical(title: string, catId: string, by?: string, year?: string) {
-    if (!title || !catId) return;
+  async function lookUpCanonical(title: string, catId: string, by?: string, year?: string, sourceUrl?: string) {
+    if (!catId) return;
     setMatching(true);
     try {
       const category = categories.find((c) => String(c.id) === catId);
       if (!category) return;
+      if (!title && category.slug !== "videos") return;
       const res = await fetch("/api/resolve-work", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,6 +83,8 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
           title,
           by,
           year: year ? Number(year) : undefined,
+          // only used for the videos category's ID-based YouTube resolver — see resolve-work.ts
+          url: sourceUrl,
         }),
       });
       const data = await res.json();
@@ -160,7 +165,8 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
       } else {
         setFetchFailed(true);
       }
-      if (data.title) await lookUpCanonical(data.title, detectedCategoryId, data.by, data.year ? String(data.year) : undefined);
+      if (data.title || data.category_slug === "videos")
+        await lookUpCanonical(data.title, detectedCategoryId, data.by, data.year ? String(data.year) : undefined, url);
     } catch {
       setFetchFailed(true);
     } finally {

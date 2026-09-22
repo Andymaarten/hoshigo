@@ -3,7 +3,7 @@
 // Apple Music all resolve to one canonical work instead of three disconnected items.
 
 export type ResolvedWork = {
-  source: "tmdb" | "tmdb_tv" | "musicbrainz" | "openlibrary" | "itunes" | "igdb";
+  source: "tmdb" | "tmdb_tv" | "musicbrainz" | "openlibrary" | "itunes" | "igdb" | "youtube" | "nominatim";
   source_id: string;
   title: string;
   by: string | null;
@@ -374,12 +374,113 @@ export async function resolveBook(title: string, author?: string | null): Promis
   }
 }
 
+type NominatimResult = {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+  type?: string;
+  class?: string;
+  importance?: number;
+};
+
+// Places have no ID-based shortcut like YouTube's video id — a Google Maps (or plain text)
+// place name is fuzzy text, same category of ambiguity as songs/albums/films, so this goes
+// through the same assessMatch/similarity scoring as the rest of this file rather than
+// blindly taking result[0]. "high" confidence only for a near-exact name match, same bar as
+// everywhere else.
+export async function resolvePlace(name: string, context?: string | null): Promise<ResolvedWork | null> {
+  try {
+    const query = context ? `${name} ${context}` : name;
+    const params = new URLSearchParams({ q: query, format: "json", limit: "5", addressdetails: "0" });
+    const data: NominatimResult[] | null = await fetchJson(
+      `https://nominatim.openstreetmap.org/search?${params}`,
+      { headers: { "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)" } }
+    );
+    if (!data?.length) return null;
+
+    // Nominatim's free-text search often returns a well-known place under its local-language
+    // name (e.g. the actual Eiffel Tower is "Tour Eiffel") tied on rank with an obscure
+    // same-named place elsewhere that happens to literally match the English query (a minor
+    // "Eiffel Tower" peak in Alberta, Canada) — found and confirmed this round. `importance`
+    // (Nominatim's own prominence score, roughly 0..1) breaks that tie toward the place
+    // people actually mean, same role as the isAlbum/primary-type bonus in resolveAlbum().
+    let best: { r: NominatimResult; confidence: "high" | "low"; score: number } | null = null;
+    for (const r of data) {
+      // Nominatim's display_name is "Place Name, Street, City, ..." — compare against just
+      // the first segment, the closest analogue to a "title" here.
+      const shortName = r.display_name.split(",")[0];
+      const quality = assessMatch(name, null, shortName, null);
+      if (!quality) continue;
+      const score = quality.titleScore * 0.7 + (r.importance ?? 0) * 0.3;
+      if (!best || score > best.score) best = { r, confidence: quality.confidence, score };
+    }
+    if (!best) return null;
+
+    return {
+      source: "nominatim",
+      source_id: String(best.r.place_id),
+      title: best.r.display_name.split(",")[0],
+      by: best.r.display_name.split(",").slice(1).join(",").trim() || null,
+      year: null,
+      image_url: null,
+      match_confidence: best.confidence,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// YouTube video ids are already exact in the URL (watch?v=, youtu.be/<id>, /shorts/<id>) —
+// no search ambiguity, same certainty class as fromImdbId/fromDiscogsId in fetch-metadata.
+// Unlike those, YouTube has no separate catalog to re-confirm the title against, so this
+// re-fetches oEmbed directly from the id rather than going through assessMatch/similarity.
+function extractYoutubeId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (/(^|\.)youtu\.be$/.test(u.hostname)) return u.pathname.split("/").filter(Boolean)[0] || null;
+    if (/(^|\.)youtube\.com$/.test(u.hostname)) {
+      if (u.pathname === "/watch") return u.searchParams.get("v");
+      const shorts = u.pathname.match(/^\/shorts\/([^/]+)/);
+      if (shorts) return shorts[1];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function resolveVideo(sourceUrl: string | null | undefined): Promise<ResolvedWork | null> {
+  if (!sourceUrl) return null;
+  const videoId = extractYoutubeId(sourceUrl);
+  if (!videoId) return null;
+  try {
+    const data = await fetchJson(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}&format=json`
+    );
+    if (!data?.title) return null;
+    return {
+      source: "youtube",
+      source_id: videoId,
+      title: data.title,
+      by: data.author_name ?? null,
+      year: null,
+      image_url: data.thumbnail_url ?? null,
+      match_confidence: "high",
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function resolveWork(
   categorySlug: string,
   title: string,
   by?: string | null,
-  year?: number | null
+  year?: number | null,
+  sourceUrl?: string | null
 ): Promise<ResolvedWork | null> {
+  if (categorySlug === "videos") return resolveVideo(sourceUrl);
   if (!title) return null;
   switch (categorySlug) {
     case "films":
@@ -394,6 +495,8 @@ export async function resolveWork(
       return resolveBook(title, by);
     case "podcasts":
       return resolvePodcast(title);
+    case "places":
+      return resolvePlace(title, by);
     default:
       return null;
   }

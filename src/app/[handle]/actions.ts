@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeUrl } from "@/lib/normalize-url";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -51,6 +52,10 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
     by: by || null,
     year: yearRaw ? Number(yearRaw) : null,
     url: url || null,
+    // Confirmed-same-link identity for categories with no canonical database (essays,
+    // things, etc.) — see docs/sources.md "Non-canonical categories: exact-link matching".
+    // Deliberately not routed through work_id/match_confidence, which is for catalog identity.
+    normalized_url: url ? normalizeUrl(url) : null,
     image_url: imageUrl || null,
     note: note || null,
     source_label: sourceLabel || null,
