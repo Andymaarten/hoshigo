@@ -51,23 +51,11 @@ export default async function HomePage({
               <i>noun</i>
             </div>
             <hr />
-            <div className="def">
-              <i>Japanese.</i> five stars. A place where you can curate everything that you give five stars.
-              Nobody&apos;s selling your attention here — see{" "}
-              <Link href="/about" style={{ textDecoration: "underline" }}>
-                what we&apos;re about
-              </Link>
-              .
-            </div>
           </div>
           <SiteNav />
 
         </div>
       </header>
-
-      <p className="hero-prompt">Press one of the hoshigo&apos;s below to get inspired.</p>
-
-      <HeroField />
 
       <section className="prose">
         <p>
@@ -86,6 +74,10 @@ export default async function HomePage({
           every page here belongs to someone.
         </p>
       </section>
+
+      <p className="hero-prompt">Press one of the hoshigo&apos;s below to get inspired.</p>
+
+      <HeroField />
 
       <SiteFooter />
     </div>
