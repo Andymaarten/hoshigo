@@ -172,31 +172,68 @@ verder identiek aan de rest van dit bestand.
 **Categorie-detectie**: Google Maps-links zijn het voor de hand liggende eerste signaal
 (`maps.google.com`-hostname, en `google.com/maps/...`/`goo.gl/maps/...`/`maps.app.goo.gl`
 padherkenning — een kale `google.com`- of `goo.gl`-hostnameregel zou veel te breed zijn, dus
-gescoped op het `/maps/`-pad).
+gescoped op het `/maps/`-pad). TripAdvisor (`tripadvisor.<tld>`-hostname) en Instagram
+locatiepagina's (`instagram.com`, gescoped op het `/explore/locations/`-pad — een kale
+`instagram.com`-hostnameregel zou veel te breed zijn, de meeste Instagram-links zijn posts of
+profielen) zijn deze ronde toegevoegd, zie hieronder.
 
-**Getest deze ronde, eerlijk beperkt bevonden**: een plain server-side fetch van een Google
-Maps-URL (`google.com/maps/place/Eiffel+Tower/...`) komt wél door (200, geen bot-afweer) maar
-de og-tags zijn voor **elke** plaats identiek generiek: `og:title` is altijd letterlijk
-`"Google Maps"`, `og:image` is een generieke statische kaart-thumbnail rond de coördinaten uit
-de URL, geen plaatsnaam. Google Maps is een zware client-rendered app — de echte plaatsnaam
-wordt pas door JavaScript ingevuld, wat een gewone fetch niet ziet. Dit is een **bevestigd
-geblokkeerd geval**, zelfde categorie als AllMusic/RateYourMusic/StoryGraph: categorie-detectie
-werkt (het wordt correct als "places" herkend), maar er is geen bruikbare titel om aan
-`resolvePlace()` door te geven zonder een headless browser (bewust niet ingebouwd, zie
-Bekende beperkingen). Coördinaten uit de URL zouden in theorie tegen Nominatim's reverse-geocoding
-gebruikt kunnen worden, maar dat is niet gebouwd deze ronde.
+### Google Maps — deze ronde alsnog opgelost, zonder headless browser
 
-**Getest tegen de live Nominatim-API** (niet gemockt): "Eiffel Tower" en "Central Park" (met
-"New York" als context) → beide `high`-confidence matches. Onderweg een echte matching-beperking
-gevonden: Nominatim's data heeft de Eiffel-toren zelf onder haar Franse naam staan ("Tour
-Eiffel"), dus een letterlijke Engelse zoekopdracht "Eiffel Tower" matcht die kandidaat helemaal
-niet (haalt de gelijkenis-drempel niet) en `resolvePlace()` valt terug op een kleine gelijknamige
-berg in Alberta, Canada die wél letterlijk "Eiffel Tower" heet. Een `importance`-gewogen
-tie-break (Nominatim's eigen prominentie-score, zelfde rol als de `primary-type: "Album"`-bonus
-bij `resolveAlbum()`) is toegevoegd voor het geval waarin *meerdere tekstueel gelijkende*
-kandidaten wedijveren, maar lost dit specifieke geval niet op — dat is een taalverschil-probleem
-(vertaalde naam), niet een rangschikkingsprobleem, en blijft dus een bekende beperking i.p.v.
-een verzonnen fix.
+Vorige ronde concludeerde terecht dat de og-tags nutteloos zijn (`og:title` is altijd
+letterlijk `"Google Maps"`), maar stopte daar. Deze ronde bleek de plaatsnaam gewoon in het
+URL-pad zelf te zitten: `google.com/maps/place/Eiffel+Tower/@48.858...` → het segment na
+`/place/` is de (`+`-geëncodeerde) plaatsnaam. `fromGoogleMapsUrl()` in `fetch-metadata/route.ts`
+doet een gewone `fetchWithTimeout(url, ...)` (native `fetch` volgt redirects automatisch),
+leest alleen `res.url` (geen HTML-parsing nodig) en haalt de naam uit
+`new URL(res.url).pathname` met `/\/maps\/place\/([^/]+)/`. Die naam gaat vervolgens via de
+normale `resolveWork("places", ...)` → `resolvePlace()`-weg (zelfde code als altijd), dus met
+een echte Nominatim-match en `match_confidence`.
+
+**Live getest, hele keten**: `google.com/maps/place/Eiffel+Tower/@48.8583701,2.2919994,17z/
+data=!3m1!4b1!...` → `fromGoogleMapsUrl()` geeft `{title: "Eiffel Tower", category_slug:
+"places", source_label: "Google Maps"}` (bevestigd via een live dev-server op poort 3801, niet
+alleen redenatie). Voor de matching-stap zelf is "Empire State Building" gebruikt in plaats van
+"Eiffel Tower" (zie hieronder waarom) — live tegen Nominatim: exact literal display-name match,
+`importance: 0.58`, zou `high`-confidence scoren.
+
+**Bekende beperking, bevestigd deze ronde**: korte links (`goo.gl/maps/...`,
+`maps.app.goo.gl/...`) doen **geen** server-side HTTP-redirect — live getest tegen een echte
+`maps.app.goo.gl`-link (gevonden via een publieke Facebook-post, niet verzonnen): een plain
+fetch krijgt gewoon 200 terug, `res.redirected` is `false`, en de body is een client-JS
+"DurableDeepLinkUi"-interstitial-pagina met geen enkele bruikbare plaatsnaam of og-tag erin —
+de daadwerkelijke doel-URL wordt pas door JavaScript in de browser opgezocht. `fromGoogleMapsUrl()`
+geeft hiervoor dus `null` terug en valt terug op de generieke scraper (die voor Maps evenmin iets
+oplevert) — dit blijft dus een deels-onopgelost geval, eerlijk zo gedocumenteerd, niet stilzwijgend
+"opgelost" verklaard.
+
+**Al bekend, nog steeds waar**: Nominatim's data heeft de Eiffeltoren zelf onder haar Franse naam
+staan ("Tour Eiffel"), dus een letterlijke Engelse zoekopdracht "Eiffel Tower" matcht die
+kandidaat niet en `resolvePlace()` valt terug op een kleine gelijknamige berg in Alberta, Canada.
+De `importance`-gewogen tie-break lost dit niet op — taalverschil, geen rangschikkingsprobleem —
+en blijft een bekende beperking. Live tegen Nominatim getest: "Central Park" (met "New York" als
+context) en "Empire State Building" geven wél correcte `high`-confidence matches.
+
+### TripAdvisor — live getest, bevestigd geblokkeerd
+
+TripAdvisor is van oudsher server-rendered, dus de hoop was een bruikbare `og:title` zonder
+headless browser. Live getest tegen een echte attractie-pagina
+(`tripadvisor.com/Attraction_Review-g187147-d188151-Reviews-Eiffel_Tower-Paris_Ile_de_France.html`):
+**403**, body is een DataDome-captcha-interstitial (`"Please enable JS and disable any ad
+blocker"` + een `captcha-delivery.com`-script), geen og-tags, geen titel. Dit is een **bevestigd
+geblokkeerd geval**, zelfde tier als AllMusic/RateYourMusic/Google Maps: categorie-detectie werkt
+(hostname-regel `tripadvisor\.[a-z.]+$` → "places"), maar er is geen bruikbare titel om aan
+`resolvePlace()` door te geven. Geen title-cleanup-regex toegevoegd, want die zou nooit worden
+uitgevoerd (dode code) — niet speculatief gebouwd voor een og:title die deze ronde nooit is
+waargenomen.
+
+### Instagram locatiepagina's — live getest, bevestigd geblokkeerd
+
+`instagram.com/explore/locations/<id>/<slug>/` live getest (bv.
+`instagram.com/explore/locations/212988663/eiffel-tower/`): **200**, maar de pagina is een lege
+client-rendered React-shell — `<title>` is letterlijk `"Instagram"`, geen enkele og-tag aanwezig,
+en de body bevat een login-wall-referentie. Geen bruikbare plaatsnaam zonder JavaScript/inloggen.
+Bevestigd geblokkeerd geval; categorie-detectie is wel toegevoegd (gescoped op
+`/explore/locations/`-pad, zie boven) zodat de categorie tenminste correct herkend wordt.
 
 ## Videogames
 
@@ -306,10 +343,18 @@ getest na de fix).
   paginatekst te parsen (bv. op `"(2019 film)"` vs. `"(novel)"` in de titel, wat fragiel is en
   makkelijk foutief positieve categorieën oplevert). Bewust niet toegevoegd; blijft bij "niet
   herkend → handmatig invullen".
-- **Google Maps**: 200, geen bot-afweer, maar `og:title` is voor elke plaats letterlijk
-  `"Google Maps"` en `og:image` een generieke kaart-thumbnail — geen bruikbare titel via een
-  gewone server-side fetch. Client-rendered app, zelfde categorie beperking als Trakt.tv. Zie
-  de "Places"-sectie hierboven voor het volledige testresultaat.
+- **Google Maps**: volle URLs (`google.com/maps/place/<naam>/...`) zijn inmiddels opgelost via
+  `fromGoogleMapsUrl()` (naam uit het URL-pad, geen og-tags nodig) — zie de "Places"-sectie
+  hierboven. Korte links (`goo.gl/maps/...`, `maps.app.goo.gl/...`) blijven wel een bevestigd
+  onopgelost geval: geen server-side redirect, alleen een client-JS-interstitial. Client-rendered
+  app, zelfde categorie beperking als Trakt.tv voor dat deel.
+- **TripAdvisor**: 403 (DataDome-captcha-uitdaging), ook met een realistische browser-UA. Zelfde
+  categorie als AllMusic/RateYourMusic/StoryGraph — categorie-detectie werkt (hostname → "places"),
+  geen bruikbare titel. Zie de "Places"-sectie hierboven voor het volledige testresultaat.
+- **Instagram locatiepagina's**: 200, maar een lege client-rendered React-shell zonder og-tags
+  (`<title>` is letterlijk `"Instagram"`) — zelfde categorie beperking als Google Maps' korte
+  links/Trakt.tv. Categorie-detectie werkt wel (pad-gescoped op `/explore/locations/`). Zie de
+  "Places"-sectie hierboven voor het volledige testresultaat.
 - **Titel-ambiguïteit**: een titel als "Parasite" bestaat meerdere keren in elke catalogus. We
   geven het gedetecteerde jaar altijd mee als filter om dit te verkleinen; zonder jaar kan een
   match soms fout gaan. Bij twijfel toont de UI wél een editable resultaat vóór opslaan — nooit

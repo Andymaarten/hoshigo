@@ -228,6 +228,34 @@ async function fromYoutubeOEmbed(url: string) {
   };
 }
 
+// Google Maps' og-tags are useless (always literally "Google Maps", see docs/sources.md) but
+// the place name usually sits right in the URL path itself: .../maps/place/Eiffel+Tower/...
+// We fetch (not just `new URL(url)`) because some Maps URL shapes redirect server-side to the
+// canonical /place/<name>/ shape before any HTML is read — `fetch` follows redirects by
+// default, so `res.url` alone gets us there with no body parsing needed. Short links
+// (goo.gl/maps, maps.app.goo.gl) do NOT redirect server-side though — confirmed live: they
+// return 200 with a client-JS "DurableDeepLinkUi" interstitial that only resolves to a real
+// /place/ URL after JavaScript runs, so this returns null for those and the generic scraper
+// below (equally useless for Maps) takes over. Known limitation, see docs/sources.md.
+async function fromGoogleMapsUrl(url: string) {
+  try {
+    const res = await fetchWithTimeout(url, 6000);
+    const finalUrl = res.url || url;
+    const path = new URL(finalUrl).pathname;
+    const m = path.match(/\/maps\/place\/([^/]+)/);
+    if (!m) return null;
+    const name = decodeURIComponent(m[1].replace(/\+/g, " ")).trim();
+    if (!name) return null;
+    return {
+      title: name,
+      source_label: "Google Maps",
+      category_slug: "places",
+    };
+  } catch {
+    return null;
+  }
+}
+
 // known providers first (most reliable), then a generic og:type fallback
 const HOSTNAME_CATEGORY: [RegExp, string][] = [
   [/letterboxd\.com$/, "films"],
@@ -254,6 +282,11 @@ const HOSTNAME_CATEGORY: [RegExp, string][] = [
   // for why maps.google.com itself doesn't yield usable metadata via a plain fetch.
   [/(^|\.)maps\.google\.com$/, "places"],
   [/maps\.app\.goo\.gl$/, "places"],
+  // TripAdvisor is confirmed-blocked (403 DataDome bot-challenge, see docs/sources.md) — no
+  // usable title comes from it, but the category still gets recognized correctly rather than
+  // falling through to "things". (Instagram locations are handled by path below — instagram.com
+  // itself is far too broad a hostname, most links there are posts/profiles, not places.)
+  [/tripadvisor\.[a-z.]+$/, "places"],
 ];
 
 const OG_TYPE_CATEGORY: [RegExp, string][] = [
@@ -283,6 +316,10 @@ function guessCategorySlug(
   // to map generically (docs, search, etc.), so gate on the /maps/ path specifically.
   if (/(^|\.)google\.[a-z.]+$/.test(hostname) && /^\/maps\//.test(path)) return "places";
   if (/(^|\.)goo\.gl$/.test(hostname) && /^\/maps\//.test(path)) return "places";
+  // Instagram location pages only, e.g. instagram.com/explore/locations/<id>/<slug>/ —
+  // confirmed-blocked (empty client-rendered shell, no og-tags, see docs/sources.md), but
+  // still worth recognizing as "places" rather than falling through to "things".
+  if (/(^|\.)instagram\.com$/.test(hostname) && /^\/explore\/locations\//.test(path)) return "places";
   for (const [re, slug] of HOSTNAME_CATEGORY) if (re.test(hostname)) return slug;
   if (ogType) for (const [re, slug] of OG_TYPE_CATEGORY) if (re.test(ogType)) return slug;
   if (generator && /^bandcamp$/i.test(generator)) return "albums";
@@ -330,6 +367,16 @@ export async function GET(request: NextRequest) {
       const youtube = await fromYoutubeOEmbed(url);
       if (youtube?.title) return NextResponse.json(youtube);
       // fall through to generic scraping if oEmbed fails (e.g. private/deleted video)
+    }
+
+    if (
+      (/(^|\.)google\.[a-z.]+$/.test(parsed.hostname) && /^\/maps\//.test(parsed.pathname)) ||
+      /(^|\.)maps\.google\.com$/.test(parsed.hostname)
+    ) {
+      const gmaps = await fromGoogleMapsUrl(url);
+      if (gmaps?.title) return NextResponse.json(gmaps);
+      // short links (goo.gl/maps, maps.app.goo.gl) fall through here too — no usable path
+      // segment and the generic scraper below is equally useless for Maps, see docs/sources.md
     }
 
     const res = await fetchWithTimeout(url, 8000);
