@@ -4,6 +4,27 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { signInWithPassword, signUpWithPassword, sendMagicLink } from "./actions";
 
+const MODES = [
+  {
+    key: "login" as const,
+    label: "Log in",
+    tag: "01",
+    hint: "Already have an account. Sign in with your email and password.",
+  },
+  {
+    key: "signup" as const,
+    label: "Sign up",
+    tag: "02",
+    hint: "New here. Create an account with an email and password.",
+  },
+  {
+    key: "magic" as const,
+    label: "Magic link",
+    tag: "03",
+    hint: "No password needed. We'll email you a one-time link to sign in.",
+  },
+];
+
 export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "signup" | "magic">("login");
   const [passwordState, passwordAction, passwordPending] = useActionState(
@@ -11,6 +32,7 @@ export default function LoginPage() {
     null
   );
   const [magicState, magicAction, magicPending] = useActionState(sendMagicLink, null);
+  const active = MODES.find((m) => m.key === mode)!;
 
   return (
     <div className="page">
@@ -22,17 +44,25 @@ export default function LoginPage() {
       </header>
 
       <section style={{ maxWidth: 420 }}>
-        <div className="menu" style={{ marginBottom: 24 }}>
-          <button type="button" className="btn" onClick={() => setMode("login")} disabled={mode === "login"}>
-            Log in
-          </button>
-          <button type="button" className="btn" onClick={() => setMode("signup")} disabled={mode === "signup"}>
-            Sign up
-          </button>
-          <button type="button" className="btn" onClick={() => setMode("magic")} disabled={mode === "magic"}>
-            Magic link
-          </button>
+        <div className="mode-tabs" role="tablist" aria-label="Sign-in method">
+          {MODES.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              role="tab"
+              aria-selected={mode === m.key}
+              className={`mode-tab${mode === m.key ? " active" : ""}`}
+              onClick={() => setMode(m.key)}
+            >
+              <span className="mode-tab-tag">{m.tag}</span>
+              {m.label}
+            </button>
+          ))}
         </div>
+        <p className="mode-hint">
+          <span className="dot" aria-hidden="true" />
+          {active.hint}
+        </p>
 
         {mode === "magic" ? (
           <form action={magicAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>

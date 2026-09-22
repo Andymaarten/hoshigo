@@ -4,8 +4,8 @@
     {
       "name": "hoshigo",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeArgs": ["run", "dev", "--", "-p", "3401"],
+      "port": 3401
     }
   ]
 }
