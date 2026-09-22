@@ -38,6 +38,12 @@ export default function CategorySection({
   const [active, setActive] = useState<Item | null>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const VISIBLE = 6;
+  const visibleItems = expanded ? items : items.slice(0, VISIBLE);
+  const hasMore = items.length > VISIBLE;
+  const gridId = `grid-${category.slug}`;
 
   function open(item: Item) {
     setActive(item);
@@ -48,8 +54,8 @@ export default function CategorySection({
   return (
     <section aria-labelledby={`h-${category.slug}`}>
       <h2 id={`h-${category.slug}`}>{category.label}</h2>
-      <ul className="grid">
-        {items.slice(0, 5).map((item) => (
+      <ul className="grid" id={gridId}>
+        {visibleItems.map((item) => (
           <li key={item.id}>
             <button type="button" className="item" onClick={() => open(item)}>
               <Thumb item={item} shape={shape} />
@@ -61,6 +67,18 @@ export default function CategorySection({
           </li>
         ))}
       </ul>
+
+      {hasMore && (
+        <button
+          type="button"
+          className="btn load-more"
+          aria-expanded={expanded}
+          aria-controls={gridId}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "Show less" : `Load more (${items.length - VISIBLE})`}
+        </button>
+      )}
 
       <dialog ref={dialogRef} className="sheet" aria-labelledby={`sheet-title-${category.slug}`}>
         <div className="sheet-in">

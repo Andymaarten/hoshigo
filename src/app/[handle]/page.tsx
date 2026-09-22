@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Category, Item, Profile } from "@/lib/supabase/types";
+import Link from "next/link";
 import CategorySection from "./CategorySection";
 import AddStamp from "./AddStamp";
 import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
+import ProfileSocialLinks from "@/components/ProfileSocialLinks";
+import ProfileStats, { placeholderCounts } from "@/components/ProfileStats";
 
 export default async function ProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
@@ -66,6 +69,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         {isOwner && <AddStamp handle={handle} categories={categories ?? []} />}
         <h1>{profile.display_name || profile.handle}.</h1>
         {profile.bio && <p className="bio">{profile.bio}</p>}
+        <ProfileStats {...placeholderCounts(profile.handle)} />
+        <ProfileSocialLinks links={profile.social_links ?? []} />
+        {isOwner && (
+          <Link href="/settings" className="btn" style={{ alignSelf: "flex-start", marginTop: 14 }}>
+            Edit profile
+          </Link>
+        )}
       </header>
 
       <main id="lists">

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import OnboardingForm from "./form";
+import type { Profile } from "@/lib/supabase/types";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -12,8 +13,9 @@ export default async function OnboardingPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("handle, display_name, bio")
+    .select("handle, display_name, bio, social_links")
     .eq("id", user.id)
+    .returns<Pick<Profile, "handle" | "display_name" | "bio" | "social_links">[]>()
     .single();
 
   return (
@@ -26,7 +28,12 @@ export default async function OnboardingPage() {
         <p className="bio">This becomes your page: hoshigo.cc/&lt;handle&gt;. You can change your bio anytime later.</p>
       </header>
       <section style={{ maxWidth: 480 }}>
-        <OnboardingForm initialHandle={profile?.handle?.startsWith("user-") ? "" : profile?.handle ?? ""} initialBio={profile?.bio ?? ""} initialName={profile?.display_name ?? ""} />
+        <OnboardingForm
+          initialHandle={profile?.handle?.startsWith("user-") ? "" : profile?.handle ?? ""}
+          initialBio={profile?.bio ?? ""}
+          initialName={profile?.display_name ?? ""}
+          initialSocialLinks={profile?.social_links ?? []}
+        />
       </section>
     </div>
   );
