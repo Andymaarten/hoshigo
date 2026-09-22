@@ -27,6 +27,18 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
 }
 
+// Defense in depth: addItem already rejects non-http(s) links before they're saved, but this
+// guards any row that predates that check so a "javascript:" URL can never end up in an href.
+function safeHttpUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
 function Thumb({ item, shape, big }: { item: Item; shape?: "tall" | "photo"; big?: boolean }) {
   return (
     <div className={`thumb${shape === "tall" ? " tall" : ""}${shape === "photo" ? " photo" : ""}${big ? " big" : ""}`}>
@@ -233,8 +245,8 @@ export default function CategorySection({
                 <p className={`note${active.note ? "" : " empty"}`}>{active.note || "No note yet."}</p>
               )}
 
-              {active.url && (
-                <a href={active.url} target="_blank" rel="noopener" className="btn" style={{ alignSelf: "flex-start" }}>
+              {safeHttpUrl(active.url) && (
+                <a href={safeHttpUrl(active.url)!} target="_blank" rel="noopener" className="btn" style={{ alignSelf: "flex-start" }}>
                   Open {active.source_label || "link"}
                 </a>
               )}
