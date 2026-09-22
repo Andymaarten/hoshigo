@@ -91,7 +91,6 @@ export default async function HomePage({
 // offset half a step; the row simply clips where the viewport ends.
 const HERO_ROWS = 6;
 const HERO_PER_ROW = 18;
-const HERO_TOTAL = HERO_ROWS * HERO_PER_ROW;
 
 // PLACEHOLDER: profiles have no avatar field yet, so every real stamp reveals
 // one of five bundled textures instead of a real person's photo, and every
@@ -101,12 +100,23 @@ const HERO_PHOTOS = [1, 2, 3, 4, 5].map((n) => `/hero/placeholder-${n}.jpg`);
 
 // Only a handful of stamps are real, clickable hoshigo's — the rest are plain
 // grey noise, so the few red ones actually read as "the few things worth your
-// attention" instead of every circle competing for it. Spread evenly across
-// the grid rather than clustered.
-const REAL_COUNT = 7;
-const REAL_INDICES = new Set(
-  Array.from({ length: REAL_COUNT }, (_, i) => Math.round((i + 0.5) * (HERO_TOTAL / REAL_COUNT)))
-);
+// attention" instead of every circle competing for it. Hand-picked (not an
+// even formula) so the spacing feels organic rather than a visible pattern —
+// a couple per row, irregular column gaps, spread across the whole field.
+// Most preview the seeded demo profile; a few point at the real owner profile.
+const REAL_LINKS = new Map<number, string>([
+  [3, "/testuser"],
+  [13, "/andymaarten"],
+  [20, "/testuser"],
+  [30, "/testuser"],
+  [40, "/andymaarten"],
+  [49, "/testuser"],
+  [57, "/testuser"],
+  [67, "/andymaarten"],
+  [76, "/testuser"],
+  [85, "/testuser"],
+  [98, "/andymaarten"],
+]);
 
 function HeroField() {
   return (
@@ -116,11 +126,12 @@ function HeroField() {
           <div key={row} className={row % 2 ? "hero-row hero-row-offset" : "hero-row"}>
             {Array.from({ length: HERO_PER_ROW }, (_, col) => {
               const i = row * HERO_PER_ROW + col;
-              if (!REAL_INDICES.has(i)) {
+              const href = REAL_LINKS.get(i);
+              if (!href) {
                 return <span key={col} className="hero-dot hero-dot-noise" aria-hidden="true" />;
               }
               return (
-                <Link key={col} href="/testuser" className="hero-dot">
+                <Link key={col} href={href} className="hero-dot">
                   <span className="hero-disc">
                     <img className="hero-photo" src={HERO_PHOTOS[i % HERO_PHOTOS.length]} alt="" aria-hidden="true" />
                   </span>

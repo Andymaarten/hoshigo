@@ -144,12 +144,36 @@ a.word {
 }
 
 @media (max-width: 640px) {
+  /* The wordmark's own column (.entry) can grow tall (gloss line, def text
+     below it), which used to drag the nav down with it if they shared normal
+     flex flow — floating the nav in the top-right corner instead keeps it
+     pinned to the wordmark's own line regardless of how much text sits under
+     it. Only for the logged-out 2-item nav (Login/Sign up), which is short
+     enough to actually fit there; see below for the logged-in 4-item case. */
   .masthead {
-    flex-direction: column;
-    align-items: flex-start;
+    position: relative;
+    padding-right: 128px;
   }
 
   .menu {
+    position: absolute;
+    top: 0;
+    right: 0;
+    justify-content: flex-end;
+  }
+
+  /* The logged-in nav has 4 items (My hoshigo/Log out/Friends/Explore) — too many
+     to float in that corner without wrapping messily, so it drops below as its
+     own full-width row instead. The "form" (the Log out button) only exists in
+     the logged-in nav, so it's a reliable way to tell the two states apart. */
+  .masthead:has(.menu form) {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-right: 0;
+  }
+
+  .masthead:has(.menu form) .menu {
+    position: static;
     width: 100%;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -157,9 +181,10 @@ a.word {
     padding-top: 18px;
     margin-top: 10px;
     border-top: 1px solid var(--rule);
+    justify-content: initial;
   }
 
-  .menu > * {
+  .masthead:has(.menu form) .menu > * {
     width: 100%;
   }
 }
@@ -411,27 +436,29 @@ h1 {
   transition: opacity 0.26s ease, transform 0.4s ease;
 }
 
-.hero-dot:hover {
+/* Scoped to the <a> elements specifically — the grey noise dots are plain
+   <span>s, not links, and shouldn't react to hover/focus/click at all. */
+a.hero-dot:hover {
   transform: scale(1.12);
   z-index: 2;
 }
 
-.hero-dot:focus-visible {
+a.hero-dot:focus-visible {
   z-index: 2;
 }
 
-.hero-dot:hover .hero-disc,
-.hero-dot:focus-visible .hero-disc {
+a.hero-dot:hover .hero-disc,
+a.hero-dot:focus-visible .hero-disc {
   box-shadow: 0 10px 22px -8px rgba(29, 28, 26, 0.45);
 }
 
-.hero-dot:hover .hero-photo,
-.hero-dot:focus-visible .hero-photo {
+a.hero-dot:hover .hero-photo,
+a.hero-dot:focus-visible .hero-photo {
   opacity: 1;
   transform: scale(1);
 }
 
-.hero-dot:active {
+a.hero-dot:active {
   transform: scale(0.98);
 }
 
