@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/lib/supabase/types";
 import SiteNav from "@/components/SiteNav";
@@ -30,9 +31,9 @@ export default async function ExplorePage() {
     supabase.from("categories").select("*").order("sort_order").returns<Category[]>(),
   ]);
 
-  const myHandle = user?.user
-    ? (await supabase.from("profiles").select("handle").eq("id", user.user.id).single()).data?.handle
-    : undefined;
+  if (!user.user) redirect("/login");
+
+  const myHandle = (await supabase.from("profiles").select("handle").eq("id", user.user.id).single()).data?.handle;
 
   return (
     <div className="page">
@@ -41,7 +42,7 @@ export default async function ExplorePage() {
           <div className="word" aria-label="hoshigo">
             hosh<span className="tittle">ı</span>go
           </div>
-          <SiteNav loggedIn={!!user?.user} handle={myHandle} />
+          <SiteNav loggedIn handle={myHandle} />
         </div>
         <div className="kicker">explore</div>
         <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>find your taste twins.</h1>
@@ -62,7 +63,7 @@ export default async function ExplorePage() {
         ))}
       </main>
 
-      <SiteFooter loggedIn={!!user?.user} />
+      <SiteFooter loggedIn />
     </div>
   );
 }

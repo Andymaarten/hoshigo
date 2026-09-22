@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
@@ -17,9 +18,9 @@ export default async function FriendsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const myHandle = user
-    ? (await supabase.from("profiles").select("handle").eq("id", user.id).single()).data?.handle
-    : undefined;
+  if (!user) redirect("/login");
+
+  const myHandle = (await supabase.from("profiles").select("handle").eq("id", user.id).single()).data?.handle;
 
   return (
     <div className="page">
@@ -28,7 +29,7 @@ export default async function FriendsPage() {
           <div className="word" aria-label="hoshigo">
             hosh<span className="tittle">ı</span>go
           </div>
-          <SiteNav loggedIn={!!user} handle={myHandle} />
+          <SiteNav loggedIn handle={myHandle} />
         </div>
         <div className="kicker">
           <span className="dot" aria-hidden="true" />
@@ -42,7 +43,7 @@ export default async function FriendsPage() {
         <FriendsList friends={FAKE_FRIENDS} />
       </main>
 
-      <SiteFooter loggedIn={!!user} />
+      <SiteFooter loggedIn />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { Suspense, useActionState, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signInWithPassword, signUpWithPassword, sendMagicLink, sendPasswordReset } from "./actions";
 import SiteNav from "@/components/SiteNav";
 
@@ -12,7 +13,18 @@ const MODES = [
 ];
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"login" | "signup" | "magic" | "forgot">("login");
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
+
+function LoginPageInner() {
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<"login" | "signup" | "magic" | "forgot">(
+    searchParams.get("mode") === "signup" ? "signup" : "login"
+  );
   const [passwordState, passwordAction, passwordPending] = useActionState(
     mode === "signup" ? signUpWithPassword : signInWithPassword,
     null
