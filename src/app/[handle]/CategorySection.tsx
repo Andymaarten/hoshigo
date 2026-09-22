@@ -6,7 +6,13 @@ import type { Category, Item } from "@/lib/supabase/types";
 import { deleteItem, updateNote } from "./actions";
 import LockIcon from "@/components/icons/LockIcon";
 
-const PAGE_SIZE = 5;
+// The first page shows 5 items. Every page after that gives up one grid slot
+// to a "previous" tile (instead of a separate button above the grid, which
+// pushed the whole grid down a row whenever it appeared/disappeared) so it
+// only ever shows 4 new items — a deliberate trade-off for a grid that never
+// reflows when you page back and forth.
+const FIRST_PAGE_SIZE = 5;
+const NEXT_PAGE_SIZE = 4;
 
 const SHAPE: Record<string, "tall" | "photo" | undefined> = {
   films: "tall",
@@ -48,12 +54,15 @@ export default function CategorySection({
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(0);
 
-  const pageStart = page * PAGE_SIZE;
-  const visibleItems = items.slice(pageStart, pageStart + PAGE_SIZE);
-  const hasNextPage = pageStart + PAGE_SIZE < items.length;
+  const pageSize = page === 0 ? FIRST_PAGE_SIZE : NEXT_PAGE_SIZE;
+  const pageStart = page === 0 ? 0 : FIRST_PAGE_SIZE + (page - 1) * NEXT_PAGE_SIZE;
+  const visibleItems = items.slice(pageStart, pageStart + pageSize);
+  const hasPrevPage = page > 0;
+  const hasNextPage = pageStart + pageSize < items.length;
   // TODO: replace with real friends/subscription check once that backend exists —
   // for now every non-owner viewer is treated as "not a friend, not a paying customer"
   // and gets a locked tile instead of a working "next" past the first page.
+  const showPrevTile = isOwner && hasPrevPage;
   const showNextTile = isOwner && hasNextPage;
   const showLockTile = !isOwner && hasNextPage;
   const gridId = `grid-${category.slug}`;
@@ -62,14 +71,14 @@ export default function CategorySection({
   // only relevant while pagination actually still works (i.e. for the owner).
   useEffect(() => {
     if (!isOwner || !hasNextPage) return;
-    const nextStart = pageStart + PAGE_SIZE;
-    const nextItems = items.slice(nextStart, nextStart + PAGE_SIZE);
+    const nextStart = pageStart + pageSize;
+    const nextItems = items.slice(nextStart, nextStart + NEXT_PAGE_SIZE);
     nextItems.forEach((item) => {
       if (!item.image_url) return;
       const img = new Image();
       img.src = item.image_url;
     });
-  }, [isOwner, hasNextPage, pageStart, items]);
+  }, [isOwner, hasNextPage, pageStart, pageSize, items]);
 
   function open(item: Item) {
     setActive(item);
@@ -81,13 +90,25 @@ export default function CategorySection({
     <section aria-labelledby={`h-${category.slug}`}>
       <h2 id={`h-${category.slug}`}>{category.label}</h2>
 
-      {page > 0 && (
-        <button type="button" className="btn prev-page" onClick={() => setPage((p) => Math.max(0, p - 1))}>
-          ‹ Previous
-        </button>
-      )}
-
       <ul className="grid" id={gridId}>
+        {showPrevTile && (
+          <li>
+            <button
+              type="button"
+              className="item nav-tile"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              aria-label="Show previous items"
+            >
+              <div className="thumb nav-thumb" aria-hidden="true">
+                ←
+              </div>
+              <div className="txt">
+                <span className="title">Previous</span>
+              </div>
+            </button>
+          </li>
+        )}
+
         {visibleItems.map((item) => (
           <li key={item.id}>
             <button type="button" className="item" onClick={() => open(item)}>
@@ -107,14 +128,14 @@ export default function CategorySection({
               type="button"
               className="item nav-tile"
               onClick={() => setPage((p) => p + 1)}
-              aria-label={`Show next ${Math.min(PAGE_SIZE, items.length - pageStart - PAGE_SIZE)} items`}
+              aria-label={`Show next ${Math.min(NEXT_PAGE_SIZE, items.length - pageStart - pageSize)} items`}
             >
               <div className="thumb nav-thumb" aria-hidden="true">
                 →
               </div>
               <div className="txt">
                 <span className="title">Next</span>
-                <span className="by">{items.length - pageStart - PAGE_SIZE} more</span>
+                <span className="by">{items.length - pageStart - pageSize} more</span>
               </div>
             </button>
           </li>

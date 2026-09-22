@@ -266,6 +266,28 @@ h1 {
   flex-shrink: 0;
 }
 
+@media (max-width: 640px) {
+  /* On phones the nav wraps below the wordmark, leaving the whitespace beside
+     "hoshigo" unused — float the add button into that corner instead of its
+     own row further down the page. */
+  .hero {
+    position: relative;
+  }
+
+  .stamp-slot {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 84px;
+    height: 84px;
+  }
+
+  .stamp:not(.pinned) {
+    width: 84px;
+    height: 84px;
+  }
+}
+
 .stamp {
   all: unset;
   display: block;
@@ -485,7 +507,7 @@ h2 {
   line-height: 19px;
   font-weight: 700;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -790,13 +812,6 @@ footer .cta {
 
 .load-more {
   margin-top: 18px;
-}
-
-.prev-page {
-  margin-bottom: 18px;
-  font-size: 14px;
-  min-height: 40px;
-  padding: 0 16px;
 }
 
 .nav-thumb {

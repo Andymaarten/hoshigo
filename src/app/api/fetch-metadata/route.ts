@@ -223,7 +223,10 @@ function guessCategorySlug(
   for (const [re, slug] of HOSTNAME_CATEGORY) if (re.test(hostname)) return slug;
   if (ogType) for (const [re, slug] of OG_TYPE_CATEGORY) if (re.test(ogType)) return slug;
   if (generator && /^bandcamp$/i.test(generator)) return "albums";
-  return undefined;
+  // Nothing recognized this link with any confidence — "things" is the catch-all
+  // category rather than leaving it unset (which left the client defaulting to
+  // whatever category happens to sort first, e.g. "films", which is misleading).
+  return "things";
 }
 
 export async function GET(request: NextRequest) {
