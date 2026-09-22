@@ -673,6 +673,10 @@ h2 {
   padding: 10px;
 }
 
+.sheet-in .thumb.big img {
+  filter: none;
+}
+
 .sheet-in .thumb.big.tall {
   height: 180px;
 }
