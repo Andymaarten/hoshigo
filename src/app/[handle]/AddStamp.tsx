@@ -28,7 +28,17 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
   const [url, setUrl] = useState("");
   const [fetching, setFetching] = useState(false);
   const [fetchFailed, setFetchFailed] = useState(false);
+  const [autoDetected, setAutoDetected] = useState(false);
   const [fields, setFields] = useState(emptyFields);
+
+  function resetForm() {
+    setStep("link");
+    setUrl("");
+    setFields(emptyFields);
+    setFetchFailed(false);
+    setAutoDetected(false);
+    setCategoryId(String(categories[0]?.id ?? ""));
+  }
 
   useEffect(() => {
     function onScroll() {
@@ -40,13 +50,6 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  function resetForm() {
-    setStep("link");
-    setUrl("");
-    setFields(emptyFields);
-    setFetchFailed(false);
-  }
 
   useEffect(() => {
     if (!pending && !error && formRef.current) {
@@ -80,6 +83,11 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
           year: data.year ? String(data.year) : "",
           source_label: data.source_label || "",
         }));
+        const match = categories.find((c) => c.slug === data.category_slug);
+        if (match) {
+          setCategoryId(String(match.id));
+          setAutoDetected(true);
+        }
       } else {
         setFetchFailed(true);
       }
@@ -124,18 +132,11 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
 
           {step === "link" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <p className="bio" style={{ marginTop: 0 }}>
+                Paste a link and we&apos;ll figure out what it is.
+              </p>
               <div className="field">
-                <label htmlFor="category_id">Category</label>
-                <select id="category_id" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor="link-url">Paste a link</label>
+                <label htmlFor="link-url">Link</label>
                 <input
                   id="link-url"
                   type="url"
@@ -145,8 +146,14 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                   autoFocus
                 />
               </div>
-              <button type="button" className="cta" style={{ border: "none" }} disabled={fetching || !url} onClick={() => goToReview(false)}>
-                {fetching ? "Fetching…" : "Continue"}
+              <button
+                type="button"
+                className="cta"
+                style={{ border: "none" }}
+                disabled={fetching || !url}
+                onClick={() => goToReview(false)}
+              >
+                {fetching ? "Reading link…" : "Continue"}
               </button>
               <button type="button" className="btn" onClick={() => goToReview(true)}>
                 No link — add manually
@@ -156,16 +163,35 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
 
           {step === "review" && (
             <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <input type="hidden" name="category_id" value={categoryId} />
               <input type="hidden" name="url" value={url} />
               <input type="hidden" name="source_label" value={fields.source_label} />
 
               {fetchFailed && (
-                <p className="bio" style={{ fontStyle: "italic" }}>
+                <p className="bio" style={{ fontStyle: "italic", marginTop: 0 }}>
                   Couldn&apos;t read that link automatically — fill it in below.
                 </p>
               )}
 
+              <div className="field">
+                <label htmlFor="category_id">
+                  Category{autoDetected && <span style={{ color: "var(--accent)" }}> — detected</span>}
+                </label>
+                <select
+                  id="category_id"
+                  name="category_id"
+                  value={categoryId}
+                  onChange={(e) => {
+                    setCategoryId(e.target.value);
+                    setAutoDetected(false);
+                  }}
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="field">
                 <label htmlFor="title">Title</label>
                 <input

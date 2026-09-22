@@ -47,7 +47,31 @@ async function fromSpotifyOEmbed(url: string) {
     title: data.title as string | undefined,
     image_url: data.thumbnail_url as string | undefined,
     source_label: "Spotify",
+    category_slug: "albums",
   };
+}
+
+// known providers first (most reliable), then a generic og:type fallback
+const HOSTNAME_CATEGORY: [RegExp, string][] = [
+  [/letterboxd\.com$/, "films"],
+  [/(imdb\.com|themoviedb\.org)$/, "films"],
+  [/open\.spotify\.com$/, "albums"],
+  [/music\.apple\.com$/, "albums"],
+  [/goodreads\.com$/, "books"],
+];
+
+const OG_TYPE_CATEGORY: [RegExp, string][] = [
+  [/^video\./, "films"],
+  [/^music\./, "albums"],
+  [/^book/, "books"],
+  [/^article/, "essays"],
+  [/^product/, "things"],
+];
+
+function guessCategorySlug(hostname: string, ogType: string | null): string | undefined {
+  for (const [re, slug] of HOSTNAME_CATEGORY) if (re.test(hostname)) return slug;
+  if (ogType) for (const [re, slug] of OG_TYPE_CATEGORY) if (re.test(ogType)) return slug;
+  return undefined;
 }
 
 export async function GET(request: NextRequest) {
@@ -75,6 +99,7 @@ export async function GET(request: NextRequest) {
     const title = metaTag(html, "og:title") || html.match(/<title>([^<]+)<\/title>/i)?.[1] || null;
     const image_url = metaTag(html, "og:image");
     const source_label = metaTag(html, "og:site_name") || parsed.hostname.replace(/^www\./, "");
+    const ogType = metaTag(html, "og:type");
     const yearMatch = title?.match(/\b(19|20)\d{2}\b/);
 
     return NextResponse.json({
@@ -82,6 +107,7 @@ export async function GET(request: NextRequest) {
       image_url: image_url || undefined,
       source_label,
       year: yearMatch ? Number(yearMatch[0]) : undefined,
+      category_slug: guessCategorySlug(parsed.hostname, ogType),
     });
   } catch {
     // network error, timeout, blocked, etc. — fail soft, the client falls back to manual entry

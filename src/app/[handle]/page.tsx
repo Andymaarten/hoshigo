@@ -77,7 +77,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         {profile.bio && <p className="bio">{profile.bio}</p>}
       </header>
 
-      <main>
+      <main id="lists">
         {(categories ?? [])
           .filter((category) => (itemsByCategory.get(category.id) ?? []).length > 0)
           .map((category) => (
