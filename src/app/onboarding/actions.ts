@@ -15,6 +15,7 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
   if (!HANDLE_RE.test(handle)) {
     return "Handle must be 2–30 characters: lowercase letters, numbers, - or _.";
   }
+  if (displayName.length > 15) return "Name needs to be 15 characters or fewer.";
 
   const supabase = await createClient();
   const {

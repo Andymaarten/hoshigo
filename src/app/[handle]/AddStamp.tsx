@@ -15,6 +15,13 @@ const emptyFields = {
   source_label: "",
 };
 
+// These categories have one definitive cover from their canonical catalog (an album's
+// artwork, a book's cover, a song's release art, a podcast's show art) — letting someone
+// swap in a random photo scraped off the source page doesn't make sense there. Every other
+// category (including canonically-matched ones like films) allows picking between whatever
+// candidate photos were found.
+const NO_PHOTO_CHOICE = new Set(["albums", "books", "songs", "podcasts"]);
+
 const WORK_SOURCE_LABEL: Record<string, string> = {
   tmdb: "TMDB",
   tmdb_tv: "TMDB",
@@ -175,6 +182,9 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     }
   }
 
+  const activeCategorySlug = categories.find((c) => String(c.id) === categoryId)?.slug;
+  const allowPhotoChoice = !activeCategorySlug || !NO_PHOTO_CHOICE.has(activeCategorySlug);
+
   return (
     <>
       <div ref={slotRef} className="stamp-slot">
@@ -330,10 +340,7 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                   value={fields.image_url}
                   onChange={(e) => setFields((f) => ({ ...f, image_url: e.target.value }))}
                 />
-                {/* Canonical matches (albums/films/etc) get their cover from the catalog, not
-                    the scraped page, so cycling through page photos only makes sense here for
-                    the non-canonical categories (essays/things) where this is the actual photo. */}
-                {!matchedVia && imageCandidates.length > 1 && (
+                {allowPhotoChoice && imageCandidates.length > 1 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
                     {fields.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element

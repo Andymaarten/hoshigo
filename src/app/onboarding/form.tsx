@@ -33,7 +33,7 @@ export default function OnboardingForm({
       </div>
       <div className="field">
         <label htmlFor="display_name">Name</label>
-        <input id="display_name" name="display_name" defaultValue={initialName} placeholder="Andreas" />
+        <input id="display_name" name="display_name" maxLength={15} defaultValue={initialName} placeholder="Andreas" />
       </div>
       <div className="field">
         <label htmlFor="bio">Bio</label>

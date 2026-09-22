@@ -11,6 +11,8 @@ export async function saveProfile(_prev: string | null, formData: FormData) {
   const socialLinks = parseSocialLinksPayload(String(formData.get("social_links") || ""));
   const isPrivate = formData.get("is_private") === "on";
 
+  if (displayName.length > 15) return "Name needs to be 15 characters or fewer.";
+
   const supabase = await createClient();
   const {
     data: { user },
