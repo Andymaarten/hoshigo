@@ -15,6 +15,12 @@ const emptyFields = {
   source_label: "",
 };
 
+const WORK_SOURCE_LABEL: Record<string, string> = {
+  tmdb: "TMDB",
+  musicbrainz: "MusicBrainz",
+  openlibrary: "Open Library",
+};
+
 export default function AddStamp({ handle, categories }: { handle: string; categories: Category[] }) {
   const [pinned, setPinned] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
@@ -30,6 +36,9 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
   const [fetchFailed, setFetchFailed] = useState(false);
   const [autoDetected, setAutoDetected] = useState(false);
   const [fields, setFields] = useState(emptyFields);
+  const [workId, setWorkId] = useState("");
+  const [matchedVia, setMatchedVia] = useState<string | null>(null);
+  const [matching, setMatching] = useState(false);
 
   function resetForm() {
     setStep("link");
@@ -38,6 +47,47 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     setFetchFailed(false);
     setAutoDetected(false);
     setCategoryId(String(categories[0]?.id ?? ""));
+    setWorkId("");
+    setMatchedVia(null);
+  }
+
+  async function lookUpCanonical(title: string, catId: string, by?: string, year?: string) {
+    if (!title || !catId) return;
+    setMatching(true);
+    try {
+      const category = categories.find((c) => String(c.id) === catId);
+      if (!category) return;
+      const res = await fetch("/api/resolve-work", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category_id: category.id,
+          category_slug: category.slug,
+          title,
+          by,
+          year: year ? Number(year) : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.work) {
+        setFields((f) => ({
+          ...f,
+          title: data.work.title,
+          by: data.work.by || f.by,
+          year: data.work.year ? String(data.work.year) : f.year,
+          image_url: data.work.image_url || f.image_url,
+        }));
+        setWorkId(data.work.id);
+        setMatchedVia(data.work.source);
+      } else {
+        setWorkId("");
+        setMatchedVia(null);
+      }
+    } catch {
+      // canonical lookup is a bonus — the OG/manual data we already have still works
+    } finally {
+      setMatching(false);
+    }
   }
 
   useEffect(() => {
@@ -72,6 +122,7 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     }
     setFetching(true);
     setFetchFailed(false);
+    let detectedCategoryId = categoryId;
     try {
       const res = await fetch(`/api/fetch-metadata?url=${encodeURIComponent(url)}`);
       const data = await res.json();
@@ -79,18 +130,21 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
         setFields((f) => ({
           ...f,
           title: data.title || "",
+          by: data.by || f.by,
           image_url: data.image_url || "",
           year: data.year ? String(data.year) : "",
           source_label: data.source_label || "",
         }));
         const match = categories.find((c) => c.slug === data.category_slug);
         if (match) {
-          setCategoryId(String(match.id));
+          detectedCategoryId = String(match.id);
+          setCategoryId(detectedCategoryId);
           setAutoDetected(true);
         }
       } else {
         setFetchFailed(true);
       }
+      if (data.title) await lookUpCanonical(data.title, detectedCategoryId, data.by, data.year ? String(data.year) : undefined);
     } catch {
       setFetchFailed(true);
     } finally {
@@ -165,6 +219,7 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
             <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <input type="hidden" name="url" value={url} />
               <input type="hidden" name="source_label" value={fields.source_label} />
+              <input type="hidden" name="work_id" value={workId} />
 
               {fetchFailed && (
                 <p className="bio" style={{ fontStyle: "italic", marginTop: 0 }}>
@@ -183,6 +238,8 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                   onChange={(e) => {
                     setCategoryId(e.target.value);
                     setAutoDetected(false);
+                    setWorkId("");
+                    setMatchedVia(null);
                   }}
                 >
                   {categories.map((c) => (
@@ -193,14 +250,34 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                 </select>
               </div>
               <div className="field">
-                <label htmlFor="title">Title</label>
+                <label htmlFor="title">
+                  Title
+                  {matchedVia && (
+                    <span style={{ color: "var(--accent)" }}> — matched via {WORK_SOURCE_LABEL[matchedVia]}</span>
+                  )}
+                </label>
                 <input
                   id="title"
                   name="title"
                   required
                   value={fields.title}
-                  onChange={(e) => setFields((f) => ({ ...f, title: e.target.value }))}
+                  onChange={(e) => {
+                    setFields((f) => ({ ...f, title: e.target.value }));
+                    setWorkId("");
+                    setMatchedVia(null);
+                  }}
                 />
+                {!matchedVia && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ alignSelf: "flex-start", fontSize: 13, minHeight: 36, padding: "0 12px" }}
+                    disabled={matching || !fields.title}
+                    onClick={() => lookUpCanonical(fields.title, categoryId, fields.by, fields.year)}
+                  >
+                    {matching ? "Looking up…" : "Look up canonical record"}
+                  </button>
+                )}
               </div>
               <div className="field">
                 <label htmlFor="by">By</label>

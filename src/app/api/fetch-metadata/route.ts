@@ -57,7 +57,12 @@ const HOSTNAME_CATEGORY: [RegExp, string][] = [
   [/(imdb\.com|themoviedb\.org)$/, "films"],
   [/open\.spotify\.com$/, "albums"],
   [/music\.apple\.com$/, "albums"],
+  [/bandcamp\.com$/, "albums"],
+  [/discogs\.com$/, "albums"],
+  [/musicbrainz\.org$/, "albums"],
+  [/allmusic\.com$/, "albums"],
   [/goodreads\.com$/, "books"],
+  [/openlibrary\.org$/, "books"],
 ];
 
 const OG_TYPE_CATEGORY: [RegExp, string][] = [
@@ -96,14 +101,28 @@ export async function GET(request: NextRequest) {
     if (!res.ok) return NextResponse.json({});
     const html = await res.text();
 
-    const title = metaTag(html, "og:title") || html.match(/<title>([^<]+)<\/title>/i)?.[1] || null;
+    let title = metaTag(html, "og:title") || html.match(/<title>([^<]+)<\/title>/i)?.[1] || null;
     const image_url = metaTag(html, "og:image");
     const source_label = metaTag(html, "og:site_name") || parsed.hostname.replace(/^www\./, "");
     const ogType = metaTag(html, "og:type");
     const yearMatch = title?.match(/\b(19|20)\d{2}\b/);
 
+    // Bandcamp (and a few others) format og:title as "Album, by Artist" — split it out
+    let by: string | undefined;
+    if (title) {
+      const byMatch = title.match(/^(.*?),?\s+by\s+(.+)$/i);
+      if (byMatch) {
+        title = byMatch[1];
+        by = byMatch[2];
+      }
+    }
+    // Letterboxd (and others) format og:title as "Title (2019)" — the year belongs in its
+    // own field, and leaving it in the search string throws off canonical-catalog lookups
+    if (title) title = title.replace(/\s*\((?:19|20)\d{2}\)\s*$/, "").trim();
+
     return NextResponse.json({
       title: title ? decodeHtmlEntities(title).trim() : undefined,
+      by: by ? decodeHtmlEntities(by).trim() : undefined,
       image_url: image_url || undefined,
       source_label,
       year: yearMatch ? Number(yearMatch[0]) : undefined,

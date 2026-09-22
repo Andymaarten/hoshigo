@@ -20,6 +20,7 @@ export interface Item {
   id: string;
   profile_id: string;
   category_id: number;
+  work_id: string | null;
   title: string;
   by: string | null;
   year: number | null;
@@ -29,6 +30,20 @@ export interface Item {
   featured: boolean;
   source_label: string | null;
   position: number;
+  created_at: string;
+}
+
+export type WorkSource = "tmdb" | "musicbrainz" | "openlibrary";
+
+export interface Work {
+  id: string;
+  category_id: number;
+  source: WorkSource;
+  source_id: string;
+  title: string;
+  by: string | null;
+  year: number | null;
+  image_url: string | null;
   created_at: string;
 }
 

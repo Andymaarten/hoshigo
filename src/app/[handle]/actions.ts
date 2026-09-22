@@ -24,12 +24,14 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
   const imageUrl = String(formData.get("image_url") || "").trim();
   const note = String(formData.get("note") || "").trim();
   const sourceLabel = String(formData.get("source_label") || "").trim();
+  const workId = String(formData.get("work_id") || "").trim();
 
   if (!title || !categoryId) return "Title and category are required.";
 
   const { error } = await supabase.from("items").insert({
     profile_id: user.id,
     category_id: categoryId,
+    work_id: workId || null,
     title,
     by: by || null,
     year: yearRaw ? Number(yearRaw) : null,

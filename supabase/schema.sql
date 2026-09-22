@@ -45,6 +45,24 @@ create unique index if not exists items_one_featured_per_category
   on public.items (profile_id, category_id)
   where featured;
 
+-- canonical catalog: the "true" record for a film/album/book, resolved against an
+-- authoritative source (TMDB, MusicBrainz, Open Library) so the same album added via
+-- Bandcamp, Discogs or Apple Music all point at one row instead of three unrelated ones.
+create table if not exists public.works (
+  id uuid primary key default gen_random_uuid(),
+  category_id int not null references public.categories (id),
+  source text not null check (source in ('tmdb', 'musicbrainz', 'openlibrary')),
+  source_id text not null,
+  title text not null,
+  by text,
+  year int,
+  image_url text,
+  created_at timestamptz not null default now(),
+  unique (source, source_id)
+);
+
+alter table public.items add column if not exists work_id uuid references public.works (id);
+
 create table if not exists public.personalize_blocks (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null references public.profiles (id) on delete cascade,
@@ -80,29 +98,48 @@ alter table public.profiles enable row level security;
 alter table public.categories enable row level security;
 alter table public.items enable row level security;
 alter table public.personalize_blocks enable row level security;
+alter table public.works enable row level security;
 
+drop policy if exists "works are publicly readable" on public.works;
+create policy "works are publicly readable" on public.works
+  for select using (true);
+drop policy if exists "any logged-in user can register a work" on public.works;
+create policy "any logged-in user can register a work" on public.works
+  for insert with check (auth.uid() is not null);
+
+drop policy if exists "profiles are publicly readable" on public.profiles;
 create policy "profiles are publicly readable" on public.profiles
   for select using (true);
+drop policy if exists "users can update their own profile" on public.profiles;
 create policy "users can update their own profile" on public.profiles
   for update using (auth.uid() = id);
 
+drop policy if exists "categories are publicly readable" on public.categories;
 create policy "categories are publicly readable" on public.categories
   for select using (true);
 
+drop policy if exists "items are publicly readable" on public.items;
 create policy "items are publicly readable" on public.items
   for select using (true);
+drop policy if exists "users can insert their own items" on public.items;
 create policy "users can insert their own items" on public.items
   for insert with check (auth.uid() = profile_id);
+drop policy if exists "users can update their own items" on public.items;
 create policy "users can update their own items" on public.items
   for update using (auth.uid() = profile_id);
+drop policy if exists "users can delete their own items" on public.items;
 create policy "users can delete their own items" on public.items
   for delete using (auth.uid() = profile_id);
 
+drop policy if exists "personalize blocks are publicly readable" on public.personalize_blocks;
 create policy "personalize blocks are publicly readable" on public.personalize_blocks
   for select using (true);
+drop policy if exists "users can insert their own personalize blocks" on public.personalize_blocks;
 create policy "users can insert their own personalize blocks" on public.personalize_blocks
   for insert with check (auth.uid() = profile_id);
+drop policy if exists "users can update their own personalize blocks" on public.personalize_blocks;
 create policy "users can update their own personalize blocks" on public.personalize_blocks
   for update using (auth.uid() = profile_id);
+drop policy if exists "users can delete their own personalize blocks" on public.personalize_blocks;
 create policy "users can delete their own personalize blocks" on public.personalize_blocks
   for delete using (auth.uid() = profile_id);
