@@ -72,6 +72,11 @@ a {
   letter-spacing: -0.01em;
 }
 
+a.word {
+  text-decoration: none;
+  display: inline-block;
+}
+
 .tittle {
   position: relative;
   display: inline-block;
