@@ -62,13 +62,13 @@ export default async function HomePage({
 
       <section className="manifesto">
         <p className="manifesto-lead">
-          It&apos;s a personal place to keep the handful of things you&apos;d actually give five stars. Films, books,
-          essays, albums.
+          hoshigo is a personal place to keep the handful of things you&apos;d actually give five stars. Films,
+          books, essays, albums.
         </p>
         <span className="manifesto-sep" aria-hidden="true" />
         <p className="manifesto-mid">
           We&apos;re not traditional social media. No ads. No algorithm deciding what you see and trying to make you
-          stay longer. We like you to be gone within a few minutes.
+          stay longer. Actually, we would like you <strong>to be gone within minutes</strong>.
         </p>
         <span className="manifesto-sep" aria-hidden="true" />
         <p className="manifesto-coda">
@@ -91,13 +91,22 @@ export default async function HomePage({
 // offset half a step; the row simply clips where the viewport ends.
 const HERO_ROWS = 6;
 const HERO_PER_ROW = 18;
+const HERO_TOTAL = HERO_ROWS * HERO_PER_ROW;
 
-// PLACEHOLDER: profiles have no avatar field yet, so every stamp reveals one of
-// five bundled textures instead of a real person's photo, and every stamp links
-// to the seeded demo profile. Same spirit as ProfileStats' stand-in counts.
+// PLACEHOLDER: profiles have no avatar field yet, so every real stamp reveals
+// one of five bundled textures instead of a real person's photo, and every
+// stamp links to the seeded demo profile. Same spirit as ProfileStats' stand-in
+// counts.
 const HERO_PHOTOS = [1, 2, 3, 4, 5].map((n) => `/hero/placeholder-${n}.jpg`);
 
-const RING_TEXT = "Press here to visit this hoshigo";
+// Only a handful of stamps are real, clickable hoshigo's — the rest are plain
+// grey noise, so the few red ones actually read as "the few things worth your
+// attention" instead of every circle competing for it. Spread evenly across
+// the grid rather than clustered.
+const REAL_COUNT = 7;
+const REAL_INDICES = new Set(
+  Array.from({ length: REAL_COUNT }, (_, i) => Math.round((i + 0.5) * (HERO_TOTAL / REAL_COUNT)))
+);
 
 function HeroField() {
   return (
@@ -107,34 +116,15 @@ function HeroField() {
           <div key={row} className={row % 2 ? "hero-row hero-row-offset" : "hero-row"}>
             {Array.from({ length: HERO_PER_ROW }, (_, col) => {
               const i = row * HERO_PER_ROW + col;
-              // Every stamp is the same link, so only the first one takes a tab
-              // stop; the rest stay clickable but out of the keyboard order.
-              const first = i === 0;
+              if (!REAL_INDICES.has(i)) {
+                return <span key={col} className="hero-dot hero-dot-noise" aria-hidden="true" />;
+              }
               return (
-                <Link
-                  key={col}
-                  href="/testuser"
-                  className="hero-dot"
-                  tabIndex={first ? undefined : -1}
-                  aria-hidden={first ? undefined : true}
-                >
+                <Link key={col} href="/testuser" className="hero-dot">
                   <span className="hero-disc">
                     <img className="hero-photo" src={HERO_PHOTOS[i % HERO_PHOTOS.length]} alt="" aria-hidden="true" />
                   </span>
-                  <svg className="hero-ring" viewBox="0 0 116 116" aria-hidden="true" focusable="false">
-                    {/* Only the top half of the ring is used — text following the
-                        full circle read upside-down along the bottom half. A
-                        left-to-right arc over the top reads cleanly. */}
-                    <defs>
-                      <path id={`hero-ring-${i}`} d="M11,58 a47,47 0 1,1 94,0" />
-                    </defs>
-                    <text>
-                      <textPath href={`#hero-ring-${i}`} textLength="146" startOffset="0">
-                        {RING_TEXT}
-                      </textPath>
-                    </text>
-                  </svg>
-                  {first && <span className="sr-only">Preview a hoshigo profile</span>}
+                  <span className="sr-only">Preview a hoshigo profile</span>
                 </Link>
               );
             })}

@@ -355,20 +355,21 @@ h1 {
   margin-top: 18px;
   padding-bottom: 28px;
   overflow: hidden;
-  --cell: clamp(46px, 5.6vw, 72px);
-  --step: calc(var(--cell) + 5px);
+  --cell: clamp(40px, 5vw, 62px);
+  --gap: clamp(16px, 2.4vw, 28px);
+  --step: calc(var(--cell) + var(--gap));
 }
 
 .hero-grid {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--gap);
   margin-left: calc(var(--step) * -0.42);
 }
 
 .hero-row {
   display: flex;
-  gap: 5px;
+  gap: var(--gap);
   flex: none;
 }
 
@@ -434,43 +435,11 @@ h1 {
   transform: scale(0.98);
 }
 
-/* Matches the ring geometry used by .stamp's add-a-hoshigo button: a 116x116
-   viewBox with the text riding a radius-47 circle centred in it. Keeping the
-   same viewBox/radius/font pairing here is what keeps the letters sitting
-   cleanly on the path instead of drifting off it. */
-.hero-ring {
-  position: absolute;
-  inset: -34%;
-  width: 168%;
-  height: 168%;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.18s ease, transform 0.4s ease;
-  transform: rotate(0deg);
-}
-
-.hero-ring text {
-  fill: var(--ink);
-  paint-order: stroke;
-  stroke: var(--ground);
-  stroke-width: 3.4px;
-  stroke-linejoin: round;
-  font-family: var(--display);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 1.1px;
-}
-
-.hero-dot:hover .hero-ring,
-.hero-dot:focus-visible .hero-ring {
-  opacity: 1;
-  transform: rotate(6deg);
-}
-
-@media (max-width: 900px) {
-  .hero-ring {
-    display: none;
-  }
+/* The plain grey stamps aren't links — they're background noise the few real
+   (red, clickable) ones stand out against. */
+.hero-dot-noise {
+  background: var(--muted);
+  opacity: 0.22;
 }
 
 dialog.sheet {
@@ -923,26 +892,12 @@ footer .cta {
   text-wrap: balance;
 }
 
-.manifesto-lead {
-  font-size: clamp(26px, 3.4vw, 38px);
-  line-height: 1.24;
-  letter-spacing: -0.015em;
-  max-width: 24ch;
-}
-
-.manifesto-mid {
-  font-size: clamp(17px, 1.7vw, 20px);
-  line-height: 1.55;
-  max-width: 42ch;
-  color: var(--muted);
-}
-
+.manifesto-lead,
+.manifesto-mid,
 .manifesto-coda {
-  font-family: var(--display);
-  font-size: clamp(14px, 1.4vw, 16px);
-  line-height: 1.6;
-  letter-spacing: 0.005em;
-  max-width: 50ch;
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.5;
+  max-width: 46ch;
 }
 
 .manifesto-sep {
