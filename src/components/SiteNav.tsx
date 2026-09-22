@@ -30,12 +30,16 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
           </Link>
         </>
       )}
-      <Link href="/friends" aria-current={pathname === "/friends" ? "page" : undefined}>
-        <span>Friends</span>
-      </Link>
-      <Link href="/explore" aria-current={pathname === "/explore" ? "page" : undefined}>
-        <span>Explore</span>
-      </Link>
+      {loggedIn && (
+        <>
+          <Link href="/friends" aria-current={pathname === "/friends" ? "page" : undefined}>
+            <span>Friends</span>
+          </Link>
+          <Link href="/explore" aria-current={pathname === "/explore" ? "page" : undefined}>
+            <span>Explore</span>
+          </Link>
+        </>
+      )}
     </nav>
   );
 }

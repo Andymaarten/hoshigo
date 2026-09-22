@@ -68,6 +68,7 @@ export default function CategorySection({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [active, setActive] = useState<Item | null>(null);
   const [note, setNote] = useState("");
+  const [noteEditing, setNoteEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState(false);
@@ -111,6 +112,7 @@ export default function CategorySection({
   function open(item: Item) {
     setActive(item);
     setNote(item.note ?? "");
+    setNoteEditing(!item.note);
     setEditing(false);
     dialogRef.current?.showModal();
   }
@@ -221,33 +223,51 @@ export default function CategorySection({
 
               {isOwner ? (
                 <>
-                  <textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="No note yet."
-                    style={{
-                      fontFamily: "var(--serif)",
-                      fontStyle: "italic",
-                      fontSize: 16,
-                      border: "1px solid var(--rule)",
-                      background: "transparent",
-                      padding: 10,
-                      minHeight: 70,
-                    }}
-                  />
+                  {noteEditing ? (
+                    <>
+                      <textarea
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        placeholder="No note yet."
+                        style={{
+                          fontFamily: "var(--serif)",
+                          fontStyle: "italic",
+                          fontSize: 16,
+                          border: "1px solid var(--rule)",
+                          background: "transparent",
+                          padding: 10,
+                          minHeight: 70,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={saving}
+                        style={{ alignSelf: "flex-start" }}
+                        onClick={async () => {
+                          setSaving(true);
+                          await updateNote(handle, active.id, note);
+                          setSaving(false);
+                          setNoteEditing(false);
+                        }}
+                      >
+                        {saving ? "Saving…" : "Save note"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className={`note${note ? "" : " empty"}`}>{note || "No note yet."}</p>
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{ alignSelf: "flex-start" }}
+                        onClick={() => setNoteEditing(true)}
+                      >
+                        Edit note
+                      </button>
+                    </>
+                  )}
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button
-                      type="button"
-                      className="btn"
-                      disabled={saving}
-                      onClick={async () => {
-                        setSaving(true);
-                        await updateNote(handle, active.id, note);
-                        setSaving(false);
-                      }}
-                    >
-                      {saving ? "Saving…" : "Save note"}
-                    </button>
                     <button type="button" className="btn" onClick={() => setEditing(true)}>
                       Edit
                     </button>
