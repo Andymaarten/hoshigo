@@ -196,10 +196,12 @@ const HOSTNAME_CATEGORY: [RegExp, string][] = [
   [/allmusic\.com$/, "albums"],
   [/(www\.)?last\.fm$/, "albums"],
   [/rateyourmusic\.com$/, "albums"],
+  [/tidal\.com$/, "albums"],
   [/goodreads\.com$/, "books"],
   [/openlibrary\.org$/, "books"],
   [/books\.google\.com$/, "books"], // safety net; og:type "book" already covers most Google Books pages
   [/podcasts\.apple\.com$/, "podcasts"],
+  [/pocketcasts\.com$/, "podcasts"], // og:type is generic "website" here, no signal to fall back on
 ];
 
 const OG_TYPE_CATEGORY: [RegExp, string][] = [
@@ -220,6 +222,8 @@ function guessCategorySlug(
   generator: string | null
 ): string | undefined {
   if (/themoviedb\.org$/.test(hostname)) return path.startsWith("/tv/") ? "tv" : "films";
+  // JustWatch paths are "/<locale>/tv-show/<slug>" or "/<locale>/movie/<slug>"
+  if (/justwatch\.com$/.test(hostname)) return /\/tv-show\//.test(path) ? "tv" : "films";
   for (const [re, slug] of HOSTNAME_CATEGORY) if (re.test(hostname)) return slug;
   if (ogType) for (const [re, slug] of OG_TYPE_CATEGORY) if (re.test(ogType)) return slug;
   if (generator && /^bandcamp$/i.test(generator)) return "albums";
@@ -289,6 +293,10 @@ export async function GET(request: NextRequest) {
       title = title
         .replace(/\s+on\s+Apple Music\s*$/i, "")
         .replace(/\s+Reviews\s*[-–]\s*Metacritic\s*$/i, "")
+        // JustWatch's suffix doesn't repeat its og:site_name literally, so the generic strip
+        // above misses it — TV pages use "<title> - watch tv show streaming online", movie
+        // pages just append "<title> streaming online" with no dash/prefix
+        .replace(/\s*(?:[-–]\s*)?(?:watch\s+(?:tv show|movie)\s+)?streaming online\s*$/i, "")
         // Wikipedia never sets og:site_name, and its category is never recognized (see
         // docs/sources.md), but the raw title still prefills the manual-entry form — worth
         // cleaning even without a canonical match.
@@ -298,13 +306,32 @@ export async function GET(request: NextRequest) {
 
     const yearMatch = title?.match(/\b(19|20)\d{2}\b/);
 
-    // Bandcamp (and a few others) format og:title as "Album, by Artist" — split it out
+    // Bandcamp (and Apple Music, after its " on Apple Music" suffix above is stripped) format
+    // og:title as "Album, by Artist" — split it out. Scoped to known music sites only: an
+    // unscoped "by" match is a false-positive magnet on essays/articles, where "by" shows up
+    // constantly in ordinary prose (e.g. a Guardian review title "Swan Song by Charles Spencer
+    // review – ..." was getting mangled into title "Swan Song" / by "Charles Spencer review – ...").
+    const isKnownAlbumByFormat =
+      /bandcamp\.com$/.test(parsed.hostname) ||
+      /music\.apple\.com$/.test(parsed.hostname) ||
+      /^bandcamp$/i.test(generator || "");
     let by: string | undefined;
-    if (title) {
+    if (title && isKnownAlbumByFormat) {
       const byMatch = title.match(/^(.*?),?\s+by\s+(.+)$/i);
       if (byMatch) {
         title = byMatch[1];
         by = byMatch[2];
+      }
+    }
+    // Tidal formats og:title as "Artist - Album" (e.g. "Daft Punk - Random Access Memories") —
+    // opposite order from Bandcamp's "Album, by Artist", and specific to Tidal's og:site_name
+    // ("Music on TIDAL") since a generic "X - Y" split would misfire on plenty of other sites'
+    // titles that legitimately contain a dash.
+    if (title && !by && ogSiteName === "Music on TIDAL") {
+      const tidalMatch = title.match(/^(.+?)\s+-\s+(.+)$/);
+      if (tidalMatch) {
+        by = tidalMatch[1];
+        title = tidalMatch[2];
       }
     }
     // Letterboxd (and others) format og:title as "Title (2019)" — the year belongs in its
