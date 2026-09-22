@@ -19,11 +19,19 @@ function metaTag(html: string, property: string): string | null {
 
 function decodeHtmlEntities(s: string) {
   return s
-    .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+    .replace(/&#0*39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&ndash;/g, "–")
+    .replace(/&mdash;/g, "—")
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+    .replace(/&gt;/g, ">")
+    // numeric entities (decimal and hex) — many CMSes (WordPress, Substack, NPR) encode
+    // apostrophes/dashes/quotes this way instead of the named forms above
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&amp;/g, "&");
 }
 
 async function fetchWithTimeout(url: string, ms: number, extraHeaders?: Record<string, string>) {
@@ -84,20 +92,28 @@ async function fromImdbId(url: string) {
 }
 
 // Discogs sits behind a Cloudflare bot challenge (403 "Just a moment..." to any non-browser
-// fetch) — same story as IMDb. Its release API is public and needs no key, so use that instead.
+// fetch) — same story as IMDb. Its release/master APIs are public and need no key, so use those
+// instead. Discogs URLs come in two flavors: /release/<id> (a specific pressing) and
+// /master/<id> (the release-group page people usually share/link to) — same fix, different id
+// and endpoint.
 async function fromDiscogsId(url: string) {
-  const idMatch = url.match(/\/release\/(\d+)/);
+  const releaseMatch = url.match(/\/release\/(\d+)/);
+  const masterMatch = !releaseMatch && url.match(/\/master\/(\d+)/);
+  const idMatch = releaseMatch || masterMatch;
   if (!idMatch) return null;
+  const endpoint = releaseMatch ? "releases" : "masters";
   try {
-    const res = await fetchWithTimeout(`https://api.discogs.com/releases/${idMatch[1]}`, 6000, {
+    const res = await fetchWithTimeout(`https://api.discogs.com/${endpoint}/${idMatch[1]}`, 6000, {
       "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)",
     });
     if (!res.ok) return null;
     const data = await res.json();
     if (!data?.title) return null;
+    // releases have `artists_sort` as a ready-made string; masters only have an `artists` array
+    const by = (data.artists_sort as string | undefined) ?? data.artists?.[0]?.name;
     return {
       title: data.title as string,
-      by: data.artists_sort as string | undefined,
+      by: by as string | undefined,
       image_url: data.images?.[0]?.uri as string | undefined,
       year: data.year || undefined,
       source_label: "Discogs",
@@ -126,6 +142,44 @@ async function fromSpotifyOEmbed(url: string) {
     source_label: "Spotify",
     category_slug: spotifyCategoryFromPath(url),
   };
+}
+
+// Spotify's own oEmbed endpoint is unusable for podcasts: for a /show/ link it returns the
+// title of the show's most recent (or pinned "Trailer") episode, not the show name itself —
+// feeding that into resolvePodcast()'s iTunes search produces wrong or no canonical matches.
+// Spotify's normal open.spotify.com pages are a client-rendered SPA shell with no usable
+// og-tags for a plain fetch — but they serve a fully server-rendered page (real og:title/
+// og:description) to search-engine crawlers. A Googlebot user-agent gets us that SSR page:
+// - /show/<id>  → og:title IS the show name directly
+// - /episode/<id> → og:title is still the episode title, but og:description is formatted
+//   "<Show Name> · Episode" — parse the show name out of that instead
+async function fromSpotifyPodcast(url: string) {
+  try {
+    const res = await fetchWithTimeout(url, 6000, {
+      "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const ogTitle = metaTag(html, "og:title");
+    const ogDescription = metaTag(html, "og:description");
+    const ogImage = metaTag(html, "og:image");
+    if (!ogTitle) return null;
+
+    let title = ogTitle;
+    if (/\/episode\//.test(url)) {
+      const showMatch = ogDescription?.match(/^(.*?)\s*·\s*Episode\s*$/);
+      if (showMatch) title = showMatch[1];
+    }
+
+    return {
+      title,
+      image_url: ogImage || undefined,
+      source_label: "Spotify",
+      category_slug: "podcasts",
+    };
+  } catch {
+    return null;
+  }
 }
 
 // known providers first (most reliable), then a generic og:type fallback
@@ -159,10 +213,16 @@ const OG_TYPE_CATEGORY: [RegExp, string][] = [
   [/^product/, "things"],
 ];
 
-function guessCategorySlug(hostname: string, path: string, ogType: string | null): string | undefined {
+function guessCategorySlug(
+  hostname: string,
+  path: string,
+  ogType: string | null,
+  generator: string | null
+): string | undefined {
   if (/themoviedb\.org$/.test(hostname)) return path.startsWith("/tv/") ? "tv" : "films";
   for (const [re, slug] of HOSTNAME_CATEGORY) if (re.test(hostname)) return slug;
   if (ogType) for (const [re, slug] of OG_TYPE_CATEGORY) if (re.test(ogType)) return slug;
+  if (generator && /^bandcamp$/i.test(generator)) return "albums";
   return undefined;
 }
 
@@ -180,6 +240,11 @@ export async function GET(request: NextRequest) {
 
   try {
     if (parsed.hostname.includes("open.spotify.com")) {
+      if (/\/(episode|show)\//.test(url)) {
+        const podcast = await fromSpotifyPodcast(url);
+        if (podcast?.title) return NextResponse.json(podcast);
+        // fall through to oEmbed if the Googlebot-UA SSR fetch failed for some reason
+      }
       const oembed = await fromSpotifyOEmbed(url);
       if (oembed?.title) return NextResponse.json(oembed);
     }
@@ -204,6 +269,10 @@ export async function GET(request: NextRequest) {
     const ogSiteName = metaTag(html, "og:site_name");
     const source_label = ogSiteName || parsed.hostname.replace(/^www\./, "");
     const ogType = metaTag(html, "og:type");
+    // Bandcamp lets artists serve their store on a custom domain (e.g. musique.coeurdepirate.com),
+    // so the `bandcamp.com` hostname rule above misses those — but Bandcamp always stamps
+    // its own generator meta tag regardless of domain, so use that as a fallback signal.
+    const generator = metaTag(html, "generator");
 
     // Several sites append their own name to <title>/og:title (e.g. Rotten Tomatoes: "Parasite
     // (2019) | Rotten Tomatoes", Apple Music: "Album by Artist on Apple Music", Metacritic:
@@ -217,6 +286,10 @@ export async function GET(request: NextRequest) {
       title = title
         .replace(/\s+on\s+Apple Music\s*$/i, "")
         .replace(/\s+Reviews\s*[-–]\s*Metacritic\s*$/i, "")
+        // Wikipedia never sets og:site_name, and its category is never recognized (see
+        // docs/sources.md), but the raw title still prefills the manual-entry form — worth
+        // cleaning even without a canonical match.
+        .replace(/\s*[-–]\s*Wikipedia\s*$/i, "")
         .trim();
     }
 
@@ -241,7 +314,7 @@ export async function GET(request: NextRequest) {
       image_url: image_url || undefined,
       source_label,
       year: yearMatch ? Number(yearMatch[0]) : undefined,
-      category_slug: guessCategorySlug(parsed.hostname, parsed.pathname, ogType),
+      category_slug: guessCategorySlug(parsed.hostname, parsed.pathname, ogType, generator),
     });
   } catch {
     // network error, timeout, blocked, etc. — fail soft, the client falls back to manual entry
