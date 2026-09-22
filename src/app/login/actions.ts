@@ -45,3 +45,16 @@ export async function sendMagicLink(_prev: string | null, formData: FormData) {
 
   return "Check your email for the link.";
 }
+
+export async function sendPasswordReset(_prev: string | null, formData: FormData) {
+  const email = String(formData.get("email") || "").trim();
+  if (!email) return "Enter your email.";
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/confirm`,
+  });
+  if (error) return error.message;
+
+  return "Check your email for a reset link.";
+}

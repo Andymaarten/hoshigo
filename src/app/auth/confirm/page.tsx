@@ -21,6 +21,15 @@ function AuthConfirmInner() {
   useEffect(() => {
     const supabase = createClient();
 
+    // Password-recovery links resolve to a session too, but should land on the
+    // reset-password form instead of onboarding. Supabase fires this specific
+    // event for that case (works for both hash- and code-based recovery links).
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") router.replace("/reset-password");
+    });
+
     async function run() {
       const code = searchParams.get("code");
 
@@ -47,6 +56,7 @@ function AuthConfirmInner() {
     }
 
     run();
+    return () => subscription.unsubscribe();
   }, [router, searchParams]);
 
   return (

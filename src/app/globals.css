@@ -493,6 +493,29 @@ footer .cta {
   flex: none;
 }
 
+.auth-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 48px;
+}
+
+.link-btn {
+  all: unset;
+  align-self: flex-start;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link-btn:hover {
+  color: var(--ink);
+}
+
 .mode-tabs {
   display: flex;
   flex-wrap: wrap;
