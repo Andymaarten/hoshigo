@@ -7,7 +7,10 @@ import { deleteItem, updateNote } from "./actions";
 const SHAPE: Record<string, "tall" | "photo" | undefined> = {
   films: "tall",
   books: "tall",
+  tv: "tall",
   things: "photo",
+  games: "photo",
+  podcasts: "photo",
 };
 
 function Thumb({ item, shape, big }: { item: Item; shape?: "tall" | "photo"; big?: boolean }) {

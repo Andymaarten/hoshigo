@@ -41,7 +41,8 @@ async function fetchWithTimeout(url: string, ms: number, extraHeaders?: Record<s
 
 // IMDb actively blocks server-side scraping (returns an empty 202 "please wait" response to
 // non-browser requests) — so instead of fighting that, use the tt-id already in the URL to
-// ask TMDB directly, which resolves it to the same canonical film our own catalog uses anyway.
+// ask TMDB directly, which resolves it to the same canonical film/show our own catalog uses.
+// An IMDb tt-id can be either a film or a TV series, so we check both result buckets.
 async function fromImdbId(url: string) {
   const key = process.env.TMDB_API_KEY;
   const idMatch = url.match(/\/title\/(tt\d+)/);
@@ -54,15 +55,29 @@ async function fromImdbId(url: string) {
     );
     if (!res.ok) return null;
     const data = await res.json();
+
     const movie = data?.movie_results?.[0];
-    if (!movie) return null;
-    return {
-      title: movie.title as string,
-      image_url: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined,
-      year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : undefined,
-      source_label: "IMDb",
-      category_slug: "films",
-    };
+    if (movie) {
+      return {
+        title: movie.title as string,
+        image_url: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined,
+        year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : undefined,
+        source_label: "IMDb",
+        category_slug: "films",
+      };
+    }
+
+    const show = data?.tv_results?.[0];
+    if (show) {
+      return {
+        title: show.name as string,
+        image_url: show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : undefined,
+        year: show.first_air_date ? Number(show.first_air_date.slice(0, 4)) : undefined,
+        source_label: "IMDb",
+        category_slug: "tv",
+      };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -93,6 +108,14 @@ async function fromDiscogsId(url: string) {
   }
 }
 
+// Spotify's oEmbed works for tracks, episodes and shows too, not just albums — the URL
+// path tells us which, since oEmbed itself doesn't distinguish.
+function spotifyCategoryFromPath(url: string): string {
+  if (/\/track\//.test(url)) return "songs";
+  if (/\/(episode|show)\//.test(url)) return "podcasts";
+  return "albums";
+}
+
 async function fromSpotifyOEmbed(url: string) {
   const res = await fetchWithTimeout(`https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`, 6000);
   if (!res.ok) return null;
@@ -101,15 +124,15 @@ async function fromSpotifyOEmbed(url: string) {
     title: data.title as string | undefined,
     image_url: data.thumbnail_url as string | undefined,
     source_label: "Spotify",
-    category_slug: "albums",
+    category_slug: spotifyCategoryFromPath(url),
   };
 }
 
 // known providers first (most reliable), then a generic og:type fallback
 const HOSTNAME_CATEGORY: [RegExp, string][] = [
   [/letterboxd\.com$/, "films"],
-  [/(imdb\.com|themoviedb\.org)$/, "films"],
-  [/open\.spotify\.com$/, "albums"],
+  [/imdb\.com$/, "films"], // fromImdbId() overrides this with "tv" when it's actually a series
+  [/open\.spotify\.com$/, "albums"], // fromSpotifyOEmbed() overrides with songs/podcasts by path
   [/music\.apple\.com$/, "albums"],
   [/bandcamp\.com$/, "albums"],
   [/discogs\.com$/, "albums"],
@@ -117,17 +140,22 @@ const HOSTNAME_CATEGORY: [RegExp, string][] = [
   [/allmusic\.com$/, "albums"],
   [/goodreads\.com$/, "books"],
   [/openlibrary\.org$/, "books"],
+  [/podcasts\.apple\.com$/, "podcasts"],
 ];
 
 const OG_TYPE_CATEGORY: [RegExp, string][] = [
+  [/^video\.tv_show/, "tv"],
+  [/^video\.episode/, "tv"],
   [/^video\./, "films"],
+  [/^music\.song/, "songs"],
   [/^music\./, "albums"],
   [/^book/, "books"],
   [/^article/, "essays"],
   [/^product/, "things"],
 ];
 
-function guessCategorySlug(hostname: string, ogType: string | null): string | undefined {
+function guessCategorySlug(hostname: string, path: string, ogType: string | null): string | undefined {
+  if (/themoviedb\.org$/.test(hostname)) return path.startsWith("/tv/") ? "tv" : "films";
   for (const [re, slug] of HOSTNAME_CATEGORY) if (re.test(hostname)) return slug;
   if (ogType) for (const [re, slug] of OG_TYPE_CATEGORY) if (re.test(ogType)) return slug;
   return undefined;
@@ -191,7 +219,7 @@ export async function GET(request: NextRequest) {
       image_url: image_url || undefined,
       source_label,
       year: yearMatch ? Number(yearMatch[0]) : undefined,
-      category_slug: guessCategorySlug(parsed.hostname, ogType),
+      category_slug: guessCategorySlug(parsed.hostname, parsed.pathname, ogType),
     });
   } catch {
     // network error, timeout, blocked, etc. — fail soft, the client falls back to manual entry

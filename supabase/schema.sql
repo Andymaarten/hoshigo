@@ -21,7 +21,11 @@ insert into public.categories (slug, label, sort_order) values
   ('albums', 'albums', 2),
   ('books', 'books', 3),
   ('essays', 'essays', 4),
-  ('things', 'things', 5)
+  ('things', 'things', 5),
+  ('tv', 'tv', 6),
+  ('songs', 'songs', 7),
+  ('podcasts', 'podcasts', 8),
+  ('games', 'games', 9)
 on conflict (slug) do nothing;
 
 create table if not exists public.items (
@@ -51,7 +55,11 @@ create unique index if not exists items_one_featured_per_category
 create table if not exists public.works (
   id uuid primary key default gen_random_uuid(),
   category_id int not null references public.categories (id),
-  source text not null check (source in ('tmdb', 'musicbrainz', 'openlibrary')),
+  -- tmdb = films, tmdb_tv = TV shows (kept separate: TMDB's movie and TV ids are
+  -- independent numeric namespaces and can collide, e.g. movie 100 != tv 100).
+  -- musicbrainz covers both albums (release-group MBID) and songs (recording MBID) —
+  -- MBIDs are globally unique UUIDs regardless of entity type, so no collision risk there.
+  source text not null check (source in ('tmdb', 'tmdb_tv', 'musicbrainz', 'openlibrary', 'itunes', 'igdb')),
   source_id text not null,
   title text not null,
   by text,
@@ -60,6 +68,11 @@ create table if not exists public.works (
   created_at timestamptz not null default now(),
   unique (source, source_id)
 );
+
+-- widen the source check for databases created before tv/songs/podcasts/games existed
+alter table public.works drop constraint if exists works_source_check;
+alter table public.works add constraint works_source_check
+  check (source in ('tmdb', 'tmdb_tv', 'musicbrainz', 'openlibrary', 'itunes', 'igdb'));
 
 alter table public.items add column if not exists work_id uuid references public.works (id);
 

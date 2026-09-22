@@ -17,8 +17,11 @@ const emptyFields = {
 
 const WORK_SOURCE_LABEL: Record<string, string> = {
   tmdb: "TMDB",
+  tmdb_tv: "TMDB",
   musicbrainz: "MusicBrainz",
   openlibrary: "Open Library",
+  itunes: "iTunes",
+  igdb: "IGDB",
 };
 
 export default function AddStamp({ handle, categories }: { handle: string; categories: Category[] }) {

@@ -33,7 +33,7 @@ export interface Item {
   created_at: string;
 }
 
-export type WorkSource = "tmdb" | "musicbrainz" | "openlibrary";
+export type WorkSource = "tmdb" | "tmdb_tv" | "musicbrainz" | "openlibrary" | "itunes" | "igdb";
 
 export interface Work {
   id: string;

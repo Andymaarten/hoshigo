@@ -1,5 +1,10 @@
 # Bronnen-ondersteuning
 
+Naast films/albums/boeken bestaan er ook canonieke catalogi voor **tv-series**, **losse
+nummers** en **podcasts** — die zijn inmiddels toegevoegd (zie tabellen hieronder). Videogames
+(via IGDB) staat klaar in het datamodel maar wacht nog op een API-key. Kunstwerken en recepten
+hebben geen bruikbare universele catalogus en blijven daarom op de handmatige fallback.
+
 Hoe een geplakte link wordt afgehandeld, van beste naar slechtste geval:
 
 1. **Canoniek gematcht** — categorie correct herkend, en titel/by/jaar/cover komen van een
@@ -44,6 +49,46 @@ Hoe een geplakte link wordt afgehandeld, van beste naar slechtste geval:
 | Amazon (boekpagina's) | — nog niet toegevoegd | zou via og:type "book" moeten werken, niet getest |
 | StoryGraph | — nog niet toegevoegd | zou via og:type "book" moeten werken |
 | Google Books | — nog niet toegevoegd | eigen API bestaat, nog niet aangesloten |
+
+## TV-series
+
+| Bron | Categorie-detectie | Canonieke match |
+|---|---|---|
+| IMDb | ✅ hostname, onderscheidt film vs. serie via TMDB's `/find` resultaat | ✅ TMDB (direct via tt-id) |
+| TMDB zelf | ✅ hostname + pad (`/tv/` vs `/movie/`) | ✅ |
+| Letterboxd | — geen tv-content op Letterboxd, niet van toepassing | — |
+
+Getest met: IMDb-link naar Breaking Bad → categorie "tv", titel + maker (Vince Gilligan) +
+jaar + poster correct via TMDB.
+
+## Losse nummers
+
+| Bron | Categorie-detectie | Canonieke match |
+|---|---|---|
+| Spotify (track-link) | ✅ padherkenning (`/track/` i.p.v. `/album/`) | ✅ MusicBrainz (recording search) |
+
+Getest met: Spotify-tracklink naar "Bohemian Rhapsody" → categorie "songs", titel + artiest
+(Queen) correct, cover via Cover Art Archive. Jaar komt niet altijd mee (MusicBrainz vult
+`first-release-date` niet op elke recording in) — blijft dan leeg en bewerkbaar, geen foute
+waarde.
+
+## Podcasts
+
+| Bron | Categorie-detectie | Canonieke match |
+|---|---|---|
+| Apple Podcasts | ✅ hostname | ✅ iTunes Search API (geen key nodig) |
+| Spotify (show/episode-link) | ✅ padherkenning | resolver nog niet aangesloten voor podcasts via Spotify, categorie wordt wel goed herkend |
+
+Getest met: Apple Podcasts-link naar "This American Life" → categorie "podcasts", titel + cover
+correct. **Let op:** het jaarveld laten we bewust leeg bij podcasts — iTunes' `releaseDate` voor
+een show is de datum van de laatste aflevering, niet de startdatum, en dat als "jaar" tonen zou
+actief misleidend zijn geweest (kwam eerst naar boven als bug: toonde "2026").
+
+## Videogames
+
+Datamodel (`works.source = 'igdb'`, categorie `games`) staat klaar, resolver nog niet gebouwd —
+IGDB vereist een gratis Twitch-developer-app (client id + secret) die de eigenaar nog moet
+aanmaken. Zodra die er is: zelfde patroon als de andere resolvers in `resolve-work.ts`.
 
 ## Essays & Dingen
 
