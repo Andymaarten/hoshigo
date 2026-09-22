@@ -1,11 +1,18 @@
 export type Theme = "default" | "duotone" | "noir" | "sage" | "blush";
 
+export interface SocialLink {
+  platform: string;
+  handle: string;
+  url: string;
+}
+
 export interface Profile {
   id: string;
   handle: string;
   display_name: string | null;
   bio: string | null;
   theme: Theme;
+  social_links: SocialLink[];
   created_at: string;
 }
 

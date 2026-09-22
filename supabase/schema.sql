@@ -9,6 +9,11 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
+-- other accounts a person links from their bio (Instagram, Substack, LinkedIn, etc.) —
+-- kept as a small JSON array rather than its own table since it's just a handful of
+-- {platform, handle, url} entries per profile with no cross-referencing needed.
+alter table public.profiles add column if not exists social_links jsonb not null default '[]';
+
 create table if not exists public.categories (
   id serial primary key,
   slug text unique not null,
