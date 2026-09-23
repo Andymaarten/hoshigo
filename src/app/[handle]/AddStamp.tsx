@@ -110,6 +110,8 @@ export default function AddStamp({
   const [looking, setLooking] = useState(false);
   const [formError, setFormError] = useState("");
   const [pin, setPin] = useState(false);
+  // a matched place's own website: the link when the person gives none of their own
+  const [catalogSite, setCatalogSite] = useState("");
   const [lastFound, setLastFound] = useState<string[]>([]);
   const [landed, setLanded] = useState<{ label: string; slug: string } | null>(null);
   const submittedCategory = useRef<{ label: string; slug: string } | null>(null);
@@ -152,6 +154,7 @@ export default function AddStamp({
     setFormError("");
     setPin(false);
     setLastFound([]);
+    setCatalogSite("");
   }
 
   useEffect(() => {
@@ -225,6 +228,7 @@ export default function AddStamp({
   function clearMatch() {
     setWorkId("");
     setMatchedSource(null);
+    setCatalogSite("");
   }
 
   // Tries to tie what we read from a link to a catalog entry. Never touches the link.
@@ -421,6 +425,8 @@ export default function AddStamp({
   async function pickResult(r: Candidate) {
     setPicking(r.source_id);
     let id = "";
+    let site = "";
+    let sitePhoto = "";
     try {
       const data = await fetchJson(
         "/api/search-works",
@@ -428,13 +434,18 @@ export default function AddStamp({
         10000
       );
       id = data?.work_id ?? "";
+      site = typeof data?.website === "string" && /^https?:\/\//.test(data.website) ? data.website : "";
+      // a photo found on the place's own website, when the catalog had none
+      sitePhoto = !r.image_url && typeof data?.image_url === "string" ? data.image_url : "";
     } catch {
       // still usable without the catalog link
     }
     setWorkId(id);
     setMatchedSource(id ? r.source : null);
-    setDraft((d) => ({ ...d, title: r.title, by: r.by ?? "", year: r.year ? String(r.year) : "", image: r.image_url ?? "" }));
-    setPhotos(uniq([r.image_url]));
+    setCatalogSite(id ? site : "");
+    const photo = r.image_url || sitePhoto;
+    setDraft((d) => ({ ...d, title: r.title, by: r.by ?? "", year: r.year ? String(r.year) : "", image: photo }));
+    setPhotos(uniq([photo]));
     setBrokenPhotos([]);
     setPicking(null);
     setScreen("details");
@@ -531,7 +542,8 @@ export default function AddStamp({
       </div>
     );
   }
-  const finalUrl = path === "paste" ? link : ownLinkClean ? stripTracking(ownLinkClean) : "";
+  // Honest link rule: a pasted link, then the person's own link, then the place's own website.
+  const finalUrl = path === "paste" ? link : ownLinkClean ? stripTracking(ownLinkClean) : catalogSite;
   const finalSourceLabel =
     path === "paste" ? sourceLabel : finalUrl ? new URL(finalUrl).hostname.replace(/^www\./, "") : "";
 
