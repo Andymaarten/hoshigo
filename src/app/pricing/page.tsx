@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
+import HeaderStamp from "@/components/HeaderStamp";
 import { createClient } from "@/lib/supabase/server";
 
 // Not linked from SiteNav or anywhere in global navigation on purpose — this page
@@ -22,6 +23,7 @@ export default async function PricingPage() {
           </Link>
           <SiteNav loggedIn={!!user} handle={myHandle} />
         </div>
+        <HeaderStamp />
         <div className="kicker">
           <span className="dot" aria-hidden="true" />
           hoshigo+

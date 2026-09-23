@@ -8,6 +8,7 @@ import CoverImage from "@/components/CoverImage";
 import SharePanel from "@/components/SharePanel";
 import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
+import HeaderStamp from "@/components/HeaderStamp";
 
 type Params = { params: Promise<{ handle: string; item: string }> };
 
@@ -56,6 +57,7 @@ export default async function ListingPage({ params }: Params) {
         </Link>
         <SiteNav loggedIn={loggedIn} handle={myHandle} />
       </div>
+      <HeaderStamp />
     </header>
   );
 

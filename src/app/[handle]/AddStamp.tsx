@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { Category } from "@/lib/supabase/types";
 import { addItem } from "./actions";
 import { clearPendingAdd } from "../add/actions";
@@ -8,6 +9,7 @@ import Sheet from "@/components/Sheet";
 import CoverImage from "@/components/CoverImage";
 import PhotoFromPage from "@/components/PhotoFromPage";
 import { displayUrl, extractUrl, stripTracking } from "@/lib/link-input";
+import { ADD_PREFILL_EVENT, type AddPrefill, type PinMap } from "@/lib/item-order";
 import { BY_LABEL, COVER_FROM_CATALOG, SEARCHABLE, SEARCH_HINT, SHAPE, SOURCE_NAME } from "@/lib/category-display";
 
 // One decision per screen:
@@ -51,11 +53,17 @@ export default function AddStamp({
   handle,
   categories,
   initialAddLink,
+  pins = null,
+  onOwnPage = true,
 }: {
   handle: string;
   categories: Category[];
   // Set when arriving from /add?url=…: open on "Paste a link" with this text and read it.
   initialAddLink?: string;
+  /** my pinned listing per category; null before the pinning migration (no pin option) */
+  pins?: PinMap | null;
+  /** false on every other page: after adding, say where it landed */
+  onOwnPage?: boolean;
 }) {
   const [pinned, setPinned] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
@@ -101,6 +109,10 @@ export default function AddStamp({
   const [matchedSource, setMatchedSource] = useState<string | null>(null);
   const [looking, setLooking] = useState(false);
   const [formError, setFormError] = useState("");
+  const [pin, setPin] = useState(false);
+  const [lastFound, setLastFound] = useState<string[]>([]);
+  const [landed, setLanded] = useState<{ label: string; slug: string } | null>(null);
+  const submittedCategory = useRef<{ label: string; slug: string } | null>(null);
 
   const category = categories.find((c) => String(c.id) === categoryId);
   const slug = category?.slug ?? "";
@@ -138,6 +150,8 @@ export default function AddStamp({
     setWorkId("");
     setMatchedSource(null);
     setFormError("");
+    setPin(false);
+    setLastFound([]);
   }
 
   useEffect(() => {
@@ -155,6 +169,7 @@ export default function AddStamp({
     if (wasPending.current && !pending && !error) {
       setOpen(false);
       reset();
+      if (!onOwnPage && submittedCategory.current) setLanded(submittedCategory.current);
     }
     wasPending.current = pending;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,6 +192,35 @@ export default function AddStamp({
     if (initialAddLink.trim()) readLink(initialAddLink);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialAddLink]);
+
+  // "Add to my hoshigo" on someone else's listing: open on the review step with their item.
+  // The link stays the item's own link; their note is theirs, so it isn't copied.
+  useEffect(() => {
+    function onPrefill(e: Event) {
+      const p = (e as CustomEvent<AddPrefill>).detail;
+      const cat = categories.find((c) => c.id === p?.categoryId);
+      if (!cat) return;
+      reset();
+      setLanded(null);
+      setCategoryId(String(cat.id));
+      setWorkId(p.workId ?? "");
+      setDraft({ ...emptyDraft, title: p.title, by: p.by ?? "", year: p.year ? String(p.year) : "", image: p.imageUrl ?? "" });
+      setPhotos(uniq([p.imageUrl]));
+      if (p.url) {
+        setPath("paste");
+        setLink(p.url);
+        setSourceLabel(p.sourceLabel || new URL(p.url).hostname.replace(/^www\./, ""));
+      } else {
+        setPath("choose");
+        setHandLinkRead(true);
+      }
+      setScreen("details");
+      setOpen(true);
+    }
+    window.addEventListener(ADD_PREFILL_EVENT, onPrefill);
+    return () => window.removeEventListener(ADD_PREFILL_EVENT, onPrefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories]);
 
   function clearMatch() {
     setWorkId("");
@@ -479,6 +523,11 @@ export default function AddStamp({
               : "Without a link, your listing doesn't open anything."}
         </span>
         {ownLink.trim() && !ownLinkClean && <span className="error">That doesn&apos;t look like a link yet.</span>}
+        {ownLink && (
+          <button type="button" className="text-btn" style={{ alignSelf: "flex-start" }} onClick={() => setOwnLink("")}>
+            Clear
+          </button>
+        )}
       </div>
     );
   }
@@ -609,6 +658,19 @@ export default function AddStamp({
                 }}
                 autoFocus
               />
+              {linkInput && (
+                <button
+                  type="button"
+                  className="text-btn"
+                  style={{ alignSelf: "flex-start" }}
+                  onClick={() => {
+                    setLinkInput("");
+                    setNotALinkQuery("");
+                  }}
+                >
+                  Clear
+                </button>
+              )}
               <span className="hint">Share text from an app works too.</span>
             </div>
             {notALinkQuery && (
@@ -734,6 +796,7 @@ export default function AddStamp({
                 return;
               }
               setFormError("");
+              submittedCategory.current = category ? { label: category.label, slug: category.slug } : null;
               action(fd);
             }}
             className="stack"
@@ -875,12 +938,26 @@ export default function AddStamp({
                 )}
                 <PhotoFromPage
                   label={visiblePhotos.length ? "Use another photo" : "Add a photo"}
+                  allFailed={lastFound.length > 0 && lastFound.every((x) => brokenPhotos.includes(x))}
                   onFound={(imgs) => {
+                    setLastFound(imgs);
                     setPhotos((ps) => uniq([...imgs, ...ps]));
                     setBrokenPhotos((b) => b.filter((x) => !imgs.includes(x)));
                     setDraft((d) => ({ ...d, image: imgs[0] }));
                   }}
                 />
+              </div>
+            )}
+
+            {pins && category && (
+              <div className="field">
+                <label className="check-row">
+                  <input type="checkbox" name="pin" checked={pin} onChange={(e) => setPin(e.target.checked)} />
+                  Pin to the top of {category.label}
+                </label>
+                {pin && pins[category.id] && (
+                  <span className="hint">This removes the pin from {pins[category.id].title}.</span>
+                )}
               </div>
             )}
 
@@ -924,6 +1001,20 @@ export default function AddStamp({
           </form>
         )}
       </Sheet>
+
+      {landed && (
+        <div className="add-toast" role="status">
+          <span>
+            Added to your {landed.label}.{" "}
+            <Link href={`/${handle}#h-${landed.slug}`} onClick={() => setLanded(null)}>
+              See it on your page
+            </Link>
+          </span>
+          <button type="button" className="text-btn" onClick={() => setLanded(null)}>
+            Close
+          </button>
+        </div>
+      )}
     </>
   );
 }

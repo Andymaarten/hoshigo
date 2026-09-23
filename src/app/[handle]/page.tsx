@@ -16,6 +16,9 @@ import {
   type FriendState,
 } from "@/lib/friends";
 import { sortCategories } from "@/lib/category-display";
+import { compareForProfile } from "@/lib/item-order";
+import { myPins } from "@/lib/add-context";
+import HeaderStamp from "@/components/HeaderStamp";
 
 export default async function ProfilePage({
   params,
@@ -86,6 +89,9 @@ export default async function ProfilePage({
     list.push(item);
     itemsByCategory.set(item.category_id, list);
   });
+  // pinned first, then newest; before the pinning migration nothing is pinned
+  for (const list of itemsByCategory.values()) list.sort(compareForProfile);
+  const pins = isOwner ? await myPins(supabase, profile.id) : null;
 
   // Non-friends only ever receive the newest 5 per category. After the friends migration RLS
   // already guarantees this; the slice keeps it true before the migration too.
@@ -137,8 +143,10 @@ export default async function ProfilePage({
             categories={categories ?? []}
             // Arriving from /add?url=: open the dialog with that link (docs/add-link.md).
             initialAddLink={adding === "1" ? (await cookies()).get(ADD_COOKIE)?.value ?? "" : undefined}
+            pins={pins}
           />
         )}
+        {!isOwner && user?.user && <HeaderStamp />}
         <h1>{displayName}.</h1>
         <div className="bio-row">
           {profile.bio && <p className="bio">{profile.bio}</p>}
@@ -186,6 +194,7 @@ export default async function ProfilePage({
               lock={lock}
               allCategories={categories ?? []}
               isPrivate={profile.is_private}
+              pins={pins}
             />
           ))}
         {isOwner && (items ?? []).length === 0 && (

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/supabase/types";
 import SiteNav from "@/components/SiteNav";
+import HeaderStamp from "@/components/HeaderStamp";
 import SiteFooter from "@/components/SiteFooter";
 import SettingsForm from "./form";
 
@@ -31,6 +32,7 @@ export default async function SettingsPage() {
           </div>
           <SiteNav loggedIn handle={profile.handle} />
         </div>
+        <HeaderStamp />
         <div className="kicker">
           <span className="dot" aria-hidden="true" />
           settings

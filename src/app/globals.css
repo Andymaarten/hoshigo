@@ -1605,6 +1605,34 @@ footer .cta {
   order: 1;
 }
 
+/* after adding from another page: where it landed */
+.add-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 60;
+  width: min(460px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--ground);
+  border: 2px solid var(--ink);
+  font-size: 15px;
+}
+
+.add-toast a {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.input-clear {
+  flex-shrink: 0;
+}
+
 .check-row {
   display: flex;
   align-items: center;

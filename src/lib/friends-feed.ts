@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { Item } from "@/lib/supabase/types";
 import { PUBLIC_PER_CATEGORY } from "@/lib/share-rules";
+import { compareForProfile } from "@/lib/item-order";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -35,25 +36,29 @@ export async function feedRows(
   return { items: rows.slice(0, FEED_PAGE_SIZE), hasOlder: rows.length > FEED_PAGE_SIZE };
 }
 
-// Only a listing among its owner's newest five in that category may be shared (same rule as
-// the profile sheet). One light query over the friends' ids, ranked here.
+// Only a listing among its owner's first five in that category may be shared (same rule and
+// order as the profile: pinned first, then newest). One light query over the friends' ids.
 export async function shareableIds(supabase: Supabase, friendIds: string[]): Promise<Set<string>> {
   const ids = new Set<string>();
   if (!friendIds.length) return ids;
-  const { data } = await supabase
-    .from("items")
-    .select("id, profile_id, category_id")
-    .in("profile_id", friendIds)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(5000);
-  const seen = new Map<string, number>();
+  const query = (cols: string) =>
+    supabase
+      .from("items")
+      .select(cols)
+      .in("profile_id", friendIds)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(5000)
+      .returns<Item[]>();
+  const first = await query("id, profile_id, category_id, created_at, pinned");
+  // before the pinning migration there is no pinned column
+  const data = first.error ? (await query("id, profile_id, category_id, created_at")).data : first.data;
+  const groups = new Map<string, Item[]>();
   for (const r of data ?? []) {
     const key = `${r.profile_id}|${r.category_id}`;
-    const n = seen.get(key) ?? 0;
-    if (n < PUBLIC_PER_CATEGORY) ids.add(r.id as string);
-    seen.set(key, n + 1);
+    groups.set(key, [...(groups.get(key) ?? []), r]);
   }
+  for (const list of groups.values()) list.sort(compareForProfile).slice(0, PUBLIC_PER_CATEGORY).forEach((r) => ids.add(r.id));
   return ids;
 }
 
