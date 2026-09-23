@@ -165,12 +165,15 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
         15000
       );
       const w = data?.work;
-      if (w) {
+      // A fuzzy place hit is often a different place with a similar name; don't link it.
+      const sure = w?.match_confidence === "high";
+      if (w && (sure || cat.slug !== "places")) {
         setWorkId(w.id);
         setMatchedSource(w.source);
         setDraft((d) => ({
           ...d,
-          title: w.title || d.title,
+          // Only a near exact match may replace the title the person's own link gave us.
+          title: (sure || !d.title ? w.title : d.title) || d.title,
           by: w.by || d.by,
           year: w.year ? String(w.year) : "",
           image: w.image_url || d.image,
@@ -537,7 +540,7 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                   <li key={`${r.source}:${r.source_id}`}>
                     <button type="button" className="result" disabled={!!picking} onClick={() => pickResult(r)}>
                       <span className={`thumb${SHAPE[slug] === "tall" ? " tall" : ""}${SHAPE[slug] === "photo" ? " photo" : ""}`}>
-                        <CoverImage src={r.image_url} />
+                        <CoverImage src={r.image_url} small />
                       </span>
                       <span className="result-txt">
                         <span className="title">{r.title}</span>

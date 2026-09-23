@@ -14,8 +14,10 @@ export default function CoverImage({
   eager,
   onFail,
   rejectOdd,
+  small,
 }: {
   rejectOdd?: boolean;
+  small?: boolean;
   src: string | null | undefined;
   alt?: string;
   className?: string;
@@ -23,7 +25,7 @@ export default function CoverImage({
   eager?: boolean;
   onFail?: () => void;
 }) {
-  const resolved = imageSrc(src);
+  const resolved = imageSrc(src, small ? "small" : "normal");
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   if (!resolved || failedSrc === resolved) return null;
   return (

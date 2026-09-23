@@ -23,6 +23,7 @@ export type PageSignals = {
   generator?: string | null;
   jsonLdTypes?: string[];
   visibleText?: string | null;
+  markers?: PageMarkers;
 };
 
 type Rule = [RegExp, string, string?];
@@ -77,7 +78,8 @@ function ruleFromUrl(hostname: string, path: string, url = ""): { slug: string; 
   if (/(^|\.)open\.spotify\.com$/.test(host)) {
     if (/\/track\//.test(path)) return { slug: "songs", reason: "path: spotify track" };
     if (/\/(episode|show)\//.test(path)) return { slug: "podcasts", reason: "path: spotify podcast" };
-    return { slug: "albums", reason: "path: spotify album" };
+    if (/\/album\//.test(path)) return { slug: "albums", reason: "path: spotify album" };
+    return null;
   }
   if (/(^|\.)music\.apple\.com$/.test(host)) {
     if (/\/song\//.test(path) || /[?&]i=\d+/.test(url)) return { slug: "songs", reason: "path: apple music song" };
@@ -263,20 +265,105 @@ export async function classify(
   if (!og && signals.generator && /^bandcamp$/i.test(signals.generator))
     return { slug: "albums", confidence: "high", reason: "generator: bandcamp", alternatives: ["albums"] };
 
-  const weak = ld ?? og;
-  const weakReason = ld ? `json-ld: ${ld.type}` : og ? `og:type: ${signals.ogType}` : null;
+  // Microdata itemtype carries the same schema.org vocabulary as JSON-LD.
+  const micro = fromJsonLd(signals.markers?.microdata ?? []);
+  if (micro && micro.confidence === "high" && known(micro.slug))
+    return { slug: micro.slug, confidence: "high", reason: `microdata: ${micro.type}`, alternatives: [micro.slug] };
 
-  if (opts.useLlm !== false) {
-    const llm = await llmClassify(signals, slugs);
-    if (llm) {
-      const alternatives = uniq([...llm.alternatives, ...(weak ? [weak.slug] : [])]).slice(0, 3);
-      return { slug: llm.slug, confidence: llm.confidence, reason: weakReason ? `llm (${weakReason})` : "llm", alternatives };
-    }
+  const m = signals.markers;
+  // Page markers: a pinned price or an add to cart button means a product; a byline with a
+  // publish date inside <article> means a written piece; a street address or geo tag a place.
+  const markerHit: { slug: string; reason: string } | null =
+    m?.isbn ? { slug: "books", reason: "marker: isbn" }
+    : m?.geo ? { slug: "places", reason: "marker: address/geo" }
+    : m?.price || m?.cart ? { slug: "things", reason: "marker: price/cart" }
+    : m?.published && (m?.article || m?.author) ? { slug: "essays", reason: "marker: article byline" }
+    : null;
+
+  const weak = ld ?? micro ?? og;
+  const weakReason = ld ? `json-ld: ${ld.type}` : micro ? `microdata: ${micro.type}` : og ? `og:type: ${signals.ogType}` : null;
+
+  // A weak structured type confirmed by a matching page marker is as good as a strong one.
+  if (weak && markerHit && weak.slug === markerHit.slug && known(weak.slug))
+    return { slug: weak.slug, confidence: "high", reason: `${weakReason} + ${markerHit.reason}`, alternatives: [weak.slug] };
+  if (markerHit && known(markerHit.slug) && !weak)
+    return { slug: markerHit.slug, confidence: "medium", reason: markerHit.reason, alternatives: uniq([markerHit.slug, "things", "essays"]).filter(known).slice(0, 3) };
+  if (weak && known(weak.slug)) {
+    const alternatives = uniq([weak.slug, markerHit?.slug ?? "", weak.slug === "essays" ? "things" : "essays"]).filter((s) => s && known(s));
+    return { slug: weak.slug, confidence: "medium", reason: weakReason!, alternatives: alternatives.slice(0, 3) };
   }
 
-  if (weak && known(weak.slug)) {
-    const alternatives = uniq([weak.slug, ...(weak.slug === "essays" ? ["things"] : ["essays"])]).filter(known);
-    return { slug: weak.slug, confidence: "medium", reason: weakReason!, alternatives };
+  const pathHit = pathHint(signals.path) ?? titleHint(`${signals.title ?? ""} ${signals.siteName ?? ""}`);
+  if (!pathHit && m?.longText && !m.price && !m.cart && known("essays"))
+    return { slug: "essays", confidence: "medium", reason: "marker: long text, no shop", alternatives: ["essays", "things"].filter(known) };
+  if (pathHit && known(pathHit.slug))
+    return { slug: pathHit.slug, confidence: "medium", reason: pathHit.reason, alternatives: uniq([pathHit.slug, "things", "essays"]).filter(known).slice(0, 3) };
+
+  // Nothing on the page says what it is. The LLM is a last resort and off unless
+  // CLASSIFY_LLM=1; otherwise the dialog asks with one tap choices.
+  if (opts.useLlm !== false && process.env.CLASSIFY_LLM === "1") {
+    const llm = await llmClassify(signals, slugs);
+    if (llm) return { slug: llm.slug, confidence: llm.confidence, reason: "llm", alternatives: llm.alternatives.slice(0, 3) };
   }
   return { slug: "things", confidence: "low", reason: "no signal", alternatives: ["things", "essays"].filter(known) };
+}
+
+// Words in the URL path that say what kind of page it is. Medium only: paths lie sometimes.
+function pathHint(path: string): { slug: string; reason: string } | null {
+  const p = path.toLowerCase();
+  const rules: [RegExp, string][] = [
+    [/\/(film|films|movie|movies)\//, "films"],
+    [/\/(book|books|boek|boeken|buch)\//, "books"],
+    [/\/(album|albums)\//, "albums"],
+    [/\/(podcast|podcasts)\//, "podcasts"],
+    [/\/(restaurant|restaurants|hotel|hotels|place|places|venue|museum)\//, "places"],
+    [/\/(recipe|recipes|product|products|shop|item|p|dp)\//, "things"],
+    [/\/(article|articles|blog|news|essay|essays|post|posts|opinion)\/|\/\d{4}\/\d{2}\//, "essays"],
+  ];
+  for (const [re, slug] of rules) if (re.test(p)) return { slug, reason: `path word: ${p.match(re)?.[0]}` };
+  return null;
+}
+
+function titleHint(text: string): { slug: string; reason: string } | null {
+  // Long words may sit inside a compound ("Rijksmuseum"); short ones need a word boundary.
+  const m = text.match(/(museum|restaurant|bistro|hotel|gallery|galerie|theater|theatre|bakery|bakkerij)\b|\b(café|cafe|bar|park)\b/i);
+  return m ? { slug: "places", reason: `title word: ${(m[1] ?? m[2]).toLowerCase()}` } : null;
+}
+
+export type PageMarkers = {
+  longText: boolean;
+  microdata: string[];
+  price: boolean;
+  cart: boolean;
+  published: boolean;
+  article: boolean;
+  author: boolean;
+  geo: boolean;
+  isbn: boolean;
+};
+
+export function pageMarkers(html: string): PageMarkers {
+  const microdata = [...html.matchAll(/itemtype=["']https?:\/\/schema\.org\/([A-Za-z]+)["']/gi)].map((m) => m[1]);
+  const body = (html.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1] ?? html)
+    .replace(/<(script|style|noscript|svg|nav|header|footer)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ");
+  return {
+    longText: body.split(/\s+/).filter((w) => /[a-z]{2,}/i.test(w)).length > 1200,
+    microdata,
+    price:
+      /<meta[^>]+(?:property|name)=["'](?:product:price:amount|og:price:amount|twitter:data1)["'][^>]+content=["'][^"']*\d/i.test(html) ||
+      /itemprop=["']price["']/i.test(html) ||
+      /"@type"\s*:\s*"Offer"/.test(html),
+    cart: /\b(add to (cart|bag|basket)|in winkelwagen|in den warenkorb|ajouter au panier)\b/i.test(html),
+    published: /<meta[^>]+(?:property|name)=["'](?:article:published_time|datePublished|date|pubdate)["']/i.test(html) || /itemprop=["']datePublished["']/i.test(html),
+    article: /<article[\s>]/i.test(html),
+    author: /<meta[^>]+(?:property|name)=["'](?:author|article:author)["']/i.test(html) || /rel=["']author["']/i.test(html),
+    geo:
+      /<meta[^>]+(?:property|name)=["'](?:place:location:latitude|geo\.position|ICBM|business:contact_data:street_address)["']/i.test(html) ||
+      /itemprop=["'](?:streetAddress|geo|address)["']/i.test(html) ||
+      /"@type"\s*:\s*"(?:PostalAddress|GeoCoordinates)"/.test(html),
+    isbn:
+      /<meta[^>]+(?:property|name)=["'](?:book:isbn|isbn)["']/i.test(html) ||
+      /\bISBN(?:-1[03])?:?\s*(?:97[89][-\s]?)?\d{1,5}[-\s]?\d{1,7}[-\s]?\d{1,7}[-\s]?[\dX]\b/i.test(html),
+  };
 }

@@ -453,7 +453,16 @@ const LANGUAGE_NAMES: Record<string, string> = {
 
 const olCover = (id: number) => `https://covers.openlibrary.org/b/id/${id}-M.jpg`;
 
-function bookToWork(doc: OlDoc, confidence: "high" | "low", query?: string): ResolvedWork {
+type BookRow = {
+  work: ResolvedWork;
+  lang: string | null;
+  edYear: number | null;
+  publisher: string | null;
+  originalTitle: string | null;
+  hasOwnAuthor: boolean;
+};
+
+function bookRow(doc: OlDoc, confidence: "high" | "low", query?: string): BookRow {
   // Open Library puts the edition that best matches the query first, which is what
   // makes a Dutch or German title search land on that translation. When the work's own
   // title is closer to what was typed ("Der Steppenwolf"), show that instead.
@@ -462,35 +471,92 @@ function bookToWork(doc: OlDoc, confidence: "high" | "low", query?: string): Res
   const preferWork = !!query && !!editionTitle && similarity(query, doc.title) > similarity(query, editionTitle) + 0.1;
   const isOtherEdition =
     !preferWork && !!editionTitle && normalizeForMatch(editionTitle) !== normalizeForMatch(doc.title);
-  const lang = ed?.language?.[0] ? LANGUAGE_NAMES[ed.language[0]] ?? ed.language[0] : null;
-  const edYear = Number(ed?.publish_date?.[0]?.match(/\d{4}/)?.[0]) || null;
   const workCover = doc.cover_i ? olCover(doc.cover_i) : null;
   const edCover = !preferWork && ed?.cover_i ? olCover(ed.cover_i) : null;
-  const detailParts = [
-    lang && !preferWork ? `${lang} edition` : null,
-    preferWork ? null : ed?.publisher?.[0] ?? null,
-    !preferWork && edYear && edYear !== doc.first_publish_year ? String(edYear) : null,
-    isOtherEdition ? `original: ${doc.title}` : null,
-  ].filter(Boolean);
   return {
-    source: "openlibrary",
-    source_id: doc.key,
-    title: isOtherEdition ? editionTitle! : doc.title,
-    by: doc.author_name?.[0] ?? null,
-    year: doc.first_publish_year ?? null,
-    image_url: edCover ?? workCover,
-    match_confidence: confidence,
-    work_title: doc.title,
-    work_image_url: workCover,
-    detail: detailParts.join(" · ") || null,
+    work: {
+      source: "openlibrary",
+      source_id: doc.key,
+      title: isOtherEdition ? editionTitle! : doc.title,
+      by: doc.author_name?.[0] ?? null,
+      year: doc.first_publish_year ?? null,
+      image_url: edCover ?? workCover,
+      match_confidence: confidence,
+      work_title: doc.title,
+      work_image_url: workCover,
+    },
+    lang: !preferWork && ed?.language?.[0] ? LANGUAGE_NAMES[ed.language[0]] ?? ed.language[0] : null,
+    edYear: preferWork ? null : Number(ed?.publish_date?.[0]?.match(/\d{4}/)?.[0]) || null,
+    publisher: preferWork ? null : ed?.publisher?.[0] ?? null,
+    originalTitle: isOtherEdition ? doc.title : null,
+    hasOwnAuthor: !!doc.author_name?.length,
   };
 }
 
+// "Dutch edition · 1972 · Meulenhoff · original: Cien años de soledad"
+function bookDetail(r: BookRow): string | null {
+  const parts = [
+    r.lang ? `${r.lang} edition` : null,
+    r.edYear && r.edYear !== r.work.year ? String(r.edYear) : null,
+    r.publisher,
+    r.originalTitle ? `original: ${r.originalTitle}` : null,
+  ].filter(Boolean);
+  return parts.join(" · ") || null;
+}
+
+function bookToWork(doc: OlDoc, confidence: "high" | "low", query?: string): ResolvedWork {
+  const r = bookRow(doc, confidence, query);
+  return { ...r.work, detail: bookDetail(r) };
+}
+
 export async function searchBooks(query: string): Promise<ResolvedWork[]> {
-  const params = new URLSearchParams({ q: query, fields: OL_FIELDS, limit: "12" });
+  const params = new URLSearchParams({ q: query, fields: OL_FIELDS, limit: "20" });
   const data = await fetchJson(`https://openlibrary.org/search.json?${params}`);
-  const docs: OlDoc[] = data?.docs ?? [];
-  return docs.map((d) => bookToWork(d, "low", query));
+  const rows = ((data?.docs ?? []) as OlDoc[]).map((d) => bookRow(d, "low", query));
+
+  // Open Library has many author-less stub works for the same translation. Give them the
+  // author and year of a matching authored work from the same results.
+  for (const r of rows) {
+    if (r.hasOwnAuthor) continue;
+    const parent = rows.find(
+      (p) =>
+        p.hasOwnAuthor &&
+        (similarity(p.work.title, r.work.title) >= 0.85 || similarity(p.work.work_title ?? "", r.work.title) >= 0.85)
+    );
+    if (parent) {
+      r.work.by = parent.work.by;
+      r.work.year ??= parent.work.year;
+    }
+  }
+
+  // Collapse duplicates: same title + author + language (an unknown language joins any
+  // group). The authored work keeps its id; the newest edition with a cover wins the cover.
+  const kept: BookRow[] = [];
+  for (const r of rows) {
+    const twin = kept.find(
+      (k) =>
+        similarity(k.work.title, r.work.title) >= 0.9 &&
+        normalizeForMatch(k.work.by ?? "") === normalizeForMatch(r.work.by ?? "") &&
+        (!k.lang || !r.lang || k.lang === r.lang)
+    );
+    if (!twin) {
+      kept.push(r);
+      continue;
+    }
+    const base = twin.hasOwnAuthor || !r.hasOwnAuthor ? twin : r;
+    const other = base === twin ? r : twin;
+    const newerCover = other.work.image_url && (!base.work.image_url || (other.edYear ?? 0) > (base.edYear ?? 0));
+    if (newerCover) {
+      base.work.image_url = other.work.image_url;
+      base.edYear = other.edYear ?? base.edYear;
+      base.publisher = other.publisher ?? base.publisher;
+    }
+    base.lang ??= other.lang;
+    base.publisher ??= other.publisher;
+    base.edYear ??= other.edYear;
+    if (base !== twin) kept[kept.indexOf(twin)] = base;
+  }
+  return kept.slice(0, 10).map((r) => ({ ...r.work, detail: bookDetail(r) }));
 }
 
 export async function resolveBook(title: string, author?: string | null): Promise<ResolvedWork | null> {

@@ -6,15 +6,22 @@ export function isProxiedImageHost(hostname: string) {
 
 // Maps a stored image URL to what the browser should load. Stored rows keep the original
 // URL so nothing in the database depends on this proxy.
-export function imageSrc(url: string | null | undefined): string | null {
+// "small" is for 44px list thumbnails in the search results (88px at 2x).
+export function imageSrc(url: string | null | undefined, size: "normal" | "small" = "normal"): string | null {
   if (!url) return null;
   try {
     const u = new URL(url);
     if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-    if (isProxiedImageHost(u.hostname)) return `/api/img?u=${encodeURIComponent(u.toString().replace(/^http:/, "https:"))}`;
-    // TMDB originals are 1 to 2 MB; the list never needs more than w342.
-    if (u.hostname === "image.tmdb.org") return u.toString().replace(/\/t\/p\/(original|w500|w780)\//, "/t/p/w342/");
-    return u.toString();
+    let s = u.toString().replace(/^http:/, "https:");
+    if (size === "small") {
+      s = s
+        .replace(/(coverartarchive\.org\/release-group\/[^/]+\/front)-\d+/, "$1-250")
+        .replace(/\/\d+x\d+bb\.(jpg|png)$/, "/100x100bb.$1");
+    }
+    if (isProxiedImageHost(u.hostname)) return `/api/img?u=${encodeURIComponent(s)}`;
+    // TMDB originals are 1 to 2 MB; the grid never needs more than w342.
+    if (u.hostname === "image.tmdb.org") return s.replace(/\/t\/p\/(original|w\d+)\//, size === "small" ? "/t/p/w154/" : "/t/p/w342/");
+    return s;
   } catch {
     return null;
   }

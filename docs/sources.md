@@ -603,6 +603,27 @@ niet gebouwd: de keyless quota gaf direct `429 RESOURCE_EXHAUSTED`.
 - Geen Supabase Storage-kopie: of er een `covers`-bucket bestaat kon ik niet vaststellen
   (geen service-role key lokaal; de anon-key geeft voor elke bucketnaam `200 []`).
 
+### Ronde 2 (2026-09-23)
+
+- **LLM alleen als laatste redmiddel, standaard uit.** Het draait alleen bij confidence
+  *low* én `CLASSIFY_LLM=1` + `ANTHROPIC_API_KEY`. Daarvoor komen gratis signalen:
+  microdata `itemtype`, prijs- en winkelwagenmarkers, `article:published_time` +
+  `<article>`/auteur, adres- en geomarkers, ISBN in de pagina, lange tekst zonder winkel,
+  woorden in pad en titel (`/recipe/`, "museum") en een catalogus-titelprobe (TMDB/Open
+  Library, alleen *high*-matches) die de keuzeknoppen ordent. In de matrix blijft 2 van 38
+  links *low* (zie `input-test-matrix.md`).
+- **SSRF.** Alle server-side fetches van gebruikers-URL's lopen via `safeFetch()`
+  ([`src/lib/safe-fetch.ts`](../src/lib/safe-fetch.ts)): alleen http(s), geen credentials in
+  de URL, DNS-lookup geblokkeerd voor loopback/privé/link-local/CGNAT/metadata en IPv6
+  `::`/fc00::/7/fe80::/10/NAT64, `redirect: "manual"` met maximaal 5 hops en een check per
+  hop. Restrisico: DNS-rebinding tussen onze lookup en die van fetch.
+- **Boeken-lijst.** Auteurloze Open Library-stubwerken erven auteur en jaar van een
+  passend werk in dezelfde resultaten; duplicaten (titel + auteur + taal) worden
+  samengevoegd.
+- **Plaatsen.** Een Nominatim-match met lage confidence wordt niet meer gekoppeld en
+  overschrijft de titel niet (gevonden: de maps.app.goo.gl-link van "Anand Tea Stall" matchte
+  "Anand Jetty Tea Stall").
+
 ## Uitbreiden
 
 Nieuwe bron toevoegen aan de categorie-herkenning: `DOMAIN_RULES` / `ruleFromUrl()` in

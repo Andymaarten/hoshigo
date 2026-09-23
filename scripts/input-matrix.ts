@@ -60,6 +60,9 @@ async function main() {
     ["Wikipedia (entities)", "https://en.wikipedia.org/wiki/Am%C3%A9lie"],
     ["Blocked (TripAdvisor)", "https://www.tripadvisor.com/Restaurant_Review-g188590-d693482-Reviews-Cafe_de_Klos-Amsterdam_North_Holland_Province.html"],
     ["Timeout (slow server)", "https://httpbin.org/delay/15"],
+    ["maps.app.goo.gl short link (real)", "https://maps.app.goo.gl/PR2d5Et72zFTvugP7"],
+    ["spotify.link short link (real, a Blend)", "https://spotify.link/8JnKrNFWLob"],
+    ["Internal address (SSRF)", "http://169.254.169.254/latest/meta-data/"],
     ["Plain text, not a link", "Honderd jaar eenzaamheid"],
   ];
 

@@ -1,10 +1,26 @@
 import { extractUrl, stripTracking } from "./link-input";
-import { classify, jsonLdTypes, type Classification } from "./classify";
-import { extractYoutubeId } from "./resolve-work";
+import { classify, jsonLdTypes, pageMarkers, type Classification } from "./classify";
+import { extractYoutubeId, resolveBook, resolveFilm } from "./resolve-work";
+import { assertPublicUrl, safeFetch } from "./safe-fetch";
+
+// When nothing on the page says what it is, a near exact title hit in one of our own
+// catalogs is evidence. Only high confidence hits count, and they only reorder the one tap
+// choices (or preselect, when exactly one catalog agrees); the person still confirms.
+async function probeCatalogs(title: string, by: string | undefined, base: Classification, slugs: string[]): Promise<Classification> {
+  const [film, book] = await Promise.all([resolveFilm(title).catch(() => null), resolveBook(title, by).catch(() => null)]);
+  const hits = [film?.match_confidence === "high" ? "films" : null, book?.match_confidence === "high" ? "books" : null].filter(
+    (s): s is string => !!s && slugs.includes(s)
+  );
+  if (!hits.length) return base;
+  const alternatives = [...new Set([...hits, ...base.alternatives])].slice(0, 3);
+  if (hits.length === 1) return { slug: hits[0], confidence: "medium", reason: `catalog title match: ${hits[0]}`, alternatives };
+  return { ...base, reason: `catalog title match: ${hits.join(", ")}`, alternatives };
+}
 
 // Reads whatever was pasted into the add dialog and returns the best prefill we can get.
-// It never throws: every path ends in a result the dialog can turn into manual fields. `link` is exactly what the listing will send visitors to (the pasted URL with
-// only tracking params removed); `target` is where a short link actually lands, used
+// It never throws: every path ends in a result the dialog can turn into manual fields.
+// `link` is exactly what the listing will send visitors to (the pasted URL with only
+// tracking params removed); `target` is where a short link actually lands, used
 // for reading metadata only. See docs/sources.md and docs/input-test-matrix.md.
 
 const BROWSER_UA =
@@ -104,9 +120,8 @@ function collectImageCandidates(html: string, base: string, primary: string | nu
 }
 
 async function fetchWithTimeout(url: string, ms: number, headers?: Record<string, string>, init?: RequestInit) {
-  return fetch(url, {
+  return safeFetch(url, {
     signal: AbortSignal.timeout(ms),
-    redirect: "follow",
     ...init,
     headers: { "User-Agent": BROWSER_UA, Accept: "text/html,application/xhtml+xml", "Accept-Language": "en,nl;q=0.8", ...headers },
   });
@@ -252,7 +267,7 @@ async function fromOpenLibrary(url: string): Promise<Meta | null> {
 
 async function fromSpotify(url: string): Promise<Meta | null> {
   const path = new URL(url).pathname;
-  const hint = /\/track\//.test(path) ? "songs" : /\/(episode|show)\//.test(path) ? "podcasts" : "albums";
+  const hint = /\/track\//.test(path) ? "songs" : /\/(episode|show)\//.test(path) ? "podcasts" : /\/album\//.test(path) ? "albums" : undefined;
   // Spotify serves real og tags to crawlers; for shows the og:title is the show name and
   // for episodes the show name sits in og:description as "<Show> · Episode". Albums and
   // tracks carry the artist in og:description ("Artist · album · 2013 · 13 songs").
@@ -449,6 +464,11 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
   if (!extracted) return { status: "not_a_link", query: raw.trim().slice(0, 200) };
 
   const link = stripTracking(extracted);
+  try {
+    await assertPublicUrl(link);
+  } catch {
+    return { status: "error", link, source_label: new URL(link).hostname, category_slug: "things", confidence: "low", reason: "blocked address", alternatives: ["things", "essays"] };
+  }
   let target = link;
   let status: Status = "ok";
   let meta: Meta = {};
@@ -514,7 +534,7 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
     if (ldYear && /Movie|TVSeries|MusicAlbum|Book/.test(String(ldNode?.["@type"]))) meta.year = ldYear;
   }
 
-  if (meta.title && /^(Google Maps|Spotify|YouTube|Amazon\.[a-z.]+|Instagram|Just a moment\.*)$/i.test(meta.title.trim())) meta.title = undefined;
+  if (meta.title && /^(Google Maps|Spotify|(Spotify [–-] )?Web Player|YouTube|Amazon\.[a-z.]+|Instagram|Just a moment\.*)$/i.test(meta.title.trim())) meta.title = undefined;
   if (meta.title) {
     meta.title = cleanTitle(meta.title, siteName, parsed.hostname);
     const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -580,10 +600,13 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
         generator,
         jsonLdTypes: ld.types,
         visibleText: html ? visibleText(html) : null,
+        markers: html ? pageMarkers(html) : undefined,
       },
       slugs,
       { useLlm }
     );
+    const weakGuess = classification.confidence === "low" || /^path word/.test(classification.reason);
+    if (weakGuess && meta.title) classification = await probeCatalogs(meta.title, meta.by, classification, slugs);
   }
 
   return {

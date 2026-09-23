@@ -676,8 +676,15 @@ h2 {
   height: 78px;
 }
 
-.thumb.photo {
-  background: var(--photo);
+/* No cover (or a cover that failed): a calm paper tone with a faint dot, never a black
+   box. A loaded <img> sits on top and hides it. */
+.thumb:not(.nav-thumb),
+.thumb.photo:not(.nav-thumb) {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(29, 28, 26, 0.1) 0 3px, transparent 3.5px),
+    #e3dac9;
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: var(--muted);
 }
 
 .thumb img {
