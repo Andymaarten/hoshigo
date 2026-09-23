@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { headers } from "next/headers";
@@ -98,16 +99,6 @@ export default async function FriendsPage({
   const relation = (id: string) =>
     rel.friendIds.includes(id) ? "friends" : rel.outgoingIds.includes(id) ? "request sent" : rel.incomingIds.includes(id) ? "wants to be friends" : null;
 
-  // Every filter's first page is loaded up front so the chips switch without a round trip.
-  const filters: { key: string; id: number | null }[] = [{ key: "all", id: null }, ...categories.map((c) => ({ key: c.slug, id: c.id }))];
-  const [firstPages, shareIds] = await Promise.all([
-    Promise.all(filters.map((f) => feedRows(supabase, rel.friendIds, f.id))),
-    shareableIds(supabase, rel.friendIds),
-  ]);
-  const initialFeed: Record<string, FeedPage> = {};
-  filters.forEach((f, i) => {
-    initialFeed[f.key] = { items: withShareable(firstPages[i].items, shareIds), hasOlder: firstPages[i].hasOlder };
-  });
   const feedFriends: Record<string, FeedFriend> = {};
   friends.forEach((p) => {
     feedFriends[p.id] = { handle: p.handle, name: name(p), isPrivate: p.is_private };
@@ -193,7 +184,9 @@ export default async function FriendsPage({
           {friends.length === 0 ? (
             <p className="bio">Once you have friends, what they add shows up here, newest first.</p>
           ) : (
-            <FriendsFeed categories={categories} initial={initialFeed} friends={feedFriends} initialSlug={catSlug} />
+            <Suspense fallback={<p className="bio">Loading what your friends added…</p>}>
+              <FeedSection supabase={supabase} friendIds={rel.friendIds} categories={categories} friends={feedFriends} initialSlug={catSlug} />
+            </Suspense>
           )}
         </section>
       </main>
@@ -201,4 +194,31 @@ export default async function FriendsPage({
       <SiteFooter loggedIn />
     </div>
   );
+}
+
+// Streamed separately so your friends, requests and search show before the feed queries finish.
+async function FeedSection({
+  supabase,
+  friendIds,
+  categories,
+  friends,
+  initialSlug,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  friendIds: string[];
+  categories: Category[];
+  friends: Record<string, FeedFriend>;
+  initialSlug: string;
+}) {
+  // Every filter's first page is loaded up front so the chips switch without a round trip.
+  const filters: { key: string; id: number | null }[] = [{ key: "all", id: null }, ...categories.map((c) => ({ key: c.slug, id: c.id }))];
+  const [firstPages, shareIds] = await Promise.all([
+    Promise.all(filters.map((f) => feedRows(supabase, friendIds, f.id))),
+    shareableIds(supabase, friendIds),
+  ]);
+  const initialFeed: Record<string, FeedPage> = {};
+  filters.forEach((f, i) => {
+    initialFeed[f.key] = { items: withShareable(firstPages[i].items, shareIds), hasOlder: firstPages[i].hasOlder };
+  });
+  return <FriendsFeed categories={categories} initial={initialFeed} friends={friends} initialSlug={initialSlug} />;
 }
