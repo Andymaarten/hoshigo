@@ -5,13 +5,13 @@ function escapeHtml(s: string) {
 // Email addresses are only ever read here, server side, with the service role key; nothing a
 // logged in user can call returns another person's address.
 export async function notifyFriendRequest({ toId, fromName, fromHandle }: { toId: string; fromName: string; fromHandle: string }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!apiKey || !serviceKey || !base) return;
 
   const admin = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
-  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://www.hoshigo.cc";
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.hoshigo.cc";
   try {
     const prefRes = await fetch(`${base}/rest/v1/profiles?select=email_friend_requests,auto_accept_friends&id=eq.${toId}`, {
       headers: admin,
@@ -29,7 +29,7 @@ export async function notifyFriendRequest({ toId, fromName, fromHandle }: { toId
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: process.env.FRIENDS_EMAIL_FROM || "hoshigo <onboarding@resend.dev>",
+        from: process.env.FRIENDS_EMAIL_FROM?.trim() || "hoshigo <onboarding@resend.dev>",
         to: [email],
         subject: `${fromName} wants to be friends on hoshigo`,
         html: `<p>Hi,</p>

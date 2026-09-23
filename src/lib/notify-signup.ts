@@ -3,21 +3,21 @@ function escapeHtml(s: string) {
 }
 
 export async function notifyNewSignup({ handle, displayName, email }: { handle: string; displayName: string; email: string | undefined }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const to = process.env.SIGNUP_NOTIFY_EMAIL;
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const to = process.env.SIGNUP_NOTIFY_EMAIL?.trim();
   if (!apiKey || !to) {
     console.warn("signup notify skipped: RESEND_API_KEY or SIGNUP_NOTIFY_EMAIL missing");
     return;
   }
 
-  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://www.hoshigo.cc";
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.hoshigo.cc";
   const name = displayName || handle;
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: process.env.SIGNUP_NOTIFY_FROM || "hoshigo <onboarding@resend.dev>",
+        from: process.env.SIGNUP_NOTIFY_FROM?.trim() || "hoshigo <onboarding@resend.dev>",
         to: [to],
         subject: `New on hoshigo: ${name} (@${handle})`,
         html: `<p><strong>${escapeHtml(name)}</strong> just joined hoshigo.</p>
