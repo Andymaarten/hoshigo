@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Schibsted_Grotesk, Newsreader } from "next/font/google";
 import "./globals.css";
+import FeedbackTab from "@/components/FeedbackTab";
 
 const display = Schibsted_Grotesk({
   variable: "--font-display",
@@ -33,7 +34,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700&display=swap"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <FeedbackTab />
+      </body>
     </html>
   );
 }
