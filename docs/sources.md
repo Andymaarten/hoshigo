@@ -640,6 +640,18 @@ niet gebouwd: de keyless quota gaf direct `429 RESOURCE_EXHAUSTED`.
   `docs/migrations/2026-09-23-classification-feedback.sql`): één rij per geplakte link
   waarvan de categorie is gewijzigd. Een fout bij het loggen breekt het opslaan nooit.
 
+### Ronde 4 (2026-09-23): foto uit een andere pagina
+
+`/api/page-photos` → `readPhotos()` in `read-link.ts`: een directe afbeelding (herkend aan
+content-type) wordt zo gebruikt; een pagina wordt via dezelfde `safeFetch` gelezen, en alle
+bruikbare kandidaten komen terug (max 16, beste eerst). Als de pagina blokkeert of in
+script rendert, valt het terug op de provider-route van `readLink()` (IMDb → TMDB-poster,
+Spotify, enz.). `collectImageCandidates()` neemt nu per srcset de grootste variant,
+voegt dezelfde afbeelding in verschillende maten samen (`imageKey()`) en sorteert
+og:image en grote afbeeldingen naar voren. Het junkfilter pakt ook tracking pixels en
+bot-check-pagina's. De UI (`PhotoFromPage`) zit in alle add-paden en in EditItem, en
+verandert alleen de foto. Zie `input-test-matrix.md`, "Round 4".
+
 ## Uitbreiden
 
 Nieuwe bron toevoegen aan de categorie-herkenning: `DOMAIN_RULES` / `ruleFromUrl()` in

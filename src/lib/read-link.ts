@@ -70,8 +70,38 @@ function decodeHtmlEntities(s: string) {
     .replace(/&amp;/g, "&");
 }
 
-const JUNK_IMAGE_RE = /(sprite|[-_.]icon|favicon|logo|pixel|tracking|avatar|badge|placeholder|spacer|blank\.gif|1x1)/i;
+const JUNK_IMAGE_RE =
+  /(sprite|[-_./]icons?[-_./]|favicon|logo|pixel|tracking|avatar|badge|placeholder|spacer|blank\.gif|1x1|emoji|gravatar|doubleclick|scorecardresearch|google-analytics|facebook\.com\/tr|\/anubis\/|\.within\.website|\/ads?\/|[-_]flag[-_.]|loading\.gif|transparent\.(gif|png)|apple-touch|social[-_](share|icon)|\/static\/images\/(ui|nav)\/)/i;
 const LAZY_SRC_ATTRS = ["data-src", "data-lazy-src", "data-original"];
+
+// The same picture often appears at several sizes: photo_300x200.jpg, /w500/…, ?width=400.
+// Strip the size so they collapse into one candidate.
+function imageKey(url: string): string {
+  try {
+    const u = new URL(url);
+    const path = u.pathname
+      .replace(/\/thumb(\/.+?\/[^/]+)\/\d+px-[^/]+$/, "$1") // Wikimedia thumbs
+      .replace(/([_\-/.@])(\d{2,4}x\d{0,4}|\d{0,4}x\d{2,4}|w\d{2,4}|h\d{2,4}|s\d{2,4}|\d{2,4}w|original|large|medium|small|thumb)(?=[._/\-@]|$)/gi, "$1")
+      .replace(/\._[A-Z0-9_,]+_(?=\.)/g, ""); // Amazon ._AC_SX300_.
+    return `${u.hostname}${path}`;
+  } catch {
+    return url;
+  }
+}
+
+// Picks the widest entry of a srcset ("a.jpg 320w, b.jpg 1024w").
+function largestFromSrcset(srcset: string): { url: string; width: number } | null {
+  let best: { url: string; width: number } | null = null;
+  // Entries are separated by ", "; commas without a space belong to the URL (Amazon's
+  // "_SR116,116_.jpg", Cloudinary's "w_400,c_fill").
+  for (const part of srcset.split(/,\s+(?=\S)|,(?=https?:\/\/)/)) {
+    const [url, size] = part.trim().split(/\s+/);
+    if (!url) continue;
+    const width = Number(size?.match(/^(\d+)w$/)?.[1]) || (Number(size?.match(/^([\d.]+)x$/)?.[1]) || 1) * 400;
+    if (!best || width > best.width) best = { url, width };
+  }
+  return best;
+}
 
 function absolutize(src: string | null | undefined, base: string): string | null {
   if (!src) return null;
@@ -83,30 +113,39 @@ function absolutize(src: string | null | undefined, base: string): string | null
   }
 }
 
-// Extra photo candidates for the picker: every og:image, twitter:image, <picture> sources
-// and the first real <img> tags (including lazy loaded ones), junk filtered.
-function collectImageCandidates(html: string, base: string, primary: string | null): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  const add = (raw: string | null | undefined) => {
+// Photo candidates for the picker: og:image/twitter:image (the page's own choice), then
+// <picture> sources and real <img> tags (lazy loaded ones too), each at its largest listed
+// size. Junk filtered, same image at different sizes collapsed (keeping the larger one),
+// then ordered so the page's own choice and large images come first.
+export function collectImageCandidates(html: string, base: string, primary: string | null, max = 8): string[] {
+  type C = { url: string; score: number; width: number; order: number };
+  const byKey = new Map<string, C>();
+  let order = 0;
+  const add = (raw: string | null | undefined, width: number, bonus: number) => {
     const url = absolutize(raw, base);
-    if (!url || seen.has(url) || JUNK_IMAGE_RE.test(url) || /\.svg(\?|$)/i.test(url)) return;
-    seen.add(url);
-    out.push(url);
+    // "{{…}}" and "${…}" are unrendered template placeholders, not images.
+    if (!url || url.startsWith("data:") || JUNK_IMAGE_RE.test(url) || /\.(svg|ico)(\?|$)/i.test(url) || /%7B%7B|\{\{|\$%7B|\$\{/i.test(url)) return;
+    const hint = /(large|original|full|hires|1200|1600|2000)/i.test(url) ? 1 : /(thumb|small|mini|tiny|_s\.|-s\.)/i.test(url) ? -1 : 0;
+    const score = bonus + hint + (width >= 800 ? 2 : width >= 400 ? 1 : width && width < 150 ? -2 : 0);
+    const key = imageKey(url);
+    const prev = byKey.get(key);
+    if (!prev) byKey.set(key, { url, score, width, order: order++ });
+    else if (width > prev.width || score > prev.score) byKey.set(key, { url: width > prev.width ? url : prev.url, score: Math.max(score, prev.score), width: Math.max(width, prev.width), order: prev.order });
   };
-  add(primary);
-  for (const m of html.matchAll(/<meta[^>]+property=["']og:image(?::url|:secure_url)?["'][^>]+content=["']([^"']+)["']/gi)) add(m[1]);
-  add(metaTag(html, "twitter:image") || metaTag(html, "twitter:image:src"));
-  for (const m of html.matchAll(/<source[^>]+srcset=["']([^"']+)["']/gi)) {
-    if (out.length >= 8) break;
-    add(m[1].split(/,\s*(?=https?:\/\/|\/)/)[0]?.trim().split(/\s+/)[0]);
+  add(primary, 1200, 5);
+  for (const m of html.matchAll(/<meta[^>]+property=["']og:image(?::url|:secure_url)?["'][^>]+content=["']([^"']+)["']/gi)) add(m[1], 1200, 4);
+  add(metaTag(html, "twitter:image") || metaTag(html, "twitter:image:src"), 1000, 3);
+  for (const m of html.matchAll(/<source[^>]+(?:data-)?srcset=["']([^"']+)["']/gi)) {
+    const best = largestFromSrcset(decodeHtmlEntities(m[1]));
+    if (best) add(best.url, best.width, 0);
   }
   for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
-    if (out.length >= 8) break;
     const tag = m[0];
-    const width = Number(tag.match(/\bwidth=["']?(\d+)/)?.[1]);
-    const height = Number(tag.match(/\bheight=["']?(\d+)/)?.[1]);
+    const width = Number(tag.match(/\bwidth=["']?(\d+)/)?.[1]) || 0;
+    const height = Number(tag.match(/\bheight=["']?(\d+)/)?.[1]) || 0;
     if ((width && width <= 64) || (height && height <= 64)) continue;
+    const srcset = tag.match(/\b(?:data-)?srcset=["']([^"']+)["']/)?.[1];
+    const fromSet = srcset ? largestFromSrcset(decodeHtmlEntities(srcset)) : null;
     let src = tag.match(/\bsrc=["']([^"']+)["']/)?.[1];
     if (!src || src.startsWith("data:")) {
       src = undefined;
@@ -115,9 +154,13 @@ function collectImageCandidates(html: string, base: string, primary: string | nu
         if (src) break;
       }
     }
-    add(src);
+    if (fromSet) add(fromSet.url, Math.max(fromSet.width, width), 0);
+    else add(src, width, 0);
   }
-  return out.slice(0, 8);
+  return [...byKey.values()]
+    .sort((a, b) => b.score - a.score || a.order - b.order)
+    .slice(0, max)
+    .map((c) => c.url);
 }
 
 async function fetchWithTimeout(url: string, ms: number, headers?: Record<string, string>, init?: RequestInit) {
@@ -353,7 +396,7 @@ async function fromWikipedia(url: string): Promise<Meta | null> {
   if (!title || /^(Special|File|Category|Help|Wikipedia|Portal):/i.test(title)) return null;
   try {
     const api = `https://${lang}.wikipedia.org/w/api.php?${new URLSearchParams({
-      action: "query", prop: "pageprops|pageimages", ppprop: "wikibase_item", piprop: "thumbnail", pithumbsize: "400",
+      action: "query", prop: "pageprops|pageimages", ppprop: "wikibase_item", piprop: "thumbnail", pithumbsize: "400", pilicense: "any",
       redirects: "1", format: "json", titles: title,
     })}`;
     const q = await (await fetchWithTimeout(api, 6000, { Accept: "application/json", "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)" })).json();
@@ -557,7 +600,7 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
         const res = await fetchWithTimeout(target, 8000);
         finalUrl = res.url || target;
         const text = await res.text();
-        const challenged = /<title>\s*(Just a moment|Attention Required|Access denied|Robot Check|Are you a robot)/i.test(text) ||
+        const challenged = /<title>\s*(Just a moment|Attention Required|Access denied|Robot Check|Are you a robot|Making sure you)/i.test(text) ||
           /cf-browser-verification|captcha-delivery|px-captcha|_Incapsula_/i.test(text);
         // A missing or broken page says nothing about the thing; its "404 Not Found" title
         // must not become the listing title.
@@ -694,4 +737,69 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
     reason: classification.reason,
     alternatives: classification.alternatives,
   };
+}
+
+// ---------- photos from any link ----------
+
+export type PhotoResult = {
+  status: "ok" | "image" | "none" | "blocked" | "error" | "not_a_link";
+  images: string[];
+};
+
+// For "use another photo": the person pastes a page (shop, Wikipedia, review…) or an image.
+// A direct image (by content type) is used as is; a page is read with the same safe
+// pipeline and all its usable images come back, best first. Never touches anything else.
+export async function readPhotos(raw: string): Promise<PhotoResult> {
+  const extracted = extractUrl(raw);
+  if (!extracted) return { status: "not_a_link", images: [] };
+  let url = extracted;
+  try {
+    await assertPublicUrl(url);
+    url = await expandShortLink(url);
+  } catch {
+    return { status: "error", images: [] };
+  }
+
+  // Unsplash photo pages sit behind a bot check, but every photo has a public download
+  // URL that redirects to the image itself.
+  const unsplash = new URL(url);
+  const unsplashId = /(^|\.)unsplash\.com$/.test(unsplash.hostname) && unsplash.pathname.match(/^\/photos\/(?:[a-z0-9-]*-)?([A-Za-z0-9_]{11})\/?$/)?.[1];
+  if (unsplashId) url = `https://unsplash.com/photos/${unsplashId}/download?force=true&w=1080`;
+
+  let html = "";
+  let blocked = false;
+  let finalUrl = url;
+  try {
+    const res = await fetchWithTimeout(url, 8000, { Accept: "text/html,image/*;q=0.9,*/*;q=0.8" });
+    finalUrl = res.url || url;
+    const type = res.headers.get("content-type") ?? "";
+    if (res.ok && type.startsWith("image/") && !type.includes("svg")) {
+      await res.body?.cancel().catch(() => {});
+      return { status: "image", images: [finalUrl] };
+    }
+    if (!type.includes("html")) {
+      await res.body?.cancel().catch(() => {});
+    } else {
+      const text = await res.text();
+      const challenged = /<title>\s*(Just a moment|Attention Required|Access denied|Robot Check|Are you a robot|Making sure you)/i.test(text) ||
+        /cf-browser-verification|captcha-delivery|px-captcha|_Incapsula_/i.test(text);
+      if (!res.ok || challenged) blocked = true;
+      if (res.ok && !challenged) html = text;
+    }
+  } catch {
+    blocked = true;
+  }
+
+  let images = html ? collectImageCandidates(html, finalUrl, null, 16) : [];
+  // Pages that render in script or block us (IMDb, Spotify, Instagram…) still have an image
+  // through the provider route readLink uses; take whatever that finds.
+  if (images.length < 2) {
+    const viaLink = await readLink(url, [], { useLlm: false }).catch(() => null);
+    const extra = [viaLink?.image_url, ...(viaLink?.image_urls ?? [])].filter((s): s is string => !!s);
+    const seen = new Set(images.map(imageKey));
+    for (const e of extra) if (!seen.has(imageKey(e))) images.push(e);
+  }
+  images = images.slice(0, 16);
+  if (images.length) return { status: "ok", images };
+  return { status: blocked ? "blocked" : "none", images: [] };
 }

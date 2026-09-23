@@ -1798,3 +1798,9 @@ footer .cta {
   margin-top: 12px;
   align-self: flex-start;
 }
+
+.photo-from-page {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
