@@ -18,7 +18,10 @@ function stripTrailingPunctuation(s: string) {
 }
 
 export function extractUrl(input: string): string | null {
-  const text = input.trim();
+  // Repair mistyped schemes: htps://, ttps://, https//, http:/ …
+  const text = input
+    .trim()
+    .replace(/\b(h{0,2}t{1,3}p{1,2}(s?)):?\/{1,3}(?=[a-z0-9])/gi, (_m, _s, secure: string) => `http${secure.toLowerCase()}://`);
   if (!text) return null;
   let candidate: string | null = null;
   const inText = text.match(URL_IN_TEXT_RE);

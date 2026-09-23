@@ -14,7 +14,7 @@ async function probeCatalogs(title: string, by: string | undefined, base: Classi
   if (!hits.length) return base;
   const alternatives = [...new Set([...hits, ...base.alternatives])].slice(0, 3);
   if (hits.length === 1) return { slug: hits[0], confidence: "medium", reason: `catalog title match: ${hits[0]}`, alternatives };
-  return { ...base, reason: `catalog title match: ${hits.join(", ")}`, alternatives };
+  return { ...base, confidence: "low", reason: `catalog title match: ${hits.join(", ")}`, alternatives };
 }
 
 // Reads whatever was pasted into the add dialog and returns the best prefill we can get.
@@ -38,6 +38,7 @@ type Meta = {
   image_urls?: string[];
   source_label?: string;
   category_hint?: string;
+  hint_reason?: string;
 };
 
 type Status = "ok" | "blocked" | "timeout" | "error";
@@ -331,6 +332,55 @@ async function fromYoutube(url: string): Promise<Meta | null> {
   }
 }
 
+// Wikipedia pages are all "Article" in JSON-LD, whatever they describe. Wikidata knows what
+// the subject is: "instance of" (P31) labels like "anime film" or "studio album", and
+// coordinates (P625) for places.
+const WIKIDATA_LABEL_CATEGORY: [RegExp, string][] = [
+  [/television series|tv series|web series|miniseries|television program/i, "tv"],
+  [/\bfilm\b/i, "films"],
+  [/\balbum\b|\bep\b/i, "albums"],
+  [/\bsingle\b|\bsong\b/i, "songs"],
+  [/video game/i, "games"],
+  [/podcast/i, "podcasts"],
+  [/novel|book|literary work|written work|poem|short story|novella|comic|manga/i, "books"],
+  [/essay|article/i, "essays"],
+];
+
+async function fromWikipedia(url: string): Promise<Meta | null> {
+  const u = new URL(url);
+  const lang = u.hostname.split(".")[0].replace(/^(m|www)$/, "en");
+  const title = decodeURIComponent(u.pathname.replace(/^\/wiki\//, ""));
+  if (!title || /^(Special|File|Category|Help|Wikipedia|Portal):/i.test(title)) return null;
+  try {
+    const api = `https://${lang}.wikipedia.org/w/api.php?${new URLSearchParams({
+      action: "query", prop: "pageprops|pageimages", ppprop: "wikibase_item", piprop: "thumbnail", pithumbsize: "400",
+      redirects: "1", format: "json", titles: title,
+    })}`;
+    const q = await (await fetchWithTimeout(api, 6000, { Accept: "application/json", "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)" })).json();
+    const page = Object.values(q?.query?.pages ?? {})[0] as { title?: string; pageprops?: { wikibase_item?: string }; thumbnail?: { source?: string } } | undefined;
+    if (!page?.title) return null;
+    const meta: Meta = { title: page.title.replace(/\s*\((film|novel|album|book|band|TV series|video game)[^)]*\)$/i, ""), image_url: page.thumbnail?.source, source_label: "Wikipedia" };
+    const qid = page.pageprops?.wikibase_item;
+    if (!qid) return meta;
+    // Wikimedia asks for an identifying user agent and throttles generic ones.
+    const wm = { Accept: "application/json", "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)" };
+    const claimsOf = async (prop: string) =>
+      (await (await fetchWithTimeout(`https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=${qid}&property=${prop}&format=json`, 6000, wm)).json())?.claims?.[prop] ?? [];
+    const [p31, p625] = await Promise.all([claimsOf("P31"), claimsOf("P625")]);
+    const claims = { P31: p31, P625: p625.length ? p625 : undefined };
+    const classIds: string[] = (claims.P31 ?? []).map((c: { mainsnak?: { datavalue?: { value?: { id?: string } } } }) => c.mainsnak?.datavalue?.value?.id).filter(Boolean);
+    if (classIds.length) {
+      const labels = await (await fetchWithTimeout(`https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${classIds.slice(0, 10).join("|")}&props=labels&languages=en&format=json`, 6000, wm)).json();
+      const text = Object.values(labels?.entities ?? {}).map((e) => (e as { labels?: { en?: { value?: string } } }).labels?.en?.value ?? "").join(" | ");
+      for (const [re, slug] of WIKIDATA_LABEL_CATEGORY) if (re.test(text)) return { ...meta, category_hint: slug, hint_reason: `wikidata: ${text.slice(0, 60)}` };
+    }
+    if (claims.P625) return { ...meta, category_hint: "places", hint_reason: "wikidata: has coordinates" };
+    return meta;
+  } catch {
+    return null;
+  }
+}
+
 // Google Maps og tags only ever say "Google Maps"; the place name lives in the path.
 function fromGoogleMapsPath(url: string): Meta | null {
   const u = new URL(url);
@@ -352,10 +402,10 @@ function hostLabel(hostname: string) {
 }
 
 function looksLikeSiteName(segment: string, siteName: string | null, hostname: string) {
-  const s = segment.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const s = segment.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
   if (!s) return true;
-  const site = (siteName ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const label = hostLabel(hostname).toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const site = (siteName ?? "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+  const label = hostLabel(hostname).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
   return (site && (s === site || s.includes(site) || site.includes(s))) || s.includes(label) || label.includes(s);
 }
 
@@ -463,11 +513,25 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
   const extracted = extractUrl(raw);
   if (!extracted) return { status: "not_a_link", query: raw.trim().slice(0, 200) };
 
+  // A pasted Google search is a search for its query, not a page to read.
+  const g = new URL(extracted);
+  if (/(^|\.)google\.[a-z.]+$/.test(g.hostname) && g.pathname === "/search" && g.searchParams.get("q"))
+    return { status: "not_a_link", query: g.searchParams.get("q")!.slice(0, 200) };
+
   const link = stripTracking(extracted);
   try {
     await assertPublicUrl(link);
-  } catch {
-    return { status: "error", link, source_label: new URL(link).hostname, category_slug: "things", confidence: "low", reason: "blocked address", alternatives: ["things", "essays"] };
+  } catch (err) {
+    const unreachable = err instanceof Error && err.message === "dns";
+    return {
+      status: "error",
+      link,
+      source_label: new URL(link).hostname.replace(/^www\./, ""),
+      category_slug: "things",
+      confidence: "low",
+      reason: unreachable ? "unreachable: domain not found" : "blocked address",
+      alternatives: ["things", "places", "essays"],
+    };
   }
   let target = link;
   let status: Status = "ok";
@@ -485,6 +549,7 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
     else if (/(^|\.)discogs\.com$/.test(host)) meta = (await fromDiscogsId(target)) ?? {};
     else if (/(^|\.)openlibrary\.org$/.test(host)) meta = (await fromOpenLibrary(target)) ?? {};
     else if (/(^|\.)(youtube\.com|youtu\.be)$/.test(host)) meta = (await fromYoutube(target)) ?? {};
+    else if (/(^|\.)wikipedia\.org$/.test(host) && /^\/wiki\//.test(new URL(target).pathname)) meta = (await fromWikipedia(target)) ?? {};
     else if (/(^|\.)google\.[a-z.]+$/.test(host) || /goo\.gl$/.test(host)) meta = fromGoogleMapsPath(target) ?? {};
 
     if (!meta.title) {
@@ -494,8 +559,12 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
         const text = await res.text();
         const challenged = /<title>\s*(Just a moment|Attention Required|Access denied|Robot Check|Are you a robot)/i.test(text) ||
           /cf-browser-verification|captcha-delivery|px-captcha|_Incapsula_/i.test(text);
-        if (!res.ok || challenged) status = "blocked";
-        if (!challenged) html = text;
+        // A missing or broken page says nothing about the thing; its "404 Not Found" title
+        // must not become the listing title.
+        const gone = res.status === 404 || res.status === 410 || res.status >= 500;
+        if (gone) status = "error";
+        else if (!res.ok || challenged) status = "blocked";
+        if (!challenged && !gone) html = text;
       } catch (err) {
         status = isTimeout(err) ? "timeout" : "error";
       }
@@ -534,10 +603,10 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
     if (ldYear && /Movie|TVSeries|MusicAlbum|Book/.test(String(ldNode?.["@type"]))) meta.year = ldYear;
   }
 
-  if (meta.title && /^(Google Maps|Spotify|(Spotify [–-] )?Web Player|YouTube|Amazon\.[a-z.]+|Instagram|Just a moment\.*)$/i.test(meta.title.trim())) meta.title = undefined;
+  if (meta.title && /^(Google Maps|Spotify|(Spotify [–-] )?Web Player|YouTube|Amazon\.[a-z.]+|Instagram|TikTok|Make Your Day|X|Netflix|404|404 Not Found|Page not found|Not found|Error|Just a moment\.*)$/i.test(meta.title.trim())) meta.title = undefined;
   if (meta.title) {
     meta.title = cleanTitle(meta.title, siteName, parsed.hostname);
-    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
     const t = norm(meta.title);
     if (!t || t === norm(siteName ?? "") || t === norm(hostLabel(parsed.hostname)) || t === norm(parsed.hostname)) meta.title = undefined;
   }
@@ -585,7 +654,7 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
 
   let classification: Classification;
   if (meta.category_hint && (slugs.length === 0 || slugs.includes(meta.category_hint))) {
-    classification = { slug: meta.category_hint, confidence: "high", reason: `provider: ${meta.source_label}`, alternatives: [meta.category_hint] };
+    classification = { slug: meta.category_hint, confidence: "high", reason: meta.hint_reason ?? `provider: ${meta.source_label}`, alternatives: [meta.category_hint] };
   } else {
     const t = new URL(target);
     classification = await classify(
@@ -606,7 +675,7 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
       { useLlm }
     );
     const weakGuess = classification.confidence === "low" || /^path word/.test(classification.reason);
-    if (weakGuess && meta.title) classification = await probeCatalogs(meta.title, meta.by, classification, slugs);
+    if (weakGuess && meta.title && usedPathTitle) classification = await probeCatalogs(meta.title, meta.by, classification, slugs);
   }
 
   return {

@@ -43,7 +43,6 @@ const DOMAIN_RULES: Rule[] = [
   [/(^|\.)tidal\.com$/, "albums"],
   [/(^|\.)deezer\.com$/, "albums"],
   [/(^|\.)music\.youtube\.com$/, "songs"],
-  [/(^|\.)soundcloud\.com$/, "songs"],
   [/(^|\.)goodreads\.com$/, "books"],
   [/(^|\.)openlibrary\.org$/, "books"],
   [/(^|\.)books\.google\.[a-z.]+$/, "books"],
@@ -86,6 +85,24 @@ function ruleFromUrl(hostname: string, path: string, url = ""): { slug: string; 
     return { slug: "albums", reason: "domain: apple music" };
   }
   if (/(^|\.)bandcamp\.com$/.test(host)) return { slug: /\/track\//.test(path) ? "songs" : "albums", reason: "domain: bandcamp" };
+  // soundcloud.com/<artist>/<track>, /<artist>/sets/<album>; a bare /<artist> is a profile.
+  if (/(^|\.)soundcloud\.com$/.test(host)) {
+    const parts = path.split("/").filter(Boolean);
+    if (parts[1] === "sets" && parts[2]) return { slug: "albums", reason: "path: soundcloud set" };
+    if (parts.length >= 2 && !/^(tracks|albums|sets|likes|reposts|followers|following)$/.test(parts[1])) return { slug: "songs", reason: "path: soundcloud track" };
+    return null;
+  }
+  if (/(^|\.)tiktok\.com$/.test(host) && /\/video\//.test(path)) return { slug: "videos", reason: "path: tiktok video" };
+  if (/(^|\.)instagram\.com$/.test(host) && /^\/(reel|reels|tv)\//.test(path)) return { slug: "videos", reason: "path: instagram reel" };
+  // Console and game store pages carry Product + price markup, but the product is a game.
+  if (/(^|\.)playstation\.com$/.test(host) && /\/games\//.test(path)) return { slug: "games", reason: "path: playstation game" };
+  if (/(^|\.)nintendo\.[a-z.]+$/.test(host) && /\/(store\/products|games)\//.test(path)) return { slug: "games", reason: "path: nintendo game" };
+  if (/(^|\.)xbox\.com$/.test(host) && /\/games\//.test(path)) return { slug: "games", reason: "path: xbox game" };
+  if (/(^|\.)(store\.epicgames\.com|gog\.com)$/.test(host) && /\/(p|game)\//.test(path)) return { slug: "games", reason: "path: game store" };
+  if (/(^|\.)yelp\.[a-z.]+$/.test(host) && /^\/biz\//.test(path)) return { slug: "places", reason: "path: yelp business" };
+  if (/(^|\.)(opentable|thefork|resy|guide\.michelin)\.[a-z.]+$/.test(host) || /(^|\.)guide\.michelin\.com$/.test(host))
+    return { slug: "places", reason: `domain: ${tag}` };
+  if (/(^|\.)booking\.com$/.test(host) && /^\/hotel\//.test(path)) return { slug: "places", reason: "path: booking hotel" };
   if (/(^|\.)google\.[a-z.]+$/.test(host) && /^\/maps\b/.test(path)) return { slug: "places", reason: "path: google maps" };
   if (/(^|\.)goo\.gl$/.test(host) && /^\/maps\b/.test(path)) return { slug: "places", reason: "path: google maps" };
   if (/(^|\.)instagram\.com$/.test(host) && /^\/explore\/locations\//.test(path)) return { slug: "places", reason: "path: instagram location" };
@@ -305,7 +322,11 @@ export async function classify(
     const llm = await llmClassify(signals, slugs);
     if (llm) return { slug: llm.slug, confidence: llm.confidence, reason: "llm", alternatives: llm.alternatives.slice(0, 3) };
   }
-  return { slug: "things", confidence: "low", reason: "no signal", alternatives: ["things", "essays"].filter(known) };
+  // Streaming pages render in script and say nothing server side; it's a show or a film.
+  if (/(^|\.)(netflix\.com|disneyplus\.com|primevideo\.com|max\.com|hbo\.com|tv\.apple\.com|videoland\.com|viaplay\.[a-z]+)$/.test(signals.hostname))
+    return { slug: "tv", confidence: "low", reason: `domain: streaming (${signals.hostname.replace(/^www\./, "")})`, alternatives: ["tv", "films"].filter(known) };
+  // A bare homepage with nothing on it is most often a venue or a shop.
+  return { slug: "things", confidence: "low", reason: "no signal", alternatives: ["things", "places", "essays"].filter(known) };
 }
 
 // Words in the URL path that say what kind of page it is. Medium only: paths lie sometimes.
@@ -316,7 +337,7 @@ function pathHint(path: string): { slug: string; reason: string } | null {
     [/\/(book|books|boek|boeken|buch)\//, "books"],
     [/\/(album|albums)\//, "albums"],
     [/\/(podcast|podcasts)\//, "podcasts"],
-    [/\/(restaurant|restaurants|hotel|hotels|place|places|venue|museum)\//, "places"],
+    [/\/(restaurant|restaurants|hotel|hotels|place|places|venue|museum|visit|plan-your-visit|opening-hours|bezoek|besuch)(\/|$)/, "places"],
     [/\/(recipe|recipes|product|products|shop|item|p|dp)\//, "things"],
     [/\/(article|articles|blog|news|essay|essays|post|posts|opinion)\/|\/\d{4}\/\d{2}\//, "essays"],
   ];
@@ -326,7 +347,7 @@ function pathHint(path: string): { slug: string; reason: string } | null {
 
 function titleHint(text: string): { slug: string; reason: string } | null {
   // Long words may sit inside a compound ("Rijksmuseum"); short ones need a word boundary.
-  const m = text.match(/(museum|restaurant|bistro|hotel|gallery|galerie|theater|theatre|bakery|bakkerij)\b|\b(café|cafe|bar|park)\b/i);
+  const m = text.match(/(museum|museen|musée|museo|restaurant|bistro|hotel|gallery|galerie|theater|theatre|bakery|bakkerij|brasserie|trattoria|izakaya)\b|\b(café|cafe|bar|park)\b/i);
   return m ? { slug: "places", reason: `title word: ${(m[1] ?? m[2]).toLowerCase()}` } : null;
 }
 

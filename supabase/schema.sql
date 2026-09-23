@@ -191,3 +191,29 @@ create policy "users can update their own personalize blocks" on public.personal
 drop policy if exists "users can delete their own personalize blocks" on public.personalize_blocks;
 create policy "users can delete their own personalize blocks" on public.personalize_blocks
   for delete using (auth.uid() = profile_id);
+
+-- Classification feedback log (see docs/migrations/2026-09-23-classification-feedback.sql):
+-- one row per pasted link where the person changed the detected category. Insert only,
+-- no select policy, so it is readable from the dashboard only.
+create table if not exists public.classification_feedback (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  url text not null,
+  normalized_url text,
+  detected_slug text,
+  detected_confidence text,
+  detected_reason text,
+  final_slug text not null,
+  path text not null default 'paste' check (path in ('paste', 'search')),
+  changed_by_user boolean not null default false
+);
+
+create index if not exists classification_feedback_created_at_idx
+  on public.classification_feedback (created_at desc);
+
+alter table public.classification_feedback enable row level security;
+
+drop policy if exists "users can log their own classification feedback" on public.classification_feedback;
+create policy "users can log their own classification feedback" on public.classification_feedback
+  for insert to authenticated with check (auth.uid() = user_id);

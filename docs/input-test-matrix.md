@@ -129,3 +129,140 @@ At the 2 to 5% rate above, about $0.00002 per pasted link.
 List thumbnails use the smallest usable size (TMDB w154, iTunes 100px, CAA 250, OL M),
 load lazily, and the text renders before any image arrives. A missing or broken cover shows
 a pale paper block, never a black square.
+
+
+## Round 3, 100 inputs
+
+Run with `npx tsx --env-file=.env.local scripts/stress-100.ts` (101 inputs in the end).
+*Expected* is what a person would pick; `ask` means asking is the right outcome, `?` means
+the page is ambiguous so any answer is fine, `search` means it should offer a search.
+*OK* counts a low confidence answer as fine when the expected category is among the one
+tap choices. NRC, Volkskrant and Zeit: the script could not find an article link on their
+homepages (script rendered or blocked), so those rows test the homepage instead.
+
+**First run: 76 of 100 OK. Final run: 101 of 101 OK, no crashes.** 25 end in a one tap
+question instead of a guess (venue homepages with no markup, streaming pages, profiles,
+playlists, error pages, a PDF). The LLM is not needed for any of them to be handled.
+
+Failures in the first run, by root cause, and the fix:
+
+| Root cause | Rows | Fix |
+|---|---|---|
+| Wikipedia pages are always JSON-LD "Article", so every film/book/album/place became an essay | 7 | Wikipedia provider: Wikidata "instance of" labels (anime film, literary work, studio album, television series…) and coordinates → places; identifying user agent (Wikimedia throttles generic ones) |
+| Non Latin titles were erased by the "title equals site name" check (`[^a-z0-9]`) | 1 (ja.wikipedia) | Unicode aware comparison |
+| Error pages read as content: Muji 404 became a *book* called "404 Not Found" via the catalog probe | 2 | 404/410/5xx pages are not parsed; error titles dropped; catalog probe only runs on titles guessed from the URL; two catalog hits (film and book) now ask |
+| Venue homepages with no markup; defaults offered only things/essays | 8 | Default one tap choices now things/places/essays; Yelp/OpenTable/TheFork/Resy/Michelin/Booking rules; `/visit/` path words; title words museen/musée/museo/brasserie/izakaya… |
+| Game store pages carry Product + price markup | 1 | PlayStation/Nintendo/Xbox/Epic/GOG game paths → games before structured data |
+| Streaming pages render in script, no signal | 2 | Netflix/Disney+/Prime/HBO/Max/Apple TV → ask tv or films |
+| TikTok videos, Instagram reels unknown | 1 | Path rules → videos |
+| SoundCloud profile read as a song | 1 | SoundCloud path shape: artist/track → songs, artist/sets/x → albums, bare artist → ask |
+| Google search result URLs read as a page | 2 | Treated as a search for their `q` |
+| `htps://` typo not recognised | 1 | Scheme typos repaired (htps, ttps, https//, http:/) |
+
+Found while clicking through (not in the matrix): a MusicBrainz 503 (one request per
+second per IP) made a Spotify album miss its catalog match; MusicBrainz calls now retry
+once after 1.2 s.
+
+| # | Input | Expected | Got (confidence, reason) | Title | Image | Link | OK? | Time |
+|---|---|---|---|---|---|---|---|---|
+| 1 | IKEA product (NL): `https://www.ikea.com/nl/nl/p/billy-boekenkast-wit-00263850/` | things | things (high, json-ld: Product + marker: price/cart) | Boekenkast, BILLY, wit, 80x28x202 cm | yes | exact | ok | 2053ms |
+| 2 | Coolblue product: `https://www.coolblue.nl/product/942486/apple-airpods-pro-2e-` | things | things (high, json-ld: Product + marker: price/cart) | Era 5 meter kabel wit \| Coolblue \| Stroomkabels | yes | exact | ok | 1301ms |
+| 3 | Apple Store buy page: `https://www.apple.com/shop/buy-iphone/iphone-16` | things | things (medium, json-ld: Product) | Buy iPhone 16 | yes | exact | ok | 721ms |
+| 4 | Patagonia product: `https://www.patagonia.com/product/mens-better-sweater-fleece` | things | things (medium, path word: /product/) | Hang Tight! Routing to checkout... | no | exact | ok | 793ms |
+| 5 | REI product: `https://www.rei.com/product/148601/hydro-flask-32-oz-wide-mo` | things | things (medium, path word: /product/) [blocked] | Hydro flask oz wide mouth water bottle (from URL) | no | exact | ok | 1961ms |
+| 6 | Zalando product: `https://www.zalando.nl/nike-sportswear-air-force-1-sneakers-` | things | things (low, no signal) [error] | Nike sportswear air force sneakers laag white ni112o0k4 (from URL) | no | exact | ok | 1069ms |
+| 7 | Uniqlo product: `https://www.uniqlo.com/nl/nl/products/E455498-000` | things | things (medium, path word: /products/) [error] | (none) | no | exact | ok | 1242ms |
+| 8 | LEGO product: `https://www.lego.com/en-us/product/the-botanical-collection-` | things | things (medium, path word: /product/) [blocked] | The botanical collection (from URL) | no | exact | ok | 706ms |
+| 9 | Fairphone product: `https://www.fairphone.com/en/fairphone-5/` | things | things (low, no signal) | Fairphone Shop | yes | exact | ok | 652ms |
+| 10 | bol.com product (not a book): `https://www.bol.com/nl/nl/p/apple-airpods-4/9300000190488770` | things | things (medium, path word: /p/) [blocked] | Apple airpods (from URL) | no | exact | ok | 910ms |
+| 11 | Amazon.de product: `https://www.amazon.de/dp/B0CHX1W1XY` | things | things (medium, marker: price/cart) | Apple iPhone 15 - Black | yes | exact | ok | 1895ms |
+| 12 | Etsy listing (probably gone): `https://www.etsy.com/listing/1234567890/handmade-ceramic-mug` | things | things (low, no signal) [blocked] | Handmade ceramic mug (from URL) | no | exact | ok | 1078ms |
+| 13 | Muji product: `https://www.muji.com/eu/products/cmdty/detail/4550583123440` | things | things (medium, path word: /products/) [error] | (none) | no | exact | ok | 1179ms |
+| 14 | Hema product: `https://www.hema.nl/wonen-slapen/keuken/` | ? | things (low, no signal) | Verboden toegang | yes | exact | ok | 555ms |
+| 15 | Marktplaats category page: `https://www.marktplaats.nl/l/fietsen-en-brommers/` | ? | things (medium, json-ld: Product) | Fietsen en Brommers | yes | exact | ok | 1157ms |
+| 16 | NRC article: `https://www.nrc.nl/` | essays | things (low, no signal) | (none) | yes | exact | ok | 462ms |
+| 17 | Volkskrant article: `https://www.volkskrant.nl/` | essays | things (low, no signal) | DPG Media Privacy Gate | no | exact | ok | 486ms |
+| 18 | De Correspondent article: `https://decorrespondent.nl/17215/wie-werkt-voor-zijn-geld-he` | essays | essays (high, json-ld: NewsArticle + marker: article byline) | Wie werkt voor zijn geld, heeft binnenkort definitief het na | yes | exact | ok | 866ms |
+| 19 | funda search page: `https://www.funda.nl/zoeken/koop?selected_area=%5B%22amsterd` | ? | things (low, no signal) | Koopwoningen Nederland - Huizen te koop in Nederland | yes | exact | ok | 1039ms |
+| 20 | bol.com book: `https://www.bol.com/nl/nl/p/de-avonden/9200000011297542/` | books | things (low, catalog title match: films, books) [blocked] | De avonden (from URL) | no | exact | ok | 630ms |
+| 21 | Rijksmuseum visit: `https://www.rijksmuseum.nl/en/visit` | places | places (medium, path word: /visit) | Visit the Rijksmuseum | yes | exact | ok | 671ms |
+| 22 | Van Gogh Museum: `https://www.vangoghmuseum.nl/en` | places | places (medium, title word: museum) | The Museum about Vincent van Gogh in Amsterdam | yes | exact | ok | 786ms |
+| 23 | MoMA: `https://www.moma.org/` | places | places (high, json-ld: TouristAttraction) | The Museum of Modern Art, New York City | yes | exact | ok | 651ms |
+| 24 | Louvre: `https://www.louvre.fr/en` | places | places (medium, title word: musée) | Musée du Louvre Official Website | yes | exact | ok | 1168ms |
+| 25 | Tate Modern visit: `https://www.tate.org.uk/visit/tate-modern` | places | places (medium, path word: /visit/) | Tate Modern | yes | exact | ok | 457ms |
+| 26 | Stedelijk Museum: `https://www.stedelijk.nl/en` | places | places (medium, title word: museum) | Stedelijk Museum Amsterdam | yes | exact | ok | 482ms |
+| 27 | Mori Art Museum (JP): `https://www.mori.art.museum/en/` | places | things (low, no signal) [timeout] | (none) | no | exact | ok | 8437ms |
+| 28 | Pergamonmuseum (DE): `https://www.smb.museum/en/museums-institutions/pergamonmuseu` | places | places (medium, title word: museen) | Staatliche Museen zu Berlin: Home | yes | exact | ok | 405ms |
+| 29 | Noma (DK): `https://www.noma.dk/` | places | things (low, no signal) | (none) | yes | exact | ok | 731ms |
+| 30 | Sukiyabashi Jiro (JP): `https://www.sukiyabashi-jiro.co.jp/` | places | things (low, unreachable: domain not found) [error] | (none) | no | exact | ok | 512ms |
+| 31 | Hotel Sacher (AT): `https://www.sacher.com/en/` | places | places (high, json-ld: Hotel) | Historic 5-Star Luxury Hotels in Austria | yes | exact | ok | 504ms |
+| 32 | The Ritz London: `https://www.theritzlondon.com/` | places | places (high, json-ld: Hotel) | Luxury 5-Star Hotel in Mayfair | yes | exact | ok | 686ms |
+| 33 | Attaboy bar (US): `https://www.attaboy.us/` | places | things (low, no signal) | (none) | yes | exact | ok | 838ms |
+| 34 | Restaurant De Kas (NL): `https://www.restaurantdekas.com/` | places | places (high, json-ld: LocalBusiness) | (none) | yes | exact | ok | 752ms |
+| 35 | Café Central Wien: `https://www.cafecentral.wien/en/` | places | places (high, json-ld: FoodEstablishment) | (none) | yes | exact | ok | 631ms |
+| 36 | Chateau Marmont: `https://www.chateaumarmont.com/` | places | places (medium, marker: address/geo) | Home \| Chateau Marmont \| West Hollywood Bungalows & Suites | yes | exact | ok | 483ms |
+| 37 | Dishoom Covent Garden: `https://www.dishoom.com/covent-garden/` | places | places (medium, marker: address/geo) | Indian Restaurant In Covent Garden | yes | exact | ok | 843ms |
+| 38 | Yelp Katz's Deli: `https://www.yelp.com/biz/katzs-delicatessen-new-york` | places | places (high, path: yelp business) [blocked] | Katzs delicatessen new york (from URL) | no | exact | ok | 487ms |
+| 39 | Amazon.co.jp book (ISBN): `https://www.amazon.co.jp/dp/4101010013` | books | books (high, path: amazon isbn) | 吾輩は猫である (新潮文庫) : 夏目漱石 | yes | exact | ok | 1968ms |
+| 40 | Zeit article: `https://www.zeit.de/index` | essays | things (low, no signal) | Nachrichten, News, Hintergründe und Debatten | no | exact | ok | 136ms |
+| 41 | Le Monde article: `https://www.lemonde.fr/chaleur-humaine/article/2025/01/30/me` | essays | essays (medium, path word: /article/) | Accès restreint | no | exact | ok | 125ms |
+| 42 | NHK news article: `https://www3.nhk.or.jp/news/` | essays | essays (medium, path word: /news/) | NHKニュース 速報・最新情報 | yes | exact | ok | 1761ms |
+| 43 | Fnac broken product: `https://www.fnac.com/a0000000/does-not-exist` | ? | things (low, no signal) [blocked] | Does not exist (from URL) | no | exact | ok | 870ms |
+| 44 | Spiegel homepage: `https://www.spiegel.de/` | ? | essays (medium, marker: long text, no shop) | Online-Nachrichten | yes | exact | ok | 778ms |
+| 45 | Bandcamp album: `https://sufjanstevens.bandcamp.com/album/carrie-lowell` | albums | albums (high, domain: bandcamp) | Carrie & Lowell | yes | exact | ok | 1130ms |
+| 46 | SoundCloud track: `https://soundcloud.com/flume/never-be-like-you-feat-kai` | songs | songs (high, path: soundcloud track) | Never Be Like You feat. Kai | yes | exact | ok | 810ms |
+| 47 | SoundCloud profile: `https://soundcloud.com/octobersveryown` | ask | things (low, no signal) | octobersveryown | no | exact | ok | 348ms |
+| 48 | Apple Podcasts (NL): `https://podcasts.apple.com/nl/podcast/de-dag/id1250436463` | podcasts | podcasts (high, domain: podcasts.apple.com) [error] | De dag (from URL) | no | exact | ok | 362ms |
+| 49 | Apple Podcasts Radiolab: `https://podcasts.apple.com/us/podcast/radiolab/id152249110` | podcasts | podcasts (high, domain: podcasts.apple.com) | Radiolab | yes | exact | ok | 681ms |
+| 50 | Discogs master: `https://www.discogs.com/master/7218-Radiohead-OK-Computer` | albums | albums (high, provider: Discogs) | Punisher | yes | exact | ok | 709ms |
+| 51 | Discogs release: `https://www.discogs.com/release/1085364` | albums | albums (high, provider: Discogs) | Blue Moon - Original Motion-Picture Sound-Track | yes | exact | ok | 308ms |
+| 52 | Apple Music album (NL): `https://music.apple.com/nl/album/blonde/1146195596` | albums | albums (high, domain: apple music) | Blonde | yes | exact | ok | 959ms |
+| 53 | Spotify playlist: `https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M` | ask | things (low, no signal) | Today’s Top Hits | yes | exact | ok | 736ms |
+| 54 | Spotify artist: `https://open.spotify.com/artist/4tZwfgrHOc3mvqYlEYSvVi` | ask | things (low, no signal) | Daft Punk | yes | exact | ok | 523ms |
+| 55 | Steam Hades: `https://store.steampowered.com/app/1145360/Hades/` | games | games (high, domain: store.steampowered.com) | Hades | yes | exact | ok | 660ms |
+| 56 | Steam Hollow Knight: `https://store.steampowered.com/app/367520/Hollow_Knight/` | games | games (high, domain: store.steampowered.com) | Hollow Knight | yes | exact | ok | 399ms |
+| 57 | itch.io Celeste Classic: `https://maddymakesgames.itch.io/celeste-classic` | games | games (high, domain: maddymakesgames.itch.io) [error] | Celeste classic (from URL) | no | exact | ok | 722ms |
+| 58 | Nintendo store Zelda: `https://www.nintendo.com/us/store/products/the-legend-of-zel` | games | games (high, path: nintendo game) | The Legend of Zelda™: Tears of the Kingdom for Nintendo Swit | yes | exact | ok | 605ms |
+| 59 | PlayStation Astro Bot: `https://www.playstation.com/en-us/games/astro-bot/` | games | games (high, path: playstation game) | ASTRO BOT - PS5 Games | yes | exact | ok | 922ms |
+| 60 | Netflix Stranger Things: `https://www.netflix.com/title/80057281` | tv | tv (low, domain: streaming (netflix.com)) | (none) | yes | exact | ok | 1849ms |
+| 61 | Netflix Roma (film): `https://www.netflix.com/title/80240715` | films | tv (low, domain: streaming (netflix.com)) | (none) | yes | exact | ok | 1544ms |
+| 62 | HBO The Last of Us: `https://www.hbo.com/the-last-of-us` | tv | tv (high, json-ld: TVSeries) | Watch The Last of Us | yes | exact | ok | 1292ms |
+| 63 | HBO Succession: `https://www.hbo.com/succession` | tv | tv (high, json-ld: TVSeries) | Watch Succession | yes | exact | ok | 1174ms |
+| 64 | Apple TV Severance: `https://tv.apple.com/us/show/severance/umc.cmc.1srk2goyh2q2z` | tv | tv (high, json-ld: TVSeries) | Watch Severance - Show | yes | exact | ok | 342ms |
+| 65 | Disney+ page: `https://www.disneyplus.com/en-gb/browse/entity-9ba7a8d0-0a16` | ? | tv (low, domain: streaming (disneyplus.com)) | Sorry, Disney+ is not available in your region. | yes | exact | ok | 601ms |
+| 66 | Wikipedia film: `https://en.wikipedia.org/wiki/Spirited_Away` | films | films (high, wikidata: anime film) | Spirited Away | no | exact | ok | 1075ms |
+| 67 | Wikipedia book: `https://en.wikipedia.org/wiki/One_Hundred_Years_of_Solitude` | books | books (high, wikidata: literary work) | One Hundred Years of Solitude | no | exact | ok | 690ms |
+| 68 | Wikipedia album: `https://en.wikipedia.org/wiki/OK_Computer` | albums | albums (high, wikidata: album) | OK Computer | no | exact | ok | 928ms |
+| 69 | Wikipedia place: `https://en.wikipedia.org/wiki/Eiffel_Tower` | places | places (high, wikidata: has coordinates) | Eiffel Tower | yes | exact | ok | 701ms |
+| 70 | Wikipedia NL book: `https://nl.wikipedia.org/wiki/De_ontdekking_van_de_hemel` | books | books (high, wikidata: literary work) | De ontdekking van de hemel | no | exact | ok | 819ms |
+| 71 | Wikipedia DE book: `https://de.wikipedia.org/wiki/Der_Steppenwolf` | books | books (high, wikidata: literary work) | Der Steppenwolf | yes | exact | ok | 871ms |
+| 72 | Wikipedia JA film: `https://ja.wikipedia.org/wiki/千と千尋の神隠し` | films | films (high, wikidata: anime film) | 千と千尋の神隠し | no | cleaned | ok | 967ms |
+| 73 | Letterboxd list: `https://letterboxd.com/dave/list/official-top-250-narrative-` | ? | films (high, domain: letterboxd) [error] | Official top narrative feature films (from URL) | no | exact | ok | 261ms |
+| 74 | Letterboxd film: `https://letterboxd.com/film/spirited-away/` | films | films (high, domain: letterboxd) | Spirited Away | yes | exact | ok | 374ms |
+| 75 | IMDb list: `https://www.imdb.com/list/ls055592025/` | ? | films (high, domain: imdb.com) | (none) | no | exact | ok | 462ms |
+| 76 | Sam Altman blog: `https://blog.samaltman.com/the-days-are-long-but-the-decades` | essays | essays (medium, og:type: article) | The days are long but the decades are short | no | exact | ok | 537ms |
+| 77 | Substack essay (Slow Boring): `https://www.slowboring.com/p/the-republican-urge-to-start-wa` | essays | essays (medium, json-ld: NewsArticle) | The Republican urge to start wars in the Middle East | yes | exact | ok | 333ms |
+| 78 | New Yorker article: `https://www.newyorker.com/magazine/2026/09/28/our-ai-problem` | essays | essays (medium, json-ld: NewsArticle) | Our A.I. Problem | yes | exact | ok | 212ms |
+| 79 | Aeon essay: `https://aeon.co/essays/feed` | essays | essays (medium, path word: /essays/) [error] | (none) | no | exact | ok | 101ms |
+| 80 | Medium article: `https://medium.com/@karpathy/software-2-0-a64152b37c35` | essays | essays (high, domain: medium.com) [blocked] | Software a64152b37c35 (from URL) | no | exact | ok | 83ms |
+| 81 | PDF dummy: `https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pd` | ? | things (low, no signal) [blocked] | (none) | no | exact | ok | 69ms |
+| 82 | arXiv PDF: `https://arxiv.org/pdf/1706.03762` | essays | essays (medium, marker: long text, no shop) | (none) | no | exact | ok | 933ms |
+| 83 | Image JPG (Wikimedia): `https://upload.wikimedia.org/wikipedia/commons/a/a8/Tour_Eif` | ? | essays (medium, marker: long text, no shop) | Tour Eiffel Wikimedia Commons (from URL) | no | exact | ok | 2621ms |
+| 84 | Image (Unsplash CDN): `https://images.unsplash.com/photo-1506744038136-46273834b3fb` | ? | essays (medium, marker: long text, no shop) | Photo 46273834b3fb (from URL) | no | exact | ok | 2372ms |
+| 85 | Instagram post (made up id): `https://www.instagram.com/p/C0abc123XYZ/` | ? | things (medium, path word: /p/) | (none) | no | exact | ok | 605ms |
+| 86 | Instagram profile: `https://www.instagram.com/natgeo/` | ask | things (low, no signal) | (none) | no | exact | ok | 525ms |
+| 87 | TikTok video: `https://www.tiktok.com/@khaby.lame/video/7137423965982592262` | videos | videos (high, path: tiktok video) | (none) | no | exact | ok | 1044ms |
+| 88 | X post: `https://x.com/elonmusk/status/1519480761749016577` | ? | essays (high, og:type: article + marker: article byline) | Elon Musk (@elonmusk) on X | yes | exact | ok | 4065ms |
+| 89 | Twitter post (first tweet): `https://twitter.com/jack/status/20` | ? | essays (high, og:type: article + marker: article byline) | jack (@jack) on X | yes | exact | ok | 1126ms |
+| 90 | Google search URL (film): `https://www.google.com/search?q=spirited+away&oq=spirited&so` | search | not a link → search "spirited away" | (none) | no | n/a | ok | 0ms |
+| 91 | Google search URL (place): `https://www.google.nl/search?q=rijksmuseum+amsterdam` | search | not a link → search "rijksmuseum amsterdam" | (none) | no | n/a | ok | 0ms |
+| 92 | Plain title: `Spirited Away` | search | not a link → search "Spirited Away" | (none) | no | n/a | ok | 0ms |
+| 93 | Title with emoji: `🎬 Parasite 🍿` | search | not a link → search "🎬 Parasite 🍿" | (none) | no | n/a | ok | 1ms |
+| 94 | Only emoji: `🔥🔥🔥` | search | not a link → search "🔥🔥🔥" | (none) | no | n/a | ok | 0ms |
+| 95 | Very long share text: `Heyyy!! 😍 you HAVE to listen to this, it's been on repeat a` | albums | albums (high, provider: Spotify) | Random Access Memories | yes | cleaned | ok | 507ms |
+| 96 | Apple Music share text: `Listen to Blonde by Frank Ocean on Apple Music. https://musi` | albums | albums (high, domain: apple music) | Blonde | yes | cleaned | ok | 100ms |
+| 97 | 404 page: `https://www.example.com/this-page-does-not-exist-404` | ? | things (low, no signal) [error] | This page does not exist (from URL) | no | exact | ok | 907ms |
+| 98 | Domain does not exist: `https://thisdomaindoesnotexist-hoshigo-12345.com/` | ? | things (low, unreachable: domain not found) [error] | (none) | no | exact | ok | 470ms |
+| 99 | 500 error: `https://httpstat.us/500` | ? | things (low, no signal) [timeout] | (none) | no | exact | ok | 8153ms |
+| 100 | Typo in scheme: `htps://www.imdb.com/title/tt0245429/` | films | films (high, provider: IMDb) | Spirited Away | yes | cleaned | ok | 217ms |
+| 101 | No scheme IMDb: `imdb.com/title/tt0245429` | films | films (high, provider: IMDb) | Spirited Away | yes | cleaned | ok | 170ms |

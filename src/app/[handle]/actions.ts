@@ -44,10 +44,18 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
   if (url && !safeHttpUrl(url)) return "That link doesn't look like a valid web address.";
   if (imageUrl && !safeHttpUrl(imageUrl)) return "That image URL doesn't look like a valid web address.";
 
+  // Owner rule: a hoshigo without a catalog match must have a link, so visitors can find it.
+  let linkedWork = false;
+  if (workId) {
+    const { data: work } = await supabase.from("works").select("id").eq("id", workId).maybeSingle();
+    linkedWork = !!work;
+  }
+  if (!linkedWork && !url) return "Add a link so visitors can find it. Only things found in a catalog can go without one.";
+
   const { error } = await supabase.from("items").insert({
     profile_id: user.id,
     category_id: categoryId,
-    work_id: workId || null,
+    work_id: linkedWork ? workId : null,
     title,
     by: by || null,
     year: /^\d{3,4}$/.test(yearRaw) ? Number(yearRaw) : null,
@@ -63,8 +71,42 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
 
   if (error) return error.message;
 
+  await logClassificationFeedback(supabase, formData, url, categoryId);
+
   revalidatePath(`/${handle}`);
   return null;
+}
+
+// Learn from misclassified pasted links: one row when the person ended on another category
+// than we detected, or pressed "change" at all. Never allowed to break saving, e.g. before
+// the owner has created the table (docs/migrations/2026-09-23-classification-feedback.sql).
+async function logClassificationFeedback(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  formData: FormData,
+  url: string,
+  categoryId: number
+) {
+  try {
+    const path = String(formData.get("add_path") || "");
+    const detectedSlug = String(formData.get("detected_slug") || "").slice(0, 40);
+    const changedByUser = formData.get("changed_by_user") === "1";
+    if (path !== "paste" || !url || !detectedSlug) return;
+    const { data: cat } = await supabase.from("categories").select("slug").eq("id", categoryId).maybeSingle();
+    const finalSlug = cat?.slug;
+    if (!finalSlug || (finalSlug === detectedSlug && !changedByUser)) return;
+    await supabase.from("classification_feedback").insert({
+      url: url.slice(0, 2000),
+      normalized_url: normalizeUrl(url),
+      detected_slug: detectedSlug,
+      detected_confidence: String(formData.get("detected_confidence") || "").slice(0, 10) || null,
+      detected_reason: String(formData.get("detected_reason") || "").slice(0, 200) || null,
+      final_slug: finalSlug,
+      path: "paste",
+      changed_by_user: changedByUser,
+    });
+  } catch {
+    // logging only
+  }
 }
 
 export async function updateItem(handle: string, _prev: string | null, formData: FormData) {

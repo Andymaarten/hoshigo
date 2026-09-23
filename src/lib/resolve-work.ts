@@ -30,7 +30,12 @@ const MB_HEADERS = { "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)", Accept: "
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
 
 async function fetchJson(url: string, init?: RequestInit) {
-  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(6000) });
+  let res = await fetch(url, { ...init, signal: AbortSignal.timeout(6000) });
+  // MusicBrainz allows one request per second per IP and answers 503 above that.
+  if (res.status === 503 && url.includes("musicbrainz.org")) {
+    await new Promise((r) => setTimeout(r, 1200));
+    res = await fetch(url, { ...init, signal: AbortSignal.timeout(6000) });
+  }
   if (!res.ok) return null;
   return res.json();
 }

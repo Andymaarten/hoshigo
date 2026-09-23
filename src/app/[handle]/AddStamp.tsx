@@ -57,10 +57,18 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
   const [path, setPath] = useState<Path>("paste");
   const [categoryId, setCategoryId] = useState("");
   const [suggested, setSuggested] = useState<string[]>([]);
+  const [detected, setDetected] = useState({ slug: "", confidence: "", reason: "" });
+  const [changing, setChanging] = useState(false);
+  const [changedByUser, setChangedByUser] = useState(false);
+  const [pageTitle, setPageTitle] = useState("");
+  const [pagePhotos, setPagePhotos] = useState<string[]>([]);
+  const [handLinkRead, setHandLinkRead] = useState(false);
+  const [readingHand, setReadingHand] = useState(false);
+  const [categoryHint, setCategoryHint] = useState("");
   const [showAllCategories, setShowAllCategories] = useState(false);
 
   const [linkInput, setLinkInput] = useState("");
-  const [notALink, setNotALink] = useState(false);
+  const [notALinkQuery, setNotALinkQuery] = useState("");
   const [reading, setReading] = useState(false);
   const [readNotice, setReadNotice] = useState("");
   const [link, setLink] = useState("");
@@ -92,9 +100,17 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     setPath("paste");
     setCategoryId("");
     setSuggested([]);
+    setDetected({ slug: "", confidence: "", reason: "" });
+    setChanging(false);
+    setChangedByUser(false);
+    setPageTitle("");
+    setPagePhotos([]);
+    setHandLinkRead(false);
+    setReadingHand(false);
+    setCategoryHint("");
     setShowAllCategories(false);
     setLinkInput("");
-    setNotALink(false);
+    setNotALinkQuery("");
     setReading(false);
     setReadNotice("");
     setLink("");
@@ -190,10 +206,10 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
   async function readLink() {
     const url = extractUrl(linkInput);
     if (!url) {
-      setNotALink(true);
+      setNotALinkQuery(linkInput.trim());
       return;
     }
-    setNotALink(false);
+    setNotALinkQuery("");
     setReading(true);
     setReadNotice("");
     const cleaned = stripTracking(url);
@@ -202,6 +218,11 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
       data = await fetchJson(`/api/fetch-metadata?url=${encodeURIComponent(url)}`);
     } catch {
       data = { status: "timeout" };
+    }
+    if (data.status === "not_a_link") {
+      setReading(false);
+      setNotALinkQuery(typeof data.query === "string" && data.query ? data.query : linkInput.trim());
+      return;
     }
     const finalLink = typeof data.link === "string" ? data.link : cleaned;
     setLink(finalLink);
@@ -213,8 +234,16 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     const pagePhotos = uniq([data.image_url as string, ...((data.image_urls as string[]) ?? [])]);
     setDraft({ ...emptyDraft, title, by, image: pagePhotos[0] ?? "" });
     setPhotos(pagePhotos);
+    setPagePhotos(pagePhotos);
+    setPageTitle(title);
     setBrokenPhotos([]);
     clearMatch();
+    setDetected({
+      slug: typeof data.category_slug === "string" ? data.category_slug : "",
+      confidence: typeof data.confidence === "string" ? data.confidence : "",
+      reason: typeof data.reason === "string" ? data.reason : "",
+    });
+    setChangedByUser(false);
 
     if (!title) {
       setReadNotice(
@@ -245,14 +274,40 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     await lookUp(String(detected.id), title, by, year, finalLink, pagePhotos);
   }
 
-  function chooseCategory(id: string) {
+  function chooseCategory(id: string, isChange = changing) {
     const cat = categories.find((c) => String(c.id) === id);
     if (!cat) return;
+    const same = id === categoryId;
     setCategoryId(id);
     setShowAllCategories(false);
+    setChanging(false);
+    if (path === "paste" && isChange) {
+      setChangedByUser(true);
+      if (same) {
+        setScreen("details");
+        return;
+      }
+      // What we filled in was read for the wrong category, so start the fields over.
+      // The link and the page's own photos stay; catalog data goes.
+      clearMatch();
+      setDraft((d) => ({ ...d, title: "", by: "", year: "", image: pagePhotos[0] ?? "" }));
+      setPhotos(pagePhotos);
+      setBrokenPhotos([]);
+      setResults(null);
+      if (SEARCHABLE.has(cat.slug)) {
+        setQuery(pageTitle);
+        setScreen("search");
+        if (pageTitle) runSearch(pageTitle, cat.slug);
+      } else {
+        setScreen("details");
+      }
+      return;
+    }
     if (path === "choose") {
       clearMatch();
       setResults(null);
+      setHandLinkRead(false);
+      setCategoryHint("");
       if (SEARCHABLE.has(cat.slug)) {
         setScreen("search");
         if (query.trim()) runSearch(query, cat.slug);
@@ -316,6 +371,8 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
 
   function addByHand() {
     clearMatch();
+    setHandLinkRead(false);
+    setCategoryHint("");
     setDraft((d) => ({ ...d, title: d.title || query.trim(), by: "", year: "", image: "" }));
     setPhotos([]);
     setScreen("details");
@@ -331,6 +388,73 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
   const visiblePhotos = photos.filter((p) => !brokenPhotos.includes(p));
   const coverLocked = !!workId && COVER_FROM_CATALOG.has(slug);
   const ownLinkClean = ownLink.trim() ? extractUrl(ownLink) : null;
+  // Owner rule: only a catalog match may go without a link.
+  const linkRequired = !workId;
+  // Hand-added items (no catalog match) start with the link; the rest is read from it.
+  const handFirst = path === "choose" && !workId;
+  const gate = handFirst && !handLinkRead;
+
+  // Same pipeline as a pasted link, but the person already chose the category, so detection
+  // only fills title, by and photos, and at most shows a one line hint.
+  async function readHandLink() {
+    if (!ownLinkClean || readingHand) return;
+    setReadingHand(true);
+    setCategoryHint("");
+    try {
+      const data = await fetchJson(`/api/fetch-metadata?url=${encodeURIComponent(ownLinkClean)}`, undefined, 15000);
+      const found = uniq([data?.image_url, ...((data?.image_urls as string[]) ?? [])]);
+      setDraft((d) => ({
+        ...d,
+        title: (typeof data?.title === "string" && data.title) || d.title,
+        by: (typeof data?.by === "string" && data.by) || d.by,
+        image: d.image || found[0] || "",
+      }));
+      if (found.length) setPhotos((ps) => uniq([...ps, ...found]));
+      const other = categories.find((c) => c.slug === data?.category_slug);
+      if (data?.confidence === "high" && other && other.slug !== slug) setCategoryHint(other.label);
+    } catch {
+      // reading the page is a bonus; the fields stay editable
+    } finally {
+      setReadingHand(false);
+      setHandLinkRead(true);
+    }
+  }
+
+  function renderOwnLink(first: boolean) {
+    return (
+      <div className="field">
+        <label htmlFor="add-own-link">
+          Link <span className="optional">{linkRequired ? "required" : "optional"}</span>
+        </label>
+        <input
+          id="add-own-link"
+          type="text"
+          inputMode="url"
+          autoCapitalize="off"
+          spellCheck={false}
+          required={linkRequired}
+          autoFocus={first}
+          placeholder="Paste the link visitors should open"
+          value={ownLink}
+          onChange={(e) => setOwnLink(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && gate) {
+              e.preventDefault();
+              readHandLink();
+            }
+          }}
+        />
+        <span className="hint">
+          {finalUrl
+            ? `Visitors will go to ${displayUrl(finalUrl, 60)}`
+            : linkRequired
+              ? "Needed so visitors can find it. We'll fill in the rest from the page."
+              : "Without a link, your listing doesn't open anything."}
+        </span>
+        {ownLink.trim() && !ownLinkClean && <span className="error">That doesn&apos;t look like a link yet.</span>}
+      </div>
+    );
+  }
   const finalUrl = path === "paste" ? link : ownLinkClean ? stripTracking(ownLinkClean) : "";
   const finalSourceLabel =
     path === "paste" ? sourceLabel : finalUrl ? new URL(finalUrl).hostname.replace(/^www\./, "") : "";
@@ -380,7 +504,7 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     link: "Paste a link",
     category: path === "paste" ? "What is this?" : "What are you adding?",
     search: `Find ${category?.label ?? "it"}`,
-    details: "Check and add",
+    details: gate ? "Add its link" : "Check and add",
   }[screen];
 
   return (
@@ -454,25 +578,25 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                 value={linkInput}
                 onChange={(e) => {
                   setLinkInput(e.target.value);
-                  setNotALink(false);
+                  setNotALinkQuery("");
                 }}
                 autoFocus
               />
               <span className="hint">Share text from an app works too.</span>
             </div>
-            {notALink && (
+            {notALinkQuery && (
               <div className="notice">
                 <p>That doesn&apos;t look like a link.</p>
                 <button
                   type="button"
                   className="btn"
                   onClick={() => {
-                    setQuery(linkInput.trim());
+                    setQuery(notALinkQuery);
                     setPath("choose");
                     setScreen("category");
                   }}
                 >
-                  Search for “{linkInput.trim().slice(0, 40)}” instead
+                  Search for “{notALinkQuery.slice(0, 40)}” instead
                 </button>
               </div>
             )}
@@ -500,7 +624,20 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
               renderCategoryButtons()
             )}
             <div className="actions">
-              {renderBack(path === "paste" ? "link" : "start")}
+              {changing ? (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setChanging(false);
+                    setScreen("details");
+                  }}
+                >
+                  Back
+                </button>
+              ) : (
+                renderBack(path === "paste" ? "link" : "start")
+              )}
             </div>
           </div>
         )}
@@ -580,9 +717,33 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
             <input type="hidden" name="work_id" value={workId} />
             <input type="hidden" name="year" value={workId ? draft.year : ""} />
             <input type="hidden" name="image_url" value={draft.image} />
+            <input type="hidden" name="add_path" value={path} />
+            <input type="hidden" name="detected_slug" value={detected.slug} />
+            <input type="hidden" name="detected_confidence" value={detected.confidence} />
+            <input type="hidden" name="detected_reason" value={detected.reason} />
+            <input type="hidden" name="changed_by_user" value={changedByUser ? "1" : ""} />
 
             {readNotice && path === "paste" && <p className="hint">{readNotice}</p>}
 
+            {gate && (
+              <p className="cat-line">
+                Adding to <strong>{category?.label}</strong>
+                {query.trim() && SEARCHABLE.has(slug) && <span> · not found in the catalog</span>}
+              </p>
+            )}
+            {handFirst && renderOwnLink(gate)}
+            {!gate && categoryHint && (
+              <p className="hint">
+                This page looks like {categoryHint}. It stays in {category?.label} unless you{" "}
+                <button type="button" className="linkish" style={{ padding: 0 }} onClick={() => setScreen("category")}>
+                  change it
+                </button>
+                .
+              </p>
+            )}
+
+            {!gate && (
+              <>
             {renderPreview()}
 
             <p className="cat-line">
@@ -590,7 +751,15 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
               {looking && <span> · looking it up…</span>}
               {!looking && matchedSource && <span> · found in {SOURCE_NAME[matchedSource] ?? matchedSource}</span>}
               {" · "}
-              <button type="button" className="linkish" onClick={() => setScreen("category")}>
+              <button
+                type="button"
+                className="linkish"
+                onClick={() => {
+                  setChanging(path === "paste");
+                  setShowAllCategories(true);
+                  setScreen("category");
+                }}
+              >
                 change
               </button>
               {SEARCHABLE.has(slug) && (
@@ -609,7 +778,7 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                   .map((s) => {
                     const c = categories.find((x) => x.slug === s);
                     return c ? (
-                      <button key={s} type="button" className="chip" onClick={() => chooseCategory(String(c.id))}>
+                      <button key={s} type="button" className="chip" onClick={() => chooseCategory(String(c.id), true)}>
                         Is it {c.label}?
                       </button>
                     ) : null;
@@ -629,6 +798,11 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                   if (workId) clearMatch();
                 }}
               />
+              {!draft.title && pageTitle && path === "paste" && (
+                <button type="button" className="linkish" onClick={() => setDraft((d) => ({ ...d, title: pageTitle }))}>
+                  Use the page title: “{pageTitle.length > 50 ? `${pageTitle.slice(0, 49)}…` : pageTitle}”
+                </button>
+              )}
             </div>
             <div className="field">
               <label htmlFor="add-by">
@@ -699,6 +873,8 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
               </label>
               <textarea id="add-note" name="note" value={draft.note} onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))} />
             </div>
+              </>
+            )}
 
             {path === "paste" ? (
               <div className="link-box">
@@ -712,32 +888,21 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                 </button>
               </div>
             ) : (
-              <div className="field">
-                <label htmlFor="add-own-link">
-                  Link <span className="optional">optional</span>
-                </label>
-                <input
-                  id="add-own-link"
-                  type="text"
-                  inputMode="url"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  placeholder="Where should visitors go?"
-                  value={ownLink}
-                  onChange={(e) => setOwnLink(e.target.value)}
-                />
-                <span className="hint">
-                  {finalUrl ? `Visitors will go to ${displayUrl(finalUrl, 60)}` : "Without a link, your listing doesn't open anything."}
-                </span>
-              </div>
+              !handFirst && renderOwnLink(false)
             )}
 
             {(formError || error) && <p className="error">{formError || error}</p>}
             <div className="actions">
               {renderBack(path === "paste" ? "link" : SEARCHABLE.has(slug) ? "search" : "category")}
-              <button type="submit" className="cta" disabled={pending || !draft.title.trim() || looking}>
-                {pending ? "Adding…" : "Add"}
-              </button>
+              {gate ? (
+                <button type="button" className="cta" disabled={!ownLinkClean || readingHand} onClick={readHandLink}>
+                  {readingHand ? "Reading the link…" : "Continue"}
+                </button>
+              ) : (
+                <button type="submit" className="cta" disabled={pending || !draft.title.trim() || looking || (linkRequired && !finalUrl)}>
+                  {pending ? "Adding…" : "Add"}
+                </button>
+              )}
             </div>
           </form>
         )}

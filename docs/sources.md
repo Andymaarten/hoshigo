@@ -624,6 +624,22 @@ niet gebouwd: de keyless quota gaf direct `429 RESOURCE_EXHAUSTED`.
   overschrijft de titel niet (gevonden: de maps.app.goo.gl-link van "Anand Tea Stall" matchte
   "Anand Jetty Tea Stall").
 
+### Ronde 3 (2026-09-23)
+
+- **Wikipedia** krijgt nu de categorie via Wikidata ("instance of"-labels, coördinaten →
+  places). **Streaming, game stores, TikTok, SoundCloud, Yelp e.d.** hebben eigen regels.
+  Google-zoek-URL's worden een zoekopdracht. Fout- en 404-pagina's worden niet gelezen.
+  Details en de 100-invoer-test staan in `input-test-matrix.md`.
+- **Link verplicht zonder catalogus.** Een item zonder gekoppeld `works`-record heeft een
+  geldige http(s)-link nodig (UI + `addItem`); bewerken van oude items zonder link blijft
+  werken. Bij "zelf toevoegen" komt de link eerst, en die link loopt door dezelfde
+  `readLink()` om titel, maker en foto voor te vullen. De gekozen categorie blijft staan.
+- **Categorie wijzigen na plakken** wist titel, maker en catalogusmatch, houdt de link en de
+  foto's van de pagina, en opent de catalogus-zoekfunctie met de paginatitel.
+- **Correctielog** `classification_feedback` (zie
+  `docs/migrations/2026-09-23-classification-feedback.sql`): één rij per geplakte link
+  waarvan de categorie is gewijzigd. Een fout bij het loggen breekt het opslaan nooit.
+
 ## Uitbreiden
 
 Nieuwe bron toevoegen aan de categorie-herkenning: `DOMAIN_RULES` / `ruleFromUrl()` in
