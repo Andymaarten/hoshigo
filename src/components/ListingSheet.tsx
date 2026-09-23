@@ -6,6 +6,7 @@ import CoverImage from "@/components/CoverImage";
 import SharePanel from "@/components/SharePanel";
 import { displayUrl } from "@/lib/link-input";
 import { PUBLIC_PER_CATEGORY } from "@/lib/share-rules";
+import { ADD_PREFILL_EVENT, type AddPrefill } from "@/lib/item-order";
 
 // Defense in depth: addItem already rejects non-http(s) links before they're saved, but this
 // guards any row that predates that check so a "javascript:" URL can never end up in an href.
@@ -38,6 +39,8 @@ export default function ListingSheetBody({
   shareable,
   friendsOnly,
   noteSlot,
+  canAdd = false,
+  onAdd,
 }: {
   item: Item;
   shape?: "tall" | "photo";
@@ -48,6 +51,10 @@ export default function ListingSheetBody({
   friendsOnly: boolean;
   /** replaces the plain note, e.g. the owner's note editor */
   noteSlot?: ReactNode;
+  /** a logged in visitor: offer "Add to my hoshigo" */
+  canAdd?: boolean;
+  /** e.g. close this sheet before the add dialog opens */
+  onAdd?: () => void;
 }) {
   const href = safeHttpUrl(item.url);
   return (
@@ -66,6 +73,28 @@ export default function ListingSheetBody({
         )}
         {shareable && (
           <SharePanel key={item.id} handle={handle} itemId={item.id} title={item.title} by={item.by} mine={mine} friendsOnly={friendsOnly} />
+        )}
+        {canAdd && (
+          <button
+            type="button"
+            className="btn btn-small"
+            onClick={() => {
+              onAdd?.();
+              const detail: AddPrefill = {
+                categoryId: item.category_id,
+                workId: item.work_id,
+                title: item.title,
+                by: item.by,
+                year: item.year,
+                url: href,
+                sourceLabel: item.source_label,
+                imageUrl: item.image_url,
+              };
+              window.dispatchEvent(new CustomEvent(ADD_PREFILL_EVENT, { detail }));
+            }}
+          >
+            Add to my hoshigo
+          </button>
         )}
         {href && <span className="link-dest">{displayUrl(item.url!)}</span>}
       </div>

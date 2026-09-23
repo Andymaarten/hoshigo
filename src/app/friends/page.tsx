@@ -4,6 +4,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import SiteNav from "@/components/SiteNav";
+import HeaderStamp from "@/components/HeaderStamp";
 import SiteFooter from "@/components/SiteFooter";
 import FriendButton from "@/components/FriendButton";
 import InviteLink from "@/components/InviteLink";
@@ -51,6 +52,7 @@ export default async function FriendsPage({
         </div>
         <SiteNav loggedIn handle={myHandle} />
       </div>
+      <HeaderStamp />
       <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>your friends.</h1>
     </header>
   );

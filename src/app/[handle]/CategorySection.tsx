@@ -13,6 +13,7 @@ import type { FriendState } from "@/lib/friends";
 import { acceptFriend, addFriend } from "@/app/friends/actions";
 import ListingSheetBody, { Thumb } from "@/components/ListingSheet";
 import { isPublicRank } from "@/lib/share-rules";
+import type { PinMap } from "@/lib/item-order";
 
 export type Lock = { kind: "login" } | { kind: FriendState; otherId: string };
 
@@ -39,6 +40,7 @@ export default function CategorySection({
   lock,
   allCategories,
   isPrivate = false,
+  pins = null,
 }: {
   category: Category;
   items: Item[];
@@ -49,6 +51,7 @@ export default function CategorySection({
   lock: Lock;
   allCategories: Category[];
   isPrivate?: boolean;
+  pins?: PinMap | null;
 }) {
   const shape = SHAPE[category.slug];
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -136,7 +139,10 @@ export default function CategorySection({
               <div className="txt">
                 <span className="title">{item.title}</span>
                 <span className="by">{item.by}</span>
-                <span className="date">{formatDate(item.created_at)}</span>
+                <span className="date">
+                  {item.pinned ? "Pinned · " : ""}
+                  {formatDate(item.created_at)}
+                </span>
               </div>
             </button>
           </li>
@@ -189,6 +195,7 @@ export default function CategorySection({
               handle={handle}
               item={active}
               categories={allCategories}
+              pins={pins}
               onCancel={() => setEditing(false)}
               onDone={() => {
                 setEditing(false);
@@ -207,6 +214,8 @@ export default function CategorySection({
                 mine={isOwner}
                 shareable={isPublicRank(items.findIndex((i) => i.id === active.id))}
                 friendsOnly={isPrivate}
+                canAdd={!isOwner && lock.kind !== "login"}
+                onAdd={() => setSheetOpen(false)}
                 noteSlot={isOwner ? (
                 <>
                   {noteEditing ? (

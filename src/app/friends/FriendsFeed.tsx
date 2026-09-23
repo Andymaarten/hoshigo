@@ -138,6 +138,8 @@ export default function FriendsFeed({
               mine={false}
               shareable={active.shareable}
               friendsOnly={activeFriend.isPrivate}
+              canAdd
+              onAdd={() => setActive(null)}
             />
           </>
         )}

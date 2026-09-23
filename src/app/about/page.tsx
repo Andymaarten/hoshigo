@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
+import HeaderStamp from "@/components/HeaderStamp";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AboutPage() {
@@ -20,6 +21,7 @@ export default async function AboutPage() {
           </Link>
           <SiteNav loggedIn={!!user} handle={myHandle} />
         </div>
+        <HeaderStamp />
         <div className="kicker">
           <span className="dot" aria-hidden="true" />
           manifesto

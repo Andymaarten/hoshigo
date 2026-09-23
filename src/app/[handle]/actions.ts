@@ -52,7 +52,7 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
   }
   if (!linkedWork && !url) return "Add a link so visitors can find it. Only things found in a catalog can go without one.";
 
-  const { error } = await supabase.from("items").insert({
+  const { data: inserted, error } = await supabase.from("items").insert({
     profile_id: user.id,
     category_id: categoryId,
     work_id: linkedWork ? workId : null,
@@ -67,9 +67,14 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
     image_url: imageUrl || null,
     note: note || null,
     source_label: sourceLabel || null,
-  });
+  }).select("id").single();
 
   if (error) return error.message;
+
+  // The pin option is only shown once the pinning migration has run.
+  if (formData.get("pin") === "on" && inserted?.id) {
+    await supabase.rpc("pin_item", { p_item: inserted.id, p_pin: true });
+  }
 
   await logClassificationFeedback(supabase, formData, url, categoryId);
 
@@ -133,11 +138,18 @@ export async function updateItem(handle: string, _prev: string | null, formData:
       year: yearRaw ? Number(yearRaw) : null,
       image_url: imageUrl || null,
       note: note || null,
+      // Unpinned first so moving a pinned listing into a category that has its own pin can't
+      // collide; pin_item below puts the pin back (and moves it) in one step.
+      ...(formData.get("pin_choice") === "1" ? { pinned: false } : {}),
     })
     .eq("id", itemId)
     .eq("profile_id", user.id);
 
   if (error) return error.message;
+
+  if (formData.get("pin_choice") === "1") {
+    await supabase.rpc("pin_item", { p_item: itemId, p_pin: formData.get("pin") === "on" });
+  }
 
   revalidatePath(`/${handle}`);
   return null;

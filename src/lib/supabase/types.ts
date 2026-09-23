@@ -41,6 +41,8 @@ export interface Item {
   image_url: string | null;
   note: string | null;
   featured: boolean;
+  /** undefined until docs/migrations/2026-09-24-hana.sql has run */
+  pinned?: boolean;
   source_label: string | null;
   position: number;
   created_at: string;

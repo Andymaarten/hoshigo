@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/lib/supabase/types";
 import SiteNav from "@/components/SiteNav";
+import HeaderStamp from "@/components/HeaderStamp";
 import SiteFooter from "@/components/SiteFooter";
 import MatchSection from "@/components/MatchSection";
 import { sortCategories } from "@/lib/category-display";
@@ -46,6 +47,7 @@ export default async function ExplorePage() {
           </div>
           <SiteNav loggedIn handle={myHandle} />
         </div>
+        <HeaderStamp />
         <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>find your taste twins.</h1>
         <p className="bio">
           People whose five stars line up with yours, by category. Matching isn&apos;t live yet — these are placeholder

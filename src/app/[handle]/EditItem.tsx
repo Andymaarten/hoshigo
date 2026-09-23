@@ -5,6 +5,7 @@ import type { Category, Item } from "@/lib/supabase/types";
 import { updateItem } from "./actions";
 import CoverImage from "@/components/CoverImage";
 import PhotoFromPage from "@/components/PhotoFromPage";
+import type { PinMap } from "@/lib/item-order";
 
 export default function EditItem({
   handle,
@@ -12,12 +13,15 @@ export default function EditItem({
   categories,
   onDone,
   onCancel,
+  pins = null,
 }: {
   handle: string;
   item: Item;
   categories: Category[];
   onDone: () => void;
   onCancel: () => void;
+  /** my pins per category; null before the pinning migration (no pin option) */
+  pins?: PinMap | null;
 }) {
   const boundUpdate = updateItem.bind(null, handle);
   const [error, action, pending] = useActionState(boundUpdate, null);
@@ -31,6 +35,9 @@ export default function EditItem({
   const [options, setOptions] = useState<string[]>(item.image_url ? [item.image_url] : []);
   const [broken, setBroken] = useState<string[]>([]);
   const [note, setNote] = useState(item.note ?? "");
+  const [pin, setPin] = useState(!!item.pinned);
+  const otherPin = pins?.[Number(categoryId)];
+  const category = categories.find((c) => String(c.id) === categoryId);
 
   useEffect(() => {
     if (wasPending.current && !pending && !error) {
@@ -111,6 +118,18 @@ export default function EditItem({
         <label htmlFor="edit-note">Note</label>
         <textarea id="edit-note" name="note" value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
+      {pins && (
+        <div className="field">
+          <input type="hidden" name="pin_choice" value="1" />
+          <label className="check-row">
+            <input type="checkbox" name="pin" checked={pin} onChange={(e) => setPin(e.target.checked)} />
+            Pin to the top of {category?.label ?? "this list"}
+          </label>
+          {pin && otherPin && otherPin.id !== item.id && (
+            <span className="hint">This removes the pin from {otherPin.title}.</span>
+          )}
+        </div>
+      )}
       {error && <p className="error">{error}</p>}
       <div style={{ display: "flex", gap: 10 }}>
         <button type="button" className="btn" onClick={onCancel}>
