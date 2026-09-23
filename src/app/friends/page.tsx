@@ -82,11 +82,12 @@ export default async function FriendsPage({
 
   let results: Person[] = [];
   if (q.length >= 2) {
-    const pattern = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    // PostgREST .or() syntax breaks on commas, parens and quotes, so keep only name characters.
+    const pattern = `%${q.replace(/[^\p{L}\p{N} ._-]/gu, "").replace(/[_]/g, "\\_")}%`;
     const { data } = await supabase
       .from("profiles")
       .select("id, handle, display_name, is_private")
-      .ilike("handle", pattern)
+      .or(`handle.ilike.${pattern},display_name.ilike.${pattern}`)
       .neq("id", user.id)
       .not("handle", "like", "user-%")
       .order("handle")
@@ -118,24 +119,8 @@ export default async function FriendsPage({
       {header}
 
       <main className="friends-main">
-        {incoming.length > 0 && (
-          <section aria-labelledby="h-requests" className="friends-block">
-            <h2 id="h-requests">requests</h2>
-            <ul className="friend-list">
-              {incoming.map((p) => (
-                <li key={p.id} className="friend-row">
-                  <Link href={`/${p.handle}`} className="friend-name">
-                    {name(p)}
-                  </Link>
-                  <span className="friend-handle">@{p.handle}</span>
-                  <FriendButton otherId={p.id} handle={p.handle} state="incoming" name={name(p)} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
 
-          <section aria-labelledby="h-friends" className="friends-block">
+        <section aria-labelledby="h-friends" className="friends-block">
           <h2 id="h-friends" className="sr-only">your friends</h2>
           {friends.length === 0 ? (
             <p className="bio">No friends yet. Find people below, or send them your invite link.</p>
@@ -153,12 +138,31 @@ export default async function FriendsPage({
           )}
         </section>
 
+        {incoming.length > 0 && (
+          <section aria-labelledby="h-requests" className="friends-block">
+            <h2 id="h-requests" className="block-label">
+              {incoming.length === 1 ? "friend request" : "friend requests"}
+            </h2>
+            <ul className="friend-list">
+              {incoming.map((p) => (
+                <li key={p.id} className="friend-row">
+                  <Link href={`/${p.handle}`} className="friend-name">
+                    {name(p)}
+                  </Link>
+                  <span className="friend-handle">@{p.handle}</span>
+                  <FriendButton otherId={p.id} handle={p.handle} state="incoming" name={name(p)} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section aria-labelledby="h-find" className="friends-block">
           <h2 id="h-find">find people</h2>
           <form action="/friends" className="friend-search">
             <div className="field" style={{ flex: 1 }}>
-              <label htmlFor="q">Search by page name</label>
-              <input id="q" name="q" type="search" defaultValue={q} placeholder="their page name, like hoshigo.cc/name" autoCapitalize="off" spellCheck={false} />
+              <label htmlFor="q">Search by name or page name</label>
+              <input id="q" name="q" type="search" defaultValue={q} placeholder="a name, or hoshigo.cc/name" autoCapitalize="off" spellCheck={false} />
             </div>
             <button type="submit" className="btn">
               Search
