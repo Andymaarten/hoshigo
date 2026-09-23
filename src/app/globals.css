@@ -1554,6 +1554,47 @@ footer .cta {
   min-width: 0;
 }
 
+/* listing sheet: compact rows of small actions, wrapping only when they don't fit */
+.sheet-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn.btn-small {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.btn.btn-danger {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* SharePanel's button sits in the row; its panel, once open, takes a full line below */
+.sheet-row .share {
+  display: contents;
+}
+
+.sheet-row .share > .btn {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.sheet-row .share-panel {
+  flex-basis: 100%;
+  order: 2;
+}
+
+/* the honest destination sits right under the buttons, above an opened share panel */
+.sheet-out .link-dest {
+  flex-basis: 100%;
+  order: 1;
+}
+
 .check-row {
   display: flex;
   align-items: center;

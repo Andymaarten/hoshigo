@@ -225,48 +225,43 @@ export default function CategorySection({
                           minHeight: 70,
                         }}
                       />
-                      <button
-                        type="button"
-                        className="btn"
-                        disabled={saving}
-                        style={{ alignSelf: "flex-start" }}
-                        onClick={async () => {
-                          setSaving(true);
-                          await updateNote(handle, active.id, note);
-                          // Keep the open item in sync so a following Edit doesn't write back the old note.
-                          setActive((a) => (a ? { ...a, note: note || null } : a));
-                          setSaving(false);
-                          setNoteEditing(false);
-                        }}
-                      >
-                        {saving ? "Saving…" : "Save note"}
-                      </button>
+                      <div className="sheet-row">
+                        <button
+                          type="button"
+                          className="btn btn-small"
+                          disabled={saving}
+                          onClick={async () => {
+                            setSaving(true);
+                            await updateNote(handle, active.id, note);
+                            // Keep the open item in sync so a following Edit doesn't write back the old note.
+                            setActive((a) => (a ? { ...a, note: note || null } : a));
+                            setSaving(false);
+                            setNoteEditing(false);
+                          }}
+                        >
+                          {saving ? "Saving…" : "Save note"}
+                        </button>
+                      </div>
                     </>
                   ) : (
-                    <>
-                      <p className={`note${note ? "" : " empty"}`}>{note || "No note yet."}</p>
-                      <button
-                        type="button"
-                        className="btn"
-                        style={{ alignSelf: "flex-start" }}
-                        onClick={() => setNoteEditing(true)}
-                      >
+                    <p className={`note${note ? "" : " empty"}`}>{note || "No note yet."}</p>
+                  )}
+                  <div className="sheet-row">
+                    {!noteEditing && (
+                      <button type="button" className="btn btn-small" onClick={() => setNoteEditing(true)}>
                         Edit note
                       </button>
-                    </>
-                  )}
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button type="button" className="btn" onClick={() => setEditing(true)}>
+                    )}
+                    <button type="button" className="btn btn-small" onClick={() => setEditing(true)}>
                       Edit
                     </button>
                     <button
                       type="button"
-                      className="btn"
+                      className="btn btn-small btn-danger"
                       onClick={() => {
                         deleteItem(handle, active.id);
                         setSheetOpen(false);
                       }}
-                      style={{ color: "var(--accent)", borderColor: "var(--accent)" }}
                     >
                       Delete
                     </button>

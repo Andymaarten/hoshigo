@@ -58,20 +58,20 @@ export default function ListingSheetBody({
 
       {noteSlot ?? <p className={`note${item.note ? "" : " empty"}`}>{item.note || "No note yet."}</p>}
 
-      {href && (
-        <div className="link-out">
-          <a href={href} target="_blank" rel="noopener" className="btn">
-            Open {item.source_label || "link"} ↗
+      <div className="sheet-row sheet-out">
+        {href && (
+          <a href={href} target="_blank" rel="noopener" className="btn btn-small">
+            Open {item.source_label || "link"}
           </a>
-          <span className="link-dest">{displayUrl(item.url!)}</span>
-        </div>
-      )}
-
-      {shareable ? (
-        <SharePanel key={item.id} handle={handle} itemId={item.id} title={item.title} by={item.by} mine={mine} friendsOnly={friendsOnly} />
-      ) : mine ? (
+        )}
+        {shareable && (
+          <SharePanel key={item.id} handle={handle} itemId={item.id} title={item.title} by={item.by} mine={mine} friendsOnly={friendsOnly} />
+        )}
+        {href && <span className="link-dest">{displayUrl(item.url!)}</span>}
+      </div>
+      {!shareable && mine && (
         <p className="meta">Only your newest {PUBLIC_PER_CATEGORY} per list are public, so this one can&rsquo;t be shared yet.</p>
-      ) : null}
+      )}
     </>
   );
 }
