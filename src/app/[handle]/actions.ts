@@ -34,14 +34,14 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
   const title = String(formData.get("title") || "").trim();
   const by = String(formData.get("by") || "").trim();
   const yearRaw = String(formData.get("year") || "").trim();
-  const url = String(formData.get("url") || "").trim();
+  const rawUrl = String(formData.get("url") || "").trim();
   const imageUrl = String(formData.get("image_url") || "").trim();
   const note = String(formData.get("note") || "").trim();
-  const sourceLabel = String(formData.get("source_label") || "").trim();
+  const rawSourceLabel = String(formData.get("source_label") || "").trim();
   const workId = String(formData.get("work_id") || "").trim();
 
   if (!title || !categoryId) return "Title and category are required.";
-  if (url && !safeHttpUrl(url)) return "That link doesn't look like a valid web address.";
+  if (rawUrl && !safeHttpUrl(rawUrl)) return "That link doesn't look like a valid web address.";
   if (imageUrl && !safeHttpUrl(imageUrl)) return "That image URL doesn't look like a valid web address.";
 
   // Owner rule: a hoshigo without a catalog match must have a link, so visitors can find it.
@@ -50,7 +50,21 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
     const { data: work } = await supabase.from("works").select("id").eq("id", workId).maybeSingle();
     linkedWork = !!work;
   }
-  if (!linkedWork && !url) return "Add a link so visitors can find it. Only things found in a catalog can go without one.";
+  if (!linkedWork && !rawUrl) return "Add a link so visitors can find it. Only things found in a catalog can go without one.";
+
+  // No link of their own, but the catalog knows the thing's website (a place from OSM):
+  // use that. A link the person gave always wins. The website column only exists after
+  // docs/migrations/2026-09-24-kaito.sql; before that this finds nothing.
+  let url = rawUrl;
+  let sourceLabel = rawSourceLabel;
+  if (!url && linkedWork) {
+    const { data: w } = await supabase.from("works").select("website").eq("id", workId).maybeSingle();
+    const website = (w as { website?: string | null } | null)?.website;
+    if (website && safeHttpUrl(website)) {
+      url = website;
+      sourceLabel = new URL(website).hostname.replace(/^www\./, "");
+    }
+  }
 
   const { error } = await supabase.from("items").insert({
     profile_id: user.id,

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveWork } from "@/lib/resolve-work";
-import { upsertWork } from "@/lib/works";
+import { upsertWork, withWebsitePhoto } from "@/lib/works";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -15,8 +15,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing category or title" }, { status: 400 });
   }
 
-  const resolved = await resolveWork(category_slug, title, by, year, url);
+  let resolved = await resolveWork(category_slug, title, by, year, url);
   if (!resolved) return NextResponse.json({ work: null });
+  // Only sure place matches get linked by the dialog, so only those are worth a photo fetch.
+  if (resolved.source === "nominatim" && resolved.match_confidence === "high") resolved = await withWebsitePhoto(resolved);
   const work = await upsertWork(supabase, Number(category_id), resolved);
   if (!work) return NextResponse.json({ work: null });
   // The item shows what was matched (e.g. the translated edition), the id links the work.
