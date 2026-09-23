@@ -10,7 +10,17 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user || !to || user.email?.toLowerCase() !== to.toLowerCase()) {
-    return Response.json({ error: "Only available to the owner, logged in with the SIGNUP_NOTIFY_EMAIL address." }, { status: 403 });
+    // Yes/no answers only: never echo the configured address to someone who isn't the owner.
+    return Response.json(
+      {
+        error: "Only available to the owner, logged in with the SIGNUP_NOTIFY_EMAIL address.",
+        loggedIn: !!user,
+        SIGNUP_NOTIFY_EMAIL_set: !!to,
+        RESEND_API_KEY_set: !!apiKey,
+        yourEmailMatches: !!user && !!to && user.email?.toLowerCase() === to.toLowerCase(),
+      },
+      { status: 403 }
+    );
   }
 
   const report: Record<string, unknown> = {
