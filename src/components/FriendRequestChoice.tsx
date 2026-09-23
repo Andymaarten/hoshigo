@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 
-export default function FriendRequestChoice({ initialAuto }: { initialAuto: boolean }) {
+export default function FriendRequestChoice({ initialAuto, initialEmail = true }: { initialAuto: boolean; initialEmail?: boolean }) {
   const [auto, setAuto] = useState(initialAuto);
+  const [email, setEmail] = useState(initialEmail);
 
   return (
     <div role="group" aria-labelledby="friend-requests-legend" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -35,7 +36,14 @@ export default function FriendRequestChoice({ initialAuto }: { initialAuto: bool
           ? "Anyone who adds you becomes your friend right away."
           : "You approve each request on your Friends page."}
       </p>
+      {!auto && (
+        <label className="check-row">
+          <input type="checkbox" checked={email} onChange={(e) => setEmail(e.target.checked)} />
+          Email me when I get a friend request
+        </label>
+      )}
       <input type="hidden" name="friend_choice" value="1" />
+      <input type="checkbox" name="email_friend_requests" checked={email} onChange={() => {}} hidden readOnly />
       <input type="checkbox" name="auto_accept_friends" checked={auto} onChange={() => {}} hidden readOnly />
     </div>
   );

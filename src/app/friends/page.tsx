@@ -4,21 +4,15 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
-import CoverImage from "@/components/CoverImage";
 import FriendButton from "@/components/FriendButton";
 import InviteLink from "@/components/InviteLink";
-import { SHAPE } from "@/lib/category-display";
+import FriendsFeed, { type FeedFriend } from "./FriendsFeed";
+import { feedRows, shareableIds, withShareable, type FeedPage } from "@/lib/friends-feed";
 import { myFriendships, myInviteToken } from "@/lib/friends";
-import type { Category, Item, Profile } from "@/lib/supabase/types";
+import type { Category, Profile } from "@/lib/supabase/types";
 import { sortCategories } from "@/lib/category-display";
 
-const PAGE_SIZE = 10;
-
-type Person = Pick<Profile, "id" | "handle" | "display_name">;
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-}
+type Person = Pick<Profile, "id" | "handle" | "display_name" | "is_private">;
 
 function name(p: Person) {
   return p.display_name || p.handle;
@@ -33,7 +27,6 @@ export default async function FriendsPage({
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
   const q = one(sp.q).trim().toLowerCase().slice(0, 30);
   const catSlug = one(sp.cat);
-  const before = one(sp.before);
 
   const supabase = await createClient();
   const {
@@ -76,7 +69,7 @@ export default async function FriendsPage({
   const peopleIds = [...new Set([...rel.friendIds, ...rel.incomingIds])];
   const [{ data: people }, inviteToken] = await Promise.all([
     peopleIds.length
-      ? supabase.from("profiles").select("id, handle, display_name").in("id", peopleIds).returns<Person[]>()
+      ? supabase.from("profiles").select("id, handle, display_name, is_private").in("id", peopleIds).returns<Person[]>()
       : Promise.resolve({ data: [] as Person[] }),
     myInviteToken(supabase, user.id),
   ]);
@@ -92,7 +85,7 @@ export default async function FriendsPage({
     const pattern = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
     const { data } = await supabase
       .from("profiles")
-      .select("id, handle, display_name")
+      .select("id, handle, display_name, is_private")
       .ilike("handle", pattern)
       .neq("id", user.id)
       .not("handle", "like", "user-%")
@@ -104,35 +97,22 @@ export default async function FriendsPage({
   const relation = (id: string) =>
     rel.friendIds.includes(id) ? "friends" : rel.outgoingIds.includes(id) ? "request sent" : rel.incomingIds.includes(id) ? "wants to be friends" : null;
 
-  const activeCat = (categories ?? []).find((c) => c.slug === catSlug);
-  let feed: Item[] = [];
-  let hasOlder = false;
-  if (rel.friendIds.length) {
-    let query = supabase
-      .from("items")
-      .select("*")
-      .in("profile_id", rel.friendIds)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(PAGE_SIZE + 1);
-    if (activeCat) query = query.eq("category_id", activeCat.id);
-    const [beforeAt, beforeId] = before.split("_");
-    if (beforeAt && !Number.isNaN(Date.parse(beforeAt)) && /^[0-9a-f-]{36}$/i.test(beforeId ?? "")) {
-      query = query.or(`created_at.lt."${beforeAt}",and(created_at.eq."${beforeAt}",id.lt.${beforeId})`);
-    }
-    const { data } = await query.returns<Item[]>();
-    feed = (data ?? []).slice(0, PAGE_SIZE);
-    hasOlder = (data ?? []).length > PAGE_SIZE;
-  }
+  // Every filter's first page is loaded up front so the chips switch without a round trip.
+  const filters: { key: string; id: number | null }[] = [{ key: "all", id: null }, ...categories.map((c) => ({ key: c.slug, id: c.id }))];
+  const [firstPages, shareIds] = await Promise.all([
+    Promise.all(filters.map((f) => feedRows(supabase, rel.friendIds, f.id))),
+    shareableIds(supabase, rel.friendIds),
+  ]);
+  const initialFeed: Record<string, FeedPage> = {};
+  filters.forEach((f, i) => {
+    initialFeed[f.key] = { items: withShareable(firstPages[i].items, shareIds), hasOlder: firstPages[i].hasOlder };
+  });
+  const feedFriends: Record<string, FeedFriend> = {};
+  friends.forEach((p) => {
+    feedFriends[p.id] = { handle: p.handle, name: name(p), isPrivate: p.is_private };
+  });
   const h = await headers();
   const origin = process.env.NEXT_PUBLIC_SITE_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
-  const catById = new Map((categories ?? []).map((c) => [c.id, c]));
-  const filterHref = (slug?: string) => (slug ? `/friends?cat=${slug}` : "/friends");
-  const olderHref =
-    hasOlder && feed.length
-      ? `/friends?${new URLSearchParams({ ...(activeCat ? { cat: activeCat.slug } : {}), before: `${feed[feed.length - 1].created_at}_${feed[feed.length - 1].id}` })}`
-      : null;
-
   return (
     <div className="page">
       {header}
@@ -206,59 +186,10 @@ export default async function FriendsPage({
 
         <section aria-labelledby="h-latest" className="friends-block">
           <h2 id="h-latest">latest from your friends</h2>
-          <nav className="chip-row" aria-label="Filter by category" style={{ marginBottom: 18 }}>
-            <Link href={filterHref()} className={`chip${!activeCat ? " active" : ""}`} aria-current={!activeCat ? "page" : undefined}>
-              all
-            </Link>
-            {(categories ?? []).map((c) => (
-              <Link
-                key={c.id}
-                href={filterHref(c.slug)}
-                className={`chip${activeCat?.id === c.id ? " active" : ""}`}
-                aria-current={activeCat?.id === c.id ? "page" : undefined}
-              >
-                {c.label}
-              </Link>
-            ))}
-          </nav>
-
           {friends.length === 0 ? (
             <p className="bio">Once you have friends, what they add shows up here, newest first.</p>
-          ) : feed.length === 0 ? (
-            <p className="bio">{before ? "Nothing older." : `No ${activeCat ? activeCat.label : "additions"} from friends yet.`}</p>
           ) : (
-            <ul className="feed-list">
-              {feed.map((item) => {
-                const friend = byId.get(item.profile_id);
-                const cat = catById.get(item.category_id);
-                const shape = cat ? SHAPE[cat.slug] : undefined;
-                return (
-                  <li key={item.id} className="feed-row">
-                    <div className={`thumb${shape === "tall" ? " tall" : ""}`} aria-hidden="true">
-                      <CoverImage src={item.image_url} small />
-                    </div>
-                    <div className="feed-txt">
-                      <span className="title">{item.title}</span>
-                      {item.by && <span className="by">{item.by}</span>}
-                      <span className="feed-meta">
-                        {friend && (
-                          <Link href={`/${friend.handle}`} className="feed-friend">
-                            {name(friend)}
-                          </Link>
-                        )}
-                        {cat && <span>{cat.label}</span>}
-                        <time dateTime={item.created_at}>{formatDate(item.created_at)}</time>
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {olderHref && (
-            <Link href={olderHref} className="btn load-more">
-              Older
-            </Link>
+            <FriendsFeed categories={categories} initial={initialFeed} friends={feedFriends} initialSlug={catSlug} />
           )}
         </section>
       </main>

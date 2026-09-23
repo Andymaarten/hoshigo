@@ -7,14 +7,12 @@ import { deleteItem, updateNote } from "./actions";
 import LockIcon from "@/components/icons/LockIcon";
 import EditItem from "./EditItem";
 import Sheet from "@/components/Sheet";
-import CoverImage from "@/components/CoverImage";
 import { imageSrc } from "@/lib/image-src";
-import { displayUrl } from "@/lib/link-input";
 import { SHAPE } from "@/lib/category-display";
 import type { FriendState } from "@/lib/friends";
 import { acceptFriend, addFriend } from "@/app/friends/actions";
-import SharePanel from "@/components/SharePanel";
-import { isPublicRank, PUBLIC_PER_CATEGORY } from "@/lib/share-rules";
+import ListingSheetBody, { Thumb } from "@/components/ListingSheet";
+import { isPublicRank } from "@/lib/share-rules";
 
 export type Lock = { kind: "login" } | { kind: FriendState; otherId: string };
 
@@ -29,27 +27,6 @@ const NEXT_PAGE_SIZE = 4;
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
-}
-
-// Defense in depth: addItem already rejects non-http(s) links before they're saved, but this
-// guards any row that predates that check so a "javascript:" URL can never end up in an href.
-function safeHttpUrl(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  try {
-    const parsed = new URL(raw);
-    return parsed.protocol === "http:" || parsed.protocol === "https:" ? raw : null;
-  } catch {
-    return null;
-  }
-}
-
-function Thumb({ item, shape, big }: { item: Item; shape?: "tall" | "photo"; big?: boolean }) {
-  return (
-    <div className={`thumb${shape === "tall" ? " tall" : ""}${shape === "photo" ? " photo" : ""}${big ? " big" : ""}`}>
-      {item.year && <span>{item.year}</span>}
-      <CoverImage src={item.image_url} eager={big} />
-    </div>
-  );
 }
 
 export default function CategorySection({
@@ -222,11 +199,15 @@ export default function CategorySection({
 
           {active && !editing && (
             <>
-              <Thumb item={active} shape={shape} big />
-              <h3 id={`sheet-title-${category.slug}`}>{active.title}</h3>
-              <div className="meta">{[active.by, active.year].filter(Boolean).join(", ")}</div>
-
-              {isOwner ? (
+              <ListingSheetBody
+                item={active}
+                shape={shape}
+                titleId={`sheet-title-${category.slug}`}
+                handle={handle}
+                mine={isOwner}
+                shareable={isPublicRank(items.findIndex((i) => i.id === active.id))}
+                friendsOnly={isPrivate}
+                noteSlot={isOwner ? (
                 <>
                   {noteEditing ? (
                     <>
@@ -244,71 +225,49 @@ export default function CategorySection({
                           minHeight: 70,
                         }}
                       />
-                      <button
-                        type="button"
-                        className="btn"
-                        disabled={saving}
-                        style={{ alignSelf: "flex-start" }}
-                        onClick={async () => {
-                          setSaving(true);
-                          await updateNote(handle, active.id, note);
-                          // Keep the open item in sync so a following Edit doesn't write back the old note.
-                          setActive((a) => (a ? { ...a, note: note || null } : a));
-                          setSaving(false);
-                          setNoteEditing(false);
-                        }}
-                      >
-                        {saving ? "Saving…" : "Save note"}
-                      </button>
                     </>
                   ) : (
-                    <>
-                      <p className={`note${note ? "" : " empty"}`}>{note || "No note yet."}</p>
-                      <button
-                        type="button"
-                        className="btn"
-                        style={{ alignSelf: "flex-start" }}
-                        onClick={() => setNoteEditing(true)}
-                      >
+                    <p className={`note${note ? "" : " empty"}`}>{note || "No note yet."}</p>
+                  )}
+                  <div className="sheet-row">
+                    {noteEditing ? (
+                    <button
+                      type="button"
+                      className="btn btn-small"
+                      disabled={saving}
+                      onClick={async () => {
+                        setSaving(true);
+                        await updateNote(handle, active.id, note);
+                        // Keep the open item in sync so a following Edit doesn't write back the old note.
+                        setActive((a) => (a ? { ...a, note: note || null } : a));
+                        setSaving(false);
+                        setNoteEditing(false);
+                      }}
+                    >
+                      {saving ? "Saving…" : "Save note"}
+                    </button>
+                    ) : (
+                      <button type="button" className="btn btn-small" onClick={() => setNoteEditing(true)}>
                         Edit note
                       </button>
-                    </>
-                  )}
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button type="button" className="btn" onClick={() => setEditing(true)}>
+                    )}
+                    <button type="button" className="btn btn-small" onClick={() => setEditing(true)}>
                       Edit
                     </button>
                     <button
                       type="button"
-                      className="btn"
+                      className="btn btn-small btn-danger"
                       onClick={() => {
                         deleteItem(handle, active.id);
                         setSheetOpen(false);
                       }}
-                      style={{ color: "var(--accent)", borderColor: "var(--accent)" }}
                     >
                       Delete
                     </button>
                   </div>
                 </>
-              ) : (
-                <p className={`note${active.note ? "" : " empty"}`}>{active.note || "No note yet."}</p>
-              )}
-
-              {safeHttpUrl(active.url) && (
-                <div className="link-out">
-                  <a href={safeHttpUrl(active.url)!} target="_blank" rel="noopener" className="btn">
-                    Open {active.source_label || "link"} ↗
-                  </a>
-                  <span className="link-dest">{displayUrl(active.url!)}</span>
-                </div>
-              )}
-
-              {isPublicRank(items.findIndex((i) => i.id === active.id)) ? (
-                <SharePanel key={active.id} handle={handle} itemId={active.id} title={active.title} by={active.by} mine={isOwner} friendsOnly={isPrivate} />
-              ) : (
-                <p className="meta">Only your newest {PUBLIC_PER_CATEGORY} per list are public, so this one can&rsquo;t be shared yet.</p>
-              )}
+              ) : undefined}
+              />
             </>
           )}
       </Sheet>

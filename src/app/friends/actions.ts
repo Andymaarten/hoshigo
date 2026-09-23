@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { FriendState } from "@/lib/friends";
+import { after } from "next/server";
+import { myFriendships, type FriendState } from "@/lib/friends";
+import { feedRows, shareableIds, withShareable, type FeedPage } from "@/lib/friends-feed";
+import { notifyFriendRequest } from "@/lib/notify-friend-request";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
@@ -25,6 +28,10 @@ export async function addFriend(otherId: string, handle?: string): Promise<Frien
   const { data, error } = await supabase.rpc("request_friend", { target: otherId });
   refresh(handle);
   if (error) return "none";
+  if (data === "pending") {
+    const { data: me } = await supabase.from("profiles").select("handle, display_name").eq("id", user.id).single();
+    if (me) after(() => notifyFriendRequest({ toId: otherId, fromName: me.display_name || me.handle, fromHandle: me.handle }));
+  }
   return data === "friends" ? "friends" : data === "pending" ? "outgoing" : "none";
 }
 
@@ -46,4 +53,28 @@ export async function removeFriend(otherId: string, handle?: string): Promise<Fr
     .or(`and(requester.eq.${user.id},addressee.eq.${otherId}),and(requester.eq.${otherId},addressee.eq.${user.id})`);
   refresh(handle);
   return "none";
+}
+
+/** Pending incoming requests, for the badge in the nav. 0 on any error. */
+export async function pendingRequestCount(): Promise<number> {
+  const { supabase, user } = await session();
+  if (!user) return 0;
+  const { count, error } = await supabase
+    .from("friendships")
+    .select("requester", { count: "exact", head: true })
+    .eq("addressee", user.id)
+    .eq("status", "pending");
+  return error ? 0 : count ?? 0;
+}
+
+export async function loadOlderFeed(categoryId: number | null, cursorAt: string, cursorId: string): Promise<FeedPage> {
+  const { supabase, user } = await session();
+  if (!user) return { items: [], hasOlder: false };
+  const rel = await myFriendships(supabase, user.id);
+  if (!rel) return { items: [], hasOlder: false };
+  const [page, ids] = await Promise.all([
+    feedRows(supabase, rel.friendIds, categoryId, { at: cursorAt, id: cursorId }),
+    shareableIds(supabase, rel.friendIds),
+  ]);
+  return { items: withShareable(page.items, ids), hasOlder: page.hasOlder };
 }

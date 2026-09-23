@@ -45,6 +45,7 @@ export default async function SettingsPage() {
           initialSocialLinks={profile.social_links ?? []}
           initialIsPrivate={profile.is_private ?? false}
           initialAutoAccept={profile.auto_accept_friends ?? false}
+          initialEmail={profile.email_friend_requests ?? true}
           friendsEnabled={profile.auto_accept_friends !== undefined}
         />
       </section>

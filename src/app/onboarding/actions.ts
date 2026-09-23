@@ -44,6 +44,12 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
     .update({ auto_accept_friends: formData.get("auto_accept_friends") === "on" })
     .eq("id", user.id);
 
+  // own update: the column only exists after docs/migrations/2026-09-24-friend-request-email.sql
+  await supabase
+    .from("profiles")
+    .update({ email_friend_requests: formData.get("email_friend_requests") === "on" })
+    .eq("id", user.id);
+
   if (isFirstOnboarding) await notifyNewSignup({ handle, displayName, email: user.email });
 
   redirect((await pendingInvitePath()) ?? `/${handle}`);

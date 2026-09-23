@@ -143,6 +143,22 @@ a.word {
   color: var(--ground);
 }
 
+.menu a .nav-badge,
+.menu a:hover .nav-badge,
+.menu a[aria-current="page"] .nav-badge {
+  margin-left: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
 @media (max-width: 640px) {
   /* The wordmark's own column (.entry) can grow tall (gloss line, def text
      below it), which used to drag the nav down with it if they shared normal
@@ -1536,6 +1552,87 @@ footer .cta {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+
+/* listing sheet: compact rows of small actions, wrapping only when they don't fit */
+.sheet-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn.btn-small {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.btn.btn-danger {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* SharePanel's button sits in the row; its panel, once open, takes a full line below */
+.sheet-row .share {
+  display: contents;
+}
+
+.sheet-row .share > .btn {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.sheet-row .share-panel {
+  flex-basis: 100%;
+  order: 2;
+}
+
+/* the honest destination sits right under the buttons, above an opened share panel */
+.sheet-out .link-dest {
+  flex-basis: 100%;
+  order: 1;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.check-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink);
+}
+
+.feed-cover {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.feed-cover:hover {
+  outline: 2px solid var(--accent);
+}
+
+/* colour covers only in the friends list (owner trial) */
+.feed-cover img {
+  filter: none;
+}
+
+.feed-title {
+  all: unset;
+  cursor: pointer;
+}
+
+.feed-title:hover,
+.feed-title:focus-visible {
+  color: var(--accent);
 }
 
 .feed-txt .title {
