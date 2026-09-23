@@ -91,6 +91,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               handle={handle}
               isOwner={isOwner}
               allCategories={categories ?? []}
+              isPrivate={profile.is_private}
             />
           ))}
         {isOwner && (items ?? []).length === 0 && (

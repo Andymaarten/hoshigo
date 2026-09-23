@@ -11,6 +11,8 @@ import CoverImage from "@/components/CoverImage";
 import { imageSrc } from "@/lib/image-src";
 import { displayUrl } from "@/lib/link-input";
 import { SHAPE } from "@/lib/category-display";
+import SharePanel from "@/components/SharePanel";
+import { isPublicRank, PUBLIC_PER_CATEGORY } from "@/lib/share-rules";
 
 // The first page shows 5 items. Every page after that gives up one grid slot
 // to a "previous" tile (instead of a separate button above the grid, which
@@ -52,12 +54,14 @@ export default function CategorySection({
   handle,
   isOwner,
   allCategories,
+  isPrivate = false,
 }: {
   category: Category;
   items: Item[];
   handle: string;
   isOwner: boolean;
   allCategories: Category[];
+  isPrivate?: boolean;
 }) {
   const shape = SHAPE[category.slug];
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -291,6 +295,12 @@ export default function CategorySection({
                   </a>
                   <span className="link-dest">{displayUrl(active.url!)}</span>
                 </div>
+              )}
+
+              {isPublicRank(items.findIndex((i) => i.id === active.id)) ? (
+                <SharePanel key={active.id} handle={handle} itemId={active.id} title={active.title} by={active.by} mine={isOwner} friendsOnly={isPrivate} />
+              ) : (
+                <p className="meta">Only your newest {PUBLIC_PER_CATEGORY} per list are public, so this one can&rsquo;t be shared yet.</p>
               )}
             </>
           )}
