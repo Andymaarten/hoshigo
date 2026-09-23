@@ -1724,6 +1724,24 @@ footer .cta {
   text-decoration-color: var(--accent);
 }
 
+button.share-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button.share-link:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.share-hint {
+  margin: 0;
+  font-size: 13px;
+}
+
 .listing {
   display: flex;
   flex-wrap: wrap;
