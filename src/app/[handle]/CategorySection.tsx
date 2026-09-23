@@ -225,29 +225,28 @@ export default function CategorySection({
                           minHeight: 70,
                         }}
                       />
-                      <div className="sheet-row">
-                        <button
-                          type="button"
-                          className="btn btn-small"
-                          disabled={saving}
-                          onClick={async () => {
-                            setSaving(true);
-                            await updateNote(handle, active.id, note);
-                            // Keep the open item in sync so a following Edit doesn't write back the old note.
-                            setActive((a) => (a ? { ...a, note: note || null } : a));
-                            setSaving(false);
-                            setNoteEditing(false);
-                          }}
-                        >
-                          {saving ? "Saving…" : "Save note"}
-                        </button>
-                      </div>
                     </>
                   ) : (
                     <p className={`note${note ? "" : " empty"}`}>{note || "No note yet."}</p>
                   )}
                   <div className="sheet-row">
-                    {!noteEditing && (
+                    {noteEditing ? (
+                    <button
+                      type="button"
+                      className="btn btn-small"
+                      disabled={saving}
+                      onClick={async () => {
+                        setSaving(true);
+                        await updateNote(handle, active.id, note);
+                        // Keep the open item in sync so a following Edit doesn't write back the old note.
+                        setActive((a) => (a ? { ...a, note: note || null } : a));
+                        setSaving(false);
+                        setNoteEditing(false);
+                      }}
+                    >
+                      {saving ? "Saving…" : "Save note"}
+                    </button>
+                    ) : (
                       <button type="button" className="btn btn-small" onClick={() => setNoteEditing(true)}>
                         Edit note
                       </button>
