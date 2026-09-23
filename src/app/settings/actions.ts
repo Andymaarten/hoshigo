@@ -28,6 +28,13 @@ export async function saveProfile(_prev: string | null, formData: FormData) {
 
   if (error) return error.message;
 
+  if (formData.get("friend_choice") === "1") {
+    await supabase
+      .from("profiles")
+      .update({ auto_accept_friends: formData.get("auto_accept_friends") === "on" })
+      .eq("id", user.id);
+  }
+
   revalidatePath(`/${profile.handle}`);
   redirect(`/${profile.handle}`);
 }

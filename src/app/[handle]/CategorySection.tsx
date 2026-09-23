@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import type { Category, Item } from "@/lib/supabase/types";
 import { deleteItem, updateNote } from "./actions";
@@ -11,6 +11,10 @@ import CoverImage from "@/components/CoverImage";
 import { imageSrc } from "@/lib/image-src";
 import { displayUrl } from "@/lib/link-input";
 import { SHAPE } from "@/lib/category-display";
+import type { FriendState } from "@/lib/friends";
+import { acceptFriend, addFriend } from "@/app/friends/actions";
+
+export type Lock = { kind: "login" } | { kind: FriendState; otherId: string };
 
 // The first page shows 5 items. Every page after that gives up one grid slot
 // to a "previous" tile (instead of a separate button above the grid, which
@@ -51,12 +55,18 @@ export default function CategorySection({
   items,
   handle,
   isOwner,
+  canBrowseAll,
+  hasMore,
+  lock,
   allCategories,
 }: {
   category: Category;
   items: Item[];
   handle: string;
   isOwner: boolean;
+  canBrowseAll: boolean;
+  hasMore: boolean;
+  lock: Lock;
   allCategories: Category[];
 }) {
   const shape = SHAPE[category.slug];
@@ -67,18 +77,17 @@ export default function CategorySection({
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState(false);
+  const [lockPending, startLock] = useTransition();
 
   const pageSize = page === 0 ? FIRST_PAGE_SIZE : NEXT_PAGE_SIZE;
   const pageStart = page === 0 ? 0 : FIRST_PAGE_SIZE + (page - 1) * NEXT_PAGE_SIZE;
   const visibleItems = items.slice(pageStart, pageStart + pageSize);
   const hasPrevPage = page > 0;
   const hasNextPage = pageStart + pageSize < items.length;
-  // TODO: replace with real friends/subscription check once that backend exists —
-  // for now every non-owner viewer is treated as "not a friend, not a paying customer"
-  // and gets a locked tile instead of a working "next" past the first page.
-  const showPrevTile = isOwner && hasPrevPage;
-  const showNextTile = isOwner && hasNextPage;
-  const showLockTile = !isOwner && hasNextPage;
+  // Non-friends are only sent the first 5, so "more" for them comes from the server's hasMore.
+  const showPrevTile = canBrowseAll && hasPrevPage;
+  const showNextTile = canBrowseAll && hasNextPage;
+  const showLockTile = !canBrowseAll && hasMore;
   const gridId = `grid-${category.slug}`;
 
   // The grid should always occupy the same number of cells (FIRST_PAGE_SIZE) so
@@ -92,9 +101,9 @@ export default function CategorySection({
   const navThumbClass = `thumb nav-thumb${shape === "tall" ? " tall" : ""}${shape === "photo" ? " photo" : ""}`;
 
   // Prefetch the next page's cover images so "next" never has a loading delay —
-  // only relevant while pagination actually still works (i.e. for the owner).
+  // only relevant while pagination actually works (owner and friends).
   useEffect(() => {
-    if (!isOwner || !hasNextPage) return;
+    if (!canBrowseAll || !hasNextPage) return;
     const nextStart = pageStart + pageSize;
     const nextItems = items.slice(nextStart, nextStart + NEXT_PAGE_SIZE);
     nextItems.forEach((item) => {
@@ -105,7 +114,7 @@ export default function CategorySection({
       img.referrerPolicy = "no-referrer";
       img.src = src;
     });
-  }, [isOwner, hasNextPage, pageStart, pageSize, items]);
+  }, [canBrowseAll, hasNextPage, pageStart, pageSize, items]);
 
   function open(item: Item) {
     setActive(item);
@@ -173,15 +182,13 @@ export default function CategorySection({
 
         {showLockTile && (
           <li>
-            <Link href="/pricing" className="item nav-tile locked">
-              <div className={navThumbClass} aria-hidden="true">
-                <LockIcon />
-              </div>
-              <div className="txt">
-                <span className="title">See more</span>
-                <span className="by">hoshigo+</span>
-              </div>
-            </Link>
+            <LockTile
+              lock={lock}
+              handle={handle}
+              className={navThumbClass}
+              pending={lockPending}
+              run={(fn, id) => startLock(async () => void (await fn(id, handle)))}
+            />
           </li>
         )}
 
@@ -296,5 +303,58 @@ export default function CategorySection({
           )}
       </Sheet>
     </section>
+  );
+}
+
+function LockTile({
+  lock,
+  handle,
+  className,
+  pending,
+  run,
+}: {
+  lock: Lock;
+  handle: string;
+  className: string;
+  pending: boolean;
+  run: (fn: typeof addFriend, otherId: string) => void;
+}) {
+  const inner = (title: string, by: string) => (
+    <>
+      <div className={className} aria-hidden="true">
+        <LockIcon />
+      </div>
+      <div className="txt">
+        <span className="title">{title}</span>
+        <span className="by">{by}</span>
+      </div>
+    </>
+  );
+
+  if (lock.kind === "login") {
+    return (
+      <Link href={`/login?next=${encodeURIComponent(`/${handle}`)}`} className="item nav-tile locked">
+        {inner("See more", "log in and add friend")}
+      </Link>
+    );
+  }
+  if (lock.kind === "none" || lock.kind === "incoming") {
+    const accept = lock.kind === "incoming";
+    return (
+      <button
+        type="button"
+        className="item nav-tile locked"
+        disabled={pending}
+        onClick={() => run(accept ? acceptFriend : addFriend, lock.otherId)}
+      >
+        {inner(accept ? "Accept request" : "Add friend", "to see more")}
+      </button>
+    );
+  }
+  const sent = lock.kind === "outgoing";
+  return (
+    <div className="item nav-tile locked">
+      {inner(sent ? "Request sent" : "See more", sent ? "friends see more" : "friends only")}
+    </div>
   );
 }

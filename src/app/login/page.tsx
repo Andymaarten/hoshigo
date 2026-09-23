@@ -42,6 +42,9 @@ function LoginPageInner() {
           <SiteNav />
         </div>
         <p className="lede">{mode === "signup" ? "Start your hoshigo." : "Welcome back."}</p>
+        {searchParams.get("invite") && (
+          <p className="bio">You were invited to be friends. Sign up or log in and you&apos;ll be friends straight away.</p>
+        )}
       </header>
 
       <main className="auth-main">
@@ -95,6 +98,7 @@ function LoginPageInner() {
             </form>
           ) : (
             <form action={passwordAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <input type="hidden" name="next" value={searchParams.get("next") ?? ""} />
               <div className="field">
                 <label htmlFor="email2">Email</label>
                 <input id="email2" name="email" type="email" required autoComplete="email" />

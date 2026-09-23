@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseSocialLinksPayload } from "@/lib/social-links";
+import { pendingInvitePath } from "@/lib/post-login";
 
 const HANDLE_RE = /^[a-z0-9_-]{2,30}$/;
 
@@ -25,7 +26,7 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
 
   const { error } = await supabase
     .from("profiles")
-    .update({ handle, display_name: displayName || null, bio: bio || null, social_links: socialLinks })
+    .update({ handle, display_name: displayName || null, bio: bio || null, social_links: socialLinks, is_private: formData.get("is_private") === "on" })
     .eq("id", user.id);
 
   if (error) {
@@ -33,5 +34,11 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
     return error.message;
   }
 
-  redirect(`/${handle}`);
+  // separate update so saving still works before the friends migration adds this column
+  await supabase
+    .from("profiles")
+    .update({ auto_accept_friends: formData.get("auto_accept_friends") === "on" })
+    .eq("id", user.id);
+
+  redirect((await pendingInvitePath()) ?? `/${handle}`);
 }

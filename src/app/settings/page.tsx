@@ -15,9 +15,9 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("handle, display_name, bio, social_links, is_private")
+    .select("*")
     .eq("id", user.id)
-    .returns<Pick<Profile, "handle" | "display_name" | "bio" | "social_links" | "is_private">[]>()
+    .returns<Profile[]>()
     .single();
 
   if (!profile) redirect("/onboarding");
@@ -43,7 +43,9 @@ export default async function SettingsPage() {
           initialBio={profile.bio ?? ""}
           initialName={profile.display_name ?? ""}
           initialSocialLinks={profile.social_links ?? []}
-          initialIsPrivate={profile.is_private}
+          initialIsPrivate={profile.is_private ?? false}
+          initialAutoAccept={profile.auto_accept_friends ?? false}
+          friendsEnabled={profile.auto_accept_friends !== undefined}
         />
       </section>
 

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { pendingInvitePath, safeNextPath } from "@/lib/post-login";
 
 export async function signInWithPassword(_prev: string | null, formData: FormData) {
   const email = String(formData.get("email") || "").trim();
@@ -12,7 +13,7 @@ export async function signInWithPassword(_prev: string | null, formData: FormDat
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return error.message;
 
-  redirect("/");
+  redirect((await pendingInvitePath()) ?? safeNextPath(formData.get("next")) ?? "/");
 }
 
 export async function signUpWithPassword(_prev: string | null, formData: FormData) {
