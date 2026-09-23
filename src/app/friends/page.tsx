@@ -115,9 +115,13 @@ export default async function FriendsPage({
       .select("*")
       .in("profile_id", rel.friendIds)
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(PAGE_SIZE + 1);
     if (activeCat) query = query.eq("category_id", activeCat.id);
-    if (before && !Number.isNaN(Date.parse(before))) query = query.lt("created_at", before);
+    const [beforeAt, beforeId] = before.split("_");
+    if (beforeAt && !Number.isNaN(Date.parse(beforeAt)) && /^[0-9a-f-]{36}$/i.test(beforeId ?? "")) {
+      query = query.or(`created_at.lt."${beforeAt}",and(created_at.eq."${beforeAt}",id.lt.${beforeId})`);
+    }
     const { data } = await query.returns<Item[]>();
     feed = (data ?? []).slice(0, PAGE_SIZE);
     hasOlder = (data ?? []).length > PAGE_SIZE;
@@ -128,7 +132,7 @@ export default async function FriendsPage({
   const filterHref = (slug?: string) => (slug ? `/friends?cat=${slug}` : "/friends");
   const olderHref =
     hasOlder && feed.length
-      ? `/friends?${new URLSearchParams({ ...(activeCat ? { cat: activeCat.slug } : {}), before: feed[feed.length - 1].created_at })}`
+      ? `/friends?${new URLSearchParams({ ...(activeCat ? { cat: activeCat.slug } : {}), before: `${feed[feed.length - 1].created_at}_${feed[feed.length - 1].id}` })}`
       : null;
 
   return (

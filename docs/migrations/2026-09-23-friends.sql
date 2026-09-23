@@ -52,25 +52,29 @@ create policy "people create their own invite" on public.friend_invites
   for insert to authenticated with check (auth.uid() = profile_id);
 
 -- security definer so the items policy can use these without recursing into items' own RLS
-create or replace function public.are_friends(a uuid, b uuid)
+-- only ever answers about the caller, so it can't be used to probe other people's friendships
+create or replace function public.is_friend_of_viewer(owner uuid)
 returns boolean
 language sql stable security definer set search_path = public
 as $$
-  select a is not null and b is not null and exists (
+  select auth.uid() is not null and exists (
     select 1 from public.friendships f
     where f.status = 'accepted'
-      and ((f.requester = a and f.addressee = b) or (f.requester = b and f.addressee = a))
+      and ((f.requester = auth.uid() and f.addressee = owner) or (f.requester = owner and f.addressee = auth.uid()))
   );
 $$;
 
--- true when the item is among its owner's 5 newest in that category (ties broken by id)
-create or replace function public.item_in_public_window(p_profile uuid, p_category int, p_created timestamptz, p_id uuid)
+-- true when the item is among its owner's 5 newest in that category (ties broken by id).
+-- Takes only the item id and looks the rest up itself, so callers can't feed in arbitrary
+-- timestamps to learn when hidden items were added; hidden ids are never sent to non-friends.
+create or replace function public.item_in_public_window(p_id uuid)
 returns boolean
 language sql stable security definer set search_path = public
 as $$
-  select count(*) < 5 from public.items i
-  where i.profile_id = p_profile and i.category_id = p_category
-    and (i.created_at, i.id) > (p_created, p_id);
+  select count(*) < 5 from public.items t join public.items i
+    on i.profile_id = t.profile_id and i.category_id = t.category_id
+   and (i.created_at, i.id) > (t.created_at, t.id)
+  where t.id = p_id;
 $$;
 
 -- which of a person's categories have more than the public 5, so the page can show a
@@ -170,6 +174,14 @@ drop policy if exists "items are visible to owner, friends, or latest 5" on publ
 create policy "items are visible to owner, friends, or latest 5" on public.items
   for select using (
     auth.uid() = profile_id
-    or public.are_friends(auth.uid(), profile_id)
-    or public.item_in_public_window(profile_id, category_id, created_at, id)
+    or public.is_friend_of_viewer(profile_id)
+    or public.item_in_public_window(id)
   );
+
+-- only after the policy above stops referencing them
+drop function if exists public.are_friends(uuid, uuid);
+drop function if exists public.item_in_public_window(uuid, int, timestamptz, uuid);
+
+-- Verification (run after the migration):
+--   select policyname, cmd from pg_policies where schemaname = 'public' and tablename = 'items';
+-- Exactly one SELECT policy should exist: "items are visible to owner, friends, or latest 5".
