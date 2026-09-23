@@ -49,3 +49,14 @@ export const SOURCE_NAME: Record<string, string> = {
   youtube: "YouTube",
   nominatim: "OpenStreetMap",
 };
+
+// Grouped by how you spend time with them: reading, watching, listening, then the rest.
+export const CATEGORY_ORDER = ["books", "essays", "films", "videos", "tv", "albums", "songs", "podcasts", "games", "places", "things"];
+
+export function sortCategories<T extends { slug: string; sort_order?: number }>(categories: T[] | null): T[] {
+  const rank = (slug: string) => {
+    const i = CATEGORY_ORDER.indexOf(slug);
+    return i === -1 ? CATEGORY_ORDER.length : i;
+  };
+  return [...(categories ?? [])].sort((a, b) => rank(a.slug) - rank(b.slug) || (a.sort_order ?? 0) - (b.sort_order ?? 0));
+}

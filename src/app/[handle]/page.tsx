@@ -13,6 +13,7 @@ import {
   PUBLIC_WINDOW,
   type FriendState,
 } from "@/lib/friends";
+import { sortCategories } from "@/lib/category-display";
 
 export default async function ProfilePage({
   params,
@@ -22,7 +23,7 @@ export default async function ProfilePage({
   const { handle } = await params;
   const supabase = await createClient();
 
-  const [{ data: profile }, { data: categories }, { data: user }] =
+  const [{ data: profile }, { data: rawCategories }, { data: user }] =
     await Promise.all([
       supabase
         .from("profiles")
@@ -39,6 +40,7 @@ export default async function ProfilePage({
     ]);
 
   if (!profile) notFound();
+  const categories = sortCategories(rawCategories);
 
   const isOwner = user?.user?.id === profile.id;
 

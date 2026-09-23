@@ -10,6 +10,7 @@ import InviteLink from "@/components/InviteLink";
 import { SHAPE } from "@/lib/category-display";
 import { myFriendships, myInviteToken } from "@/lib/friends";
 import type { Category, Item, Profile } from "@/lib/supabase/types";
+import { sortCategories } from "@/lib/category-display";
 
 const PAGE_SIZE = 30;
 
@@ -40,12 +41,13 @@ export default async function FriendsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/friends");
 
-  const [{ data: me }, { data: categories }, rel] = await Promise.all([
+  const [{ data: me }, { data: rawCategories }, rel] = await Promise.all([
     supabase.from("profiles").select("handle").eq("id", user.id).single(),
     supabase.from("categories").select("*").order("sort_order").returns<Category[]>(),
     myFriendships(supabase, user.id),
   ]);
   const myHandle = me?.handle as string | undefined;
+  const categories = sortCategories(rawCategories);
 
   const header = (
     <header className="hero">

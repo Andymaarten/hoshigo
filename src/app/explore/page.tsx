@@ -4,6 +4,7 @@ import type { Category } from "@/lib/supabase/types";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import MatchSection from "@/components/MatchSection";
+import { sortCategories } from "@/lib/category-display";
 
 const FAKE_PEOPLE = [
   { handle: "user2", displayName: "Mei Sato", bio: "Letterboxd completionist. I will talk about Bong Joon Ho unprompted." },
@@ -26,12 +27,13 @@ function placeholderMatches(categoryId: number) {
 
 export default async function ExplorePage() {
   const supabase = await createClient();
-  const [{ data: user }, { data: categories }] = await Promise.all([
+  const [{ data: user }, { data: rawCategories }] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("categories").select("*").order("sort_order").returns<Category[]>(),
   ]);
 
   if (!user.user) redirect("/login");
+  const categories = sortCategories(rawCategories);
 
   const myHandle = (await supabase.from("profiles").select("handle").eq("id", user.user.id).single()).data?.handle;
 
