@@ -99,7 +99,7 @@ export default async function ListingPage({ params }: Params) {
           {(item.by || item.year) && <div className="meta">{[item.by, item.year].filter(Boolean).join(", ")}</div>}
           {item.note && <p className="note">{item.note}</p>}
           <Link href={`/${profile.handle}`} className="btn listing-more">
-            See all of {name}&rsquo;s five stars →
+            See all of {name}&rsquo;s five stars
           </Link>
           <SharePanel handle={profile.handle} itemId={item.id} title={item.title} by={item.by} mine={isOwner} friendsOnly={profile.is_private} />
         </div>
