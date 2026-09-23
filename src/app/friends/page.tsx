@@ -12,7 +12,7 @@ import { myFriendships, myInviteToken } from "@/lib/friends";
 import type { Category, Item, Profile } from "@/lib/supabase/types";
 import { sortCategories } from "@/lib/category-display";
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 10;
 
 type Person = Pick<Profile, "id" | "handle" | "display_name">;
 
@@ -57,11 +57,7 @@ export default async function FriendsPage({
         </div>
         <SiteNav loggedIn handle={myHandle} />
       </div>
-      <div className="kicker">
-        <span className="dot" aria-hidden="true" />
-        friends
-      </div>
-      <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>friends.</h1>
+      <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>your friends.</h1>
     </header>
   );
 
@@ -71,7 +67,7 @@ export default async function FriendsPage({
         {header}
         <main>
           <p className="bio">Friends are almost here. Check back soon.</p>
-        </main>
+      </main>
         <SiteFooter loggedIn />
       </div>
     );
@@ -159,8 +155,57 @@ export default async function FriendsPage({
           </section>
         )}
 
+          <section aria-labelledby="h-friends" className="friends-block">
+          <h2 id="h-friends" className="sr-only">your friends</h2>
+          {friends.length === 0 ? (
+            <p className="bio">No friends yet. Find people below, or send them your invite link.</p>
+          ) : (
+            <ul className="friend-list">
+              {friends.map((p) => (
+                <li key={p.id}>
+                  <Link href={`/${p.handle}`} className="friend-row">
+                    <span className="friend-name">{name(p)}</span>
+                    <span className="friend-handle">@{p.handle}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section aria-labelledby="h-find" className="friends-block">
+          <h2 id="h-find">find people</h2>
+          <form action="/friends" className="friend-search">
+            <div className="field" style={{ flex: 1 }}>
+              <label htmlFor="q">Search by page name</label>
+              <input id="q" name="q" type="search" defaultValue={q} placeholder="their page name, like hoshigo.cc/name" autoCapitalize="off" spellCheck={false} />
+            </div>
+            <button type="submit" className="btn">
+              Search
+            </button>
+          </form>
+          {q.length >= 2 &&
+            (results.length === 0 ? (
+              <p className="bio">Nobody found for &ldquo;{q}&rdquo;.</p>
+            ) : (
+              <ul className="friend-list">
+                {results.map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/${p.handle}`} className="friend-row">
+                      <span className="friend-name">{name(p)}</span>
+                      <span className="friend-handle">@{p.handle}</span>
+                      {relation(p.id) && <span className="friend-tagline">{relation(p.id)}</span>}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ))}
+
+          {inviteToken && <InviteLink url={`${origin}/invite/${inviteToken}`} />}
+        </section>
+
         <section aria-labelledby="h-latest" className="friends-block">
-          <h2 id="h-latest">latest from friends</h2>
+          <h2 id="h-latest">latest from your friends</h2>
           <nav className="chip-row" aria-label="Filter by category" style={{ marginBottom: 18 }}>
             <Link href={filterHref()} className={`chip${!activeCat ? " active" : ""}`} aria-current={!activeCat ? "page" : undefined}>
               all
@@ -216,53 +261,6 @@ export default async function FriendsPage({
             </Link>
           )}
         </section>
-
-        <section aria-labelledby="h-find" className="friends-block">
-          <h2 id="h-find">find people</h2>
-          <form action="/friends" className="friend-search">
-            <div className="field" style={{ flex: 1 }}>
-              <label htmlFor="q">Search by page name</label>
-              <input id="q" name="q" type="search" defaultValue={q} placeholder="their page name, like hoshigo.cc/name" autoCapitalize="off" spellCheck={false} />
-            </div>
-            <button type="submit" className="btn">
-              Search
-            </button>
-          </form>
-          {q.length >= 2 &&
-            (results.length === 0 ? (
-              <p className="bio">Nobody found for &ldquo;{q}&rdquo;.</p>
-            ) : (
-              <ul className="friend-list">
-                {results.map((p) => (
-                  <li key={p.id}>
-                    <Link href={`/${p.handle}`} className="friend-row">
-                      <span className="friend-name">{name(p)}</span>
-                      <span className="friend-handle">@{p.handle}</span>
-                      {relation(p.id) && <span className="friend-tagline">{relation(p.id)}</span>}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ))}
-
-          {inviteToken && <InviteLink url={`${origin}/invite/${inviteToken}`} />}
-        </section>
-
-        {friends.length > 0 && (
-          <section aria-labelledby="h-friends" className="friends-block">
-            <h2 id="h-friends">your friends</h2>
-            <ul className="friend-list">
-              {friends.map((p) => (
-                <li key={p.id}>
-                  <Link href={`/${p.handle}`} className="friend-row">
-                    <span className="friend-name">{name(p)}</span>
-                    <span className="friend-handle">@{p.handle}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
       </main>
 
       <SiteFooter loggedIn />
