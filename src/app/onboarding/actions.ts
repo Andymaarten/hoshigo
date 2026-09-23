@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseSocialLinksPayload } from "@/lib/social-links";
 import { pendingInvitePath } from "@/lib/post-login";
+import { notifyNewSignup } from "@/lib/notify-signup";
 
 const HANDLE_RE = /^[a-z0-9_-]{2,30}$/;
 
@@ -24,6 +25,9 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) return "You need to be logged in.";
 
+  const { data: before } = await supabase.from("profiles").select("handle").eq("id", user.id).maybeSingle();
+  const isFirstOnboarding = !before?.handle || before.handle.startsWith("user-");
+
   const { error } = await supabase
     .from("profiles")
     .update({ handle, display_name: displayName || null, bio: bio || null, social_links: socialLinks, is_private: formData.get("is_private") === "on" })
@@ -39,6 +43,8 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
     .from("profiles")
     .update({ auto_accept_friends: formData.get("auto_accept_friends") === "on" })
     .eq("id", user.id);
+
+  if (isFirstOnboarding) await notifyNewSignup({ handle, displayName, email: user.email });
 
   redirect((await pendingInvitePath()) ?? `/${handle}`);
 }
