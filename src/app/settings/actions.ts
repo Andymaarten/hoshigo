@@ -9,7 +9,6 @@ export async function saveProfile(_prev: string | null, formData: FormData) {
   const displayName = String(formData.get("display_name") || "").trim();
   const bio = String(formData.get("bio") || "").trim();
   const socialLinks = parseSocialLinksPayload(String(formData.get("social_links") || ""));
-  const isPrivate = formData.get("is_private") === "on";
 
   if (displayName.length > 15) return "Name needs to be 15 characters or fewer.";
 
@@ -21,12 +20,19 @@ export async function saveProfile(_prev: string | null, formData: FormData) {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .update({ display_name: displayName || null, bio: bio || null, social_links: socialLinks, is_private: isPrivate })
+    .update({ display_name: displayName || null, bio: bio || null, social_links: socialLinks })
     .eq("id", user.id)
     .select("handle")
     .single();
 
   if (error) return error.message;
+
+  if (formData.get("friend_choice") === "1") {
+    await supabase
+      .from("profiles")
+      .update({ auto_accept_friends: formData.get("auto_accept_friends") === "on" })
+      .eq("id", user.id);
+  }
 
   revalidatePath(`/${profile.handle}`);
   redirect(`/${profile.handle}`);

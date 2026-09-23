@@ -1032,11 +1032,44 @@ footer .cta {
   margin-bottom: 0;
 }
 
-.stats {
-  margin: 10px 0 0;
+.friend-actions {
+  margin: 14px 0 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.friend-status {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.text-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
   font-size: 14px;
   color: var(--muted);
-  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.text-btn:hover {
+  color: var(--ink);
+}
+
+.text-btn.danger,
+.text-btn.danger:hover {
+  color: var(--accent);
+}
+
+.text-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .social-links {
@@ -1462,9 +1495,101 @@ footer .cta {
 }
 
 .chip:hover,
-.chip:focus-visible {
+.chip:focus-visible,
+.chip.active {
   background: var(--ink);
   color: var(--ground);
+}
+
+/* ---------- friends ---------- */
+
+.friends-main {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+
+.friends-block h2 {
+  margin-bottom: 16px;
+}
+
+.friends-block .friend-actions {
+  margin: 0 0 0 auto;
+}
+
+.feed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.feed-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.feed-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.feed-txt .title {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.feed-txt .by {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--muted);
+}
+
+.feed-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.feed-friend {
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.feed-friend:hover {
+  color: var(--accent);
+}
+
+.friend-search {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  max-width: 480px;
+  margin-bottom: 16px;
+}
+
+.invite-box {
+  margin-top: 36px;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.invite-url {
+  font-size: 13px;
+  padding: 10px;
+  border: 1px solid var(--rule);
+  overflow-wrap: anywhere;
 }
 
 .photo-row {

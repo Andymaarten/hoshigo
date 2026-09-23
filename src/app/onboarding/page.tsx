@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import OnboardingForm from "./form";
 import type { Profile } from "@/lib/supabase/types";
+import { pendingInvitePath } from "@/lib/post-login";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -17,6 +18,9 @@ export default async function OnboardingPage() {
     .eq("id", user.id)
     .returns<Pick<Profile, "handle" | "display_name" | "bio" | "social_links">[]>()
     .single();
+
+  const invitePath = await pendingInvitePath();
+  if (invitePath && profile?.handle && !profile.handle.startsWith("user-")) redirect(invitePath);
 
   return (
     <div className="page">

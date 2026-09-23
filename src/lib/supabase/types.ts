@@ -13,7 +13,10 @@ export interface Profile {
   bio: string | null;
   theme: Theme;
   social_links: SocialLink[];
+  /** unused: no private listings */
   is_private: boolean;
+  /** undefined until the friends migration has run */
+  auto_accept_friends?: boolean;
   created_at: string;
 }
 

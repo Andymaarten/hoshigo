@@ -94,8 +94,7 @@ const HERO_PER_ROW = 18;
 
 // PLACEHOLDER: profiles have no avatar field yet, so every real stamp reveals
 // one of five bundled textures instead of a real person's photo, and every
-// stamp links to the seeded demo profile. Same spirit as ProfileStats' stand-in
-// counts.
+// stamp links to the seeded demo profile.
 const HERO_PHOTOS = [1, 2, 3, 4, 5].map((n) => `/hero/placeholder-${n}.jpg`);
 
 // Only a handful of stamps are real, clickable hoshigo's — the rest are plain
