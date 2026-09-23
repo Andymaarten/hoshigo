@@ -35,7 +35,7 @@ production. Without it, the dialog shows the 2 or 3 likely categories as one tap
 | 10 | YouTube watch + utm | videos (high, provider: YouTube) | Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster) | Rick Astley | ok | yes: utm removed | youtube (id) | 647ms |
 | 11 | youtu.be short + si | videos (high, provider: YouTube) | same | Rick Astley | ok | yes: `si` removed, still youtu.be | youtube (id) | 279ms |
 | 12 | Vimeo | videos (high, domain: vimeo.com) | The New Vimeo Player (You Know, For Videos) |  | ok | yes, exact | none (no Vimeo catalog) | 977ms |
-| 13 | IMDb film with `?ref_` | films (high, provider: IMDb) | Parasite |  | ok | yes, exact | tmdb: Parasite (2019) | 844ms |
+| 13 | IMDb film with `?ref_` | films (high, provider: IMDb) | Parasite |  | ok | yes: `ref_` removed (added after this run, verified in the browser) | tmdb: Parasite (2019) | 844ms |
 | 14 | IMDb series, mobile `m.imdb.com` | tv (high, provider: IMDb) | Breaking Bad |  | ok | yes, exact | tmdb_tv: Breaking Bad (2008) | 381ms |
 | 15 | `www.imdb.com/title/tt6751668` (no scheme) | films (high, provider: IMDb) | Parasite |  | ok | yes: https:// added | tmdb: Parasite (2019) | 365ms |
 | 16 | Letterboxd | films (high, domain: letterboxd) | Paris, Texas |  | ok | yes, exact | tmdb: Paris, Texas (1984) | 1541ms |

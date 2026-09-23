@@ -241,6 +241,8 @@ export default function CategorySection({
                         onClick={async () => {
                           setSaving(true);
                           await updateNote(handle, active.id, note);
+                          // Keep the open item in sync so a following Edit doesn't write back the old note.
+                          setActive((a) => (a ? { ...a, note: note || null } : a));
                           setSaving(false);
                           setNoteEditing(false);
                         }}

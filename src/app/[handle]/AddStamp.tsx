@@ -650,6 +650,7 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                       >
                         <CoverImage
                           src={p}
+                          rejectOdd={!workId}
                           onFail={() => {
                             setBrokenPhotos((b) => [...b, p]);
                             setDraft((d) => (d.image === p ? { ...d, image: "" } : d));

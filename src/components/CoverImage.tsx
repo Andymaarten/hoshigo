@@ -13,7 +13,9 @@ export default function CoverImage({
   style,
   eager,
   onFail,
+  rejectOdd,
 }: {
+  rejectOdd?: boolean;
   src: string | null | undefined;
   alt?: string;
   className?: string;
@@ -37,6 +39,15 @@ export default function CoverImage({
       onError={() => {
         setFailedSrc(resolved);
         onFail?.();
+      }}
+      onLoad={(e) => {
+        if (!rejectOdd) return;
+        const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+        // Scraped pages are full of spacer gifs and nav strips; those aren't photos.
+        if (w < 80 || h < 80 || w / h > 3 || h / w > 3) {
+          setFailedSrc(resolved);
+          onFail?.();
+        }
       }}
     />
   );

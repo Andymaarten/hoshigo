@@ -2,7 +2,7 @@
 // pasted into the link box into one clean http(s) URL, or tells us it isn't a link at all.
 
 const TRACKING_PARAM_RE =
-  /^(utm_.+|fbclid|gclid|dclid|msclkid|mc_cid|mc_eid|igshid|igsh|si|ref_src|ref_url|_hsenc|_hsmkt|mkt_tok|yclid|spm|share_id|feature)$/i;
+  /^(utm_.+|fbclid|gclid|dclid|msclkid|mc_cid|mc_eid|igshid|igsh|si|ref_|ref_src|ref_url|_hsenc|_hsmkt|mkt_tok|yclid|spm|share_id|feature)$/i;
 
 const URL_IN_TEXT_RE = /https?:\/\/[^\s<>"'«»“”‘’]+/i;
 const BARE_DOMAIN_RE = /^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}(?:[/?#]\S*)?$/i;
