@@ -399,3 +399,6 @@ drop function if exists public.item_in_public_window(uuid, int, timestamptz, uui
 -- Verification (run after the migration):
 --   select policyname, cmd from pg_policies where schemaname = 'public' and tablename = 'items';
 -- Exactly one SELECT policy should exist: "items are visible to owner, friends, or latest 5".
+
+-- Friend request emails (see docs/migrations/2026-09-24-friend-request-email.sql)
+alter table public.profiles add column if not exists email_friend_requests boolean not null default true;

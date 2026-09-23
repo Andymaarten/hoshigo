@@ -12,6 +12,7 @@ export default function SettingsForm({
   initialName,
   initialSocialLinks,
   initialAutoAccept,
+  initialEmail,
   initialIsPrivate,
   friendsEnabled,
 }: {
@@ -19,6 +20,7 @@ export default function SettingsForm({
   initialName: string;
   initialSocialLinks: SocialLink[];
   initialAutoAccept: boolean;
+  initialEmail: boolean;
   initialIsPrivate: boolean;
   friendsEnabled: boolean;
 }) {
@@ -35,7 +37,7 @@ export default function SettingsForm({
         <textarea id="bio" name="bio" defaultValue={initialBio} placeholder="A line about you" />
       </div>
       <VisibilityChoice initialPrivate={initialIsPrivate} />
-      {friendsEnabled && <FriendRequestChoice initialAuto={initialAutoAccept} />}
+      {friendsEnabled && <FriendRequestChoice initialAuto={initialAutoAccept} initialEmail={initialEmail} />}
       <SocialLinksEditor initialLinks={initialSocialLinks} />
       {error && <p className="error">{error}</p>}
       <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>

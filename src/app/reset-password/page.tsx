@@ -36,6 +36,10 @@ export default function ResetPasswordPage() {
         <div className="word" aria-label="hoshigo">
           hosh<span className="tittle">ı</span>go
         </div>
+        <div className="kicker">
+          <span className="dot" aria-hidden="true" />
+          password
+        </div>
         <p className="lede">Set a new password.</p>
       </header>
       <main className="auth-main">

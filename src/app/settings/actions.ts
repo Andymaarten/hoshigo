@@ -33,6 +33,12 @@ export async function saveProfile(_prev: string | null, formData: FormData) {
       .from("profiles")
       .update({ auto_accept_friends: formData.get("auto_accept_friends") === "on" })
       .eq("id", user.id);
+
+    // own update: the column only exists after docs/migrations/2026-09-24-friend-request-email.sql
+    await supabase
+      .from("profiles")
+      .update({ email_friend_requests: formData.get("email_friend_requests") === "on" })
+      .eq("id", user.id);
   }
 
   revalidatePath(`/${profile.handle}`);

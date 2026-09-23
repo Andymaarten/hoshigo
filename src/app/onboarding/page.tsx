@@ -28,6 +28,10 @@ export default async function OnboardingPage() {
         <div className="word" aria-label="hoshigo">
           hosh<span className="tittle">ı</span>go
         </div>
+        <div className="kicker">
+          <span className="dot" aria-hidden="true" />
+          welcome
+        </div>
         <p className="lede">One last thing — pick your page address.</p>
         <p className="bio">It becomes the link to your page, like hoshigo.cc/yourname. Your name and bio can change anytime later.</p>
       </header>
