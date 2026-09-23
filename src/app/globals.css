@@ -1553,3 +1553,9 @@ footer .cta {
 .handle-preview strong {
   color: var(--ink);
 }
+
+.photo-from-page {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

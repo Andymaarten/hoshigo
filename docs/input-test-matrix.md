@@ -266,3 +266,51 @@ once after 1.2 s.
 | 99 | 500 error: `https://httpstat.us/500` | ? | things (low, no signal) [timeout] | (none) | no | exact | ok | 8153ms |
 | 100 | Typo in scheme: `htps://www.imdb.com/title/tt0245429/` | films | films (high, provider: IMDb) | Spirited Away | yes | cleaned | ok | 217ms |
 | 101 | No scheme IMDb: `imdb.com/title/tt0245429` | films | films (high, provider: IMDb) | Spirited Away | yes | cleaned | ok | 170ms |
+
+
+## Round 4, photo sources ("Use another photo")
+
+Run with `npx tsx --env-file=.env.local scripts/photo-matrix.ts`. The picker accepts any page
+or image link; a direct image is detected by content type (row 3 has no extension). The
+item's own link, title, by and category are never changed by this.
+
+| # | Source | Status | Candidates | Best (first) | Time |
+|---|---|---|---|---|---|
+| 1 | Wikipedia article: `https://en.wikipedia.org/wiki/Spirited_Away` | ok | 10 | https://upload.wikimedia.org/wikipedia/en/d/db/Spirited_Away_Japanese_poster.png?utm_sourc | 521ms |
+| 2 | Wikimedia Commons file page: `https://commons.wikimedia.org/wiki/File:Tour_Eiffel_Wikimedia_Commons.` | ok | 3 | https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg | 365ms |
+| 3 | Direct image (no extension): `https://images.unsplash.com/photo-1506744038136-46273834b3fb` | image | 1 | https://images.unsplash.com/photo-1506744038136-46273834b3fb | 278ms |
+| 4 | Unsplash photo page: `https://unsplash.com/photos/a-body-of-water-surrounded-by-trees-and-mo` | image | 1 | https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?ixlib=rb-4.1.0&q=85&fm=jpg&cr | 512ms |
+| 5 | Pinterest pin: `https://www.pinterest.com/pin/99360735500167749/` | ok | 3 | https://i.pinimg.com/736x/a7/66/56/a76656e966b1958f568d63c3f1c05aec.jpg | 876ms |
+| 6 | Instagram post: `https://www.instagram.com/p/C9qV8Z8Mh1B/` | none | 0 |  | 1256ms |
+| 7 | bol.com product: `https://www.bol.com/nl/nl/p/apple-airpods-4/9300000190488770/` | blocked | 0 |  | 4726ms |
+| 8 | Amazon product: `https://www.amazon.com/dp/B0CHX1W1XY` | blocked | 0 |  | 650ms |
+| 9 | Zalando product: `https://www.zalando.nl/nike-sportswear-air-force-1-sneakers-laag-white` | blocked | 0 |  | 1661ms |
+| 10 | Museum object page (Rijksmuseum): `https://www.rijksmuseum.nl/en/collection/SK-C-5` | ok | 16 | https://iiif.micr.io/PJEZO/73,3768.6884765625,14459,7596.623046875/1024,538/0/default.webp | 710ms |
+| 11 | Restaurant site (Dishoom): `https://www.dishoom.com/covent-garden/` | ok | 2 | https://cdn.sanity.io/images/daku84np/production/b492504165ed7b5327abddaf1086b7a099f65418- | 965ms |
+| 12 | Substack post: `https://www.slowboring.com/p/the-republican-urge-to-start-wars` | ok | 12 | https://substackcdn.com/image/fetch/$s_!hrIu!,w_1200,h_675,c_fill,f_jpg,q_auto:good,fl_pro | 32ms |
+| 13 | Discogs release: `https://www.discogs.com/release/1085364` | ok | 1 | https://i.discogs.com/XED_KoRgsC1og_6PxVBHKCwBXAH-AzyytuFY9DZnJQ4/rs:fit/g:sm/q:90/h:598/w | 468ms |
+| 14 | Goodreads book: `https://www.goodreads.com/book/show/119073.The_Name_of_the_Rose` | ok | 16 | https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1415375471i/11907 | 1731ms |
+| 15 | IMDb title: `https://www.imdb.com/title/tt0245429/` | ok | 1 | https://image.tmdb.org/t/p/w342/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg | 432ms |
+| 16 | News article (Guardian): `https://www.theguardian.com/info/2016/jan/25/content-funding` | none | 0 |  | 290ms |
+| 17 | Plain text: `not a link at all` | not_a_link | 0 |  | 1ms |
+
+**Was the best (first) one right?** Yes for every source that returned photos: the film
+poster (1, 15), the Commons photo (2), the Unsplash photo (3, 4: photo pages sit behind a
+bot check, so we use Unsplash's public download URL), the pin image (5), the painting (10,
+a 1024px crop of the Night Watch), the restaurant interior (11), the post's header image
+(12), the record cover (13), the book cover (14).
+
+**No photos:** bol.com, Amazon and Zalando block server requests (shown as "That site
+doesn't let us look at its photos"); Instagram requires login ("No photos found"); the
+Guardian page picked by the script (an info page) has only a logo, which is filtered.
+
+**Regressions found and fixed this round** (earlier input matrix rerun):
+- The new srcset parser split on commas inside Amazon image URLs (`_SR116,116_.jpg`) and
+  produced a broken relative URL. Fixed: entries split only on ", ".
+- Allbirds then picked an unrendered template URL (`{{…}}`). Template placeholders are
+  now rejected.
+- Not a regression but a correction: Guardian and Allbirds og:images are site logos
+  (`fallback-logo.png`, `logo-seo.jpg`); round 2 counted them as "image ok", the junk
+  filter now drops them.
+- Wikipedia (round 3 provider) returned no image for pages whose lead image is non-free
+  (film posters): the pageimages API now asks for any license.

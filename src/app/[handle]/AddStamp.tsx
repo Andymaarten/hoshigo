@@ -5,6 +5,7 @@ import type { Category } from "@/lib/supabase/types";
 import { addItem } from "./actions";
 import Sheet from "@/components/Sheet";
 import CoverImage from "@/components/CoverImage";
+import PhotoFromPage from "@/components/PhotoFromPage";
 import { displayUrl, extractUrl, stripTracking } from "@/lib/link-input";
 import { BY_LABEL, COVER_FROM_CATALOG, SEARCHABLE, SEARCH_HINT, SHAPE, SOURCE_NAME } from "@/lib/category-display";
 
@@ -86,7 +87,6 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [photos, setPhotos] = useState<string[]>([]);
   const [brokenPhotos, setBrokenPhotos] = useState<string[]>([]);
-  const [showPhotoLink, setShowPhotoLink] = useState(false);
   const [workId, setWorkId] = useState("");
   const [matchedSource, setMatchedSource] = useState<string | null>(null);
   const [looking, setLooking] = useState(false);
@@ -125,7 +125,6 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     setDraft(emptyDraft);
     setPhotos([]);
     setBrokenPhotos([]);
-    setShowPhotoLink(false);
     setWorkId("");
     setMatchedSource(null);
     setFormError("");
@@ -811,10 +810,10 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
               <input id="add-by" name="by" value={draft.by} onChange={(e) => setDraft((d) => ({ ...d, by: e.target.value }))} />
             </div>
 
-            {!coverLocked && (
+            {(
               <div className="field">
                 <span className="field-label">Photo</span>
-                {visiblePhotos.length > 0 && (
+                {visiblePhotos.length > 0 && (!coverLocked || visiblePhotos.length > 1) && (
                   <div className="photo-row" role="radiogroup" aria-label="Choose a photo">
                     {visiblePhotos.map((p) => (
                       <button
@@ -827,7 +826,7 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                       >
                         <CoverImage
                           src={p}
-                          rejectOdd={!workId}
+                          rejectOdd
                           onFail={() => {
                             setBrokenPhotos((b) => [...b, p]);
                             setDraft((d) => (d.image === p ? { ...d, image: "" } : d));
@@ -846,24 +845,14 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
                     </button>
                   </div>
                 )}
-                <button type="button" className="linkish" onClick={() => setShowPhotoLink((v) => !v)}>
-                  {showPhotoLink ? "Hide photo link" : visiblePhotos.length ? "Use another photo" : "Add a photo"}
-                </button>
-                {showPhotoLink && (
-                  <input
-                    aria-label="Photo link"
-                    type="url"
-                    inputMode="url"
-                    placeholder="Paste a link to a photo"
-                    onChange={(e) => {
-                      const u = extractUrl(e.target.value);
-                      if (u) {
-                        setPhotos((ps) => uniq([u, ...ps]));
-                        setDraft((d) => ({ ...d, image: u }));
-                      }
-                    }}
-                  />
-                )}
+                <PhotoFromPage
+                  label={visiblePhotos.length ? "Use another photo" : "Add a photo"}
+                  onFound={(imgs) => {
+                    setPhotos((ps) => uniq([...imgs, ...ps]));
+                    setBrokenPhotos((b) => b.filter((x) => !imgs.includes(x)));
+                    setDraft((d) => ({ ...d, image: imgs[0] }));
+                  }}
+                />
               </div>
             )}
 

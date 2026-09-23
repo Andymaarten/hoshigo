@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import type { Category, Item } from "@/lib/supabase/types";
 import { updateItem } from "./actions";
 import CoverImage from "@/components/CoverImage";
+import PhotoFromPage from "@/components/PhotoFromPage";
 
 export default function EditItem({
   handle,
@@ -27,7 +28,8 @@ export default function EditItem({
   const [title, setTitle] = useState(item.title);
   const [by, setBy] = useState(item.by ?? "");
   const [imageUrl, setImageUrl] = useState(item.image_url ?? "");
-  const [showPhotoLink, setShowPhotoLink] = useState(false);
+  const [options, setOptions] = useState<string[]>(item.image_url ? [item.image_url] : []);
+  const [broken, setBroken] = useState<string[]>([]);
   const [note, setNote] = useState(item.note ?? "");
 
   useEffect(() => {
@@ -64,29 +66,46 @@ export default function EditItem({
       <input type="hidden" name="image_url" value={imageUrl} />
       <div className="field">
         <span className="field-label">Photo</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div className="thumb" style={{ width: 52, height: 52 }}>
-            <CoverImage src={imageUrl} />
-          </div>
-          <button type="button" className="linkish" onClick={() => setShowPhotoLink((v) => !v)}>
-            {showPhotoLink ? "Done" : "Use a different photo"}
+        <div className="photo-row" role="radiogroup" aria-label="Choose a photo">
+          {options
+            .filter((p) => !broken.includes(p))
+            .map((p) => (
+              <button
+                key={p}
+                type="button"
+                role="radio"
+                aria-checked={imageUrl === p}
+                className={`photo-tile${imageUrl === p ? " selected" : ""}`}
+                onClick={() => setImageUrl(p)}
+              >
+                <CoverImage
+                  src={p}
+                  rejectOdd={p !== item.image_url}
+                  onFail={() => {
+                    setBroken((b) => [...b, p]);
+                    setImageUrl((cur) => (cur === p ? item.image_url ?? "" : cur));
+                  }}
+                />
+              </button>
+            ))}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!imageUrl}
+            className={`photo-tile none${!imageUrl ? " selected" : ""}`}
+            onClick={() => setImageUrl("")}
+          >
+            No photo
           </button>
-          {imageUrl && (
-            <button type="button" className="linkish" onClick={() => setImageUrl("")}>
-              Remove photo
-            </button>
-          )}
         </div>
-        {showPhotoLink && (
-          <input
-            aria-label="Photo link"
-            type="url"
-            inputMode="url"
-            placeholder="Paste a link to a photo"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value.trim())}
-          />
-        )}
+        <PhotoFromPage
+          label={options.length ? "Use another photo" : "Add a photo"}
+          onFound={(imgs) => {
+            setOptions((o) => [...new Set([...imgs, ...o])]);
+            setBroken((b) => b.filter((x) => !imgs.includes(x)));
+            setImageUrl(imgs[0]);
+          }}
+        />
       </div>
       <div className="field">
         <label htmlFor="edit-note">Note</label>
