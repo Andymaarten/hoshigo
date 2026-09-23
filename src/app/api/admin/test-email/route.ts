@@ -2,6 +2,17 @@ import { createClient } from "@/lib/supabase/server";
 
 // Diagnostic for the owner only: sends one test email and shows Resend's raw answer.
 // Gated on the logged-in account's email matching SIGNUP_NOTIFY_EMAIL, so nobody else can use it.
+// Shows shape, not content: first two characters, the domain, and any stray quotes or spaces.
+function mask(raw: string) {
+  const [local = "", domain = ""] = raw.split("@");
+  return {
+    masked: `${local.slice(0, 2)}${"*".repeat(Math.max(0, local.length - 2))}@${domain}`,
+    length: raw.length,
+    hasQuotes: /["']/.test(raw),
+    hasSpaces: /\s/.test(raw),
+  };
+}
+
 export async function GET() {
   const to = process.env.SIGNUP_NOTIFY_EMAIL?.trim();
   const apiKey = process.env.RESEND_API_KEY?.trim();
@@ -18,6 +29,7 @@ export async function GET() {
         SIGNUP_NOTIFY_EMAIL_set: !!to,
         RESEND_API_KEY_set: !!apiKey,
         yourEmailMatches: !!user && !!to && user.email?.toLowerCase() === to.toLowerCase(),
+        ...(user && to ? { yourAccountEmail: user.email, configuredLooksLike: mask(process.env.SIGNUP_NOTIFY_EMAIL ?? "") } : {}),
       },
       { status: 403 }
     );
