@@ -49,6 +49,9 @@ export async function POST(request: NextRequest) {
     work_title: str(c.work_title) ?? undefined,
     work_image_url: c.work_image_url === undefined ? undefined : httpUrl(c.work_image_url),
     website: c.source === "nominatim" ? anyHttpUrl(c.website) : null,
+    place_type: c.source === "nominatim" ? str(c.place_type, 60) : null,
+    city: c.source === "nominatim" ? str(c.city, 120) : null,
+    country: c.source === "nominatim" ? str(c.country, 80) : null,
     // A person looked at the list and chose this exact entry.
     match_confidence: "high",
   });

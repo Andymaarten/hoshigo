@@ -7,6 +7,7 @@ import SharePanel from "@/components/SharePanel";
 import { displayUrl } from "@/lib/link-input";
 import { PUBLIC_PER_CATEGORY } from "@/lib/share-rules";
 import { ADD_PREFILL_EVENT, type AddPrefill } from "@/lib/item-order";
+import { placeDisplay } from "@/lib/place-fields";
 
 // Defense in depth: addItem already rejects non-http(s) links before they're saved, but this
 // guards any row that predates that check so a "javascript:" URL can never end up in an href.
@@ -41,7 +42,10 @@ export default function ListingSheetBody({
   noteSlot,
   canAdd = false,
   onAdd,
+  isPlace = false,
 }: {
+  /** the listing is in "places": show type and location instead of the by line */
+  isPlace?: boolean;
   item: Item;
   shape?: "tall" | "photo";
   titleId: string;
@@ -57,11 +61,16 @@ export default function ListingSheetBody({
   onAdd?: () => void;
 }) {
   const href = safeHttpUrl(item.url);
+  // Places show OSM's type small above the name and the location as the meta line.
+  const place = isPlace || item.place_type || item.city ? placeDisplay(item) : null;
   return (
     <>
       <Thumb item={item} shape={shape} big />
+      {place?.placeType && <div className="kind">{place.placeType}</div>}
       <h3 id={titleId}>{item.title}</h3>
-      <div className="meta">{[item.by, item.year].filter(Boolean).join(", ")}</div>
+      <div className="meta">
+        {place ? [place.city, place.country].filter(Boolean).join(", ") : [item.by, item.year].filter(Boolean).join(", ")}
+      </div>
 
       {noteSlot ?? <p className={`note${item.note ? "" : " empty"}`}>{item.note || "No note yet."}</p>}
 
@@ -89,6 +98,9 @@ export default function ListingSheetBody({
                 url: href,
                 sourceLabel: item.source_label,
                 imageUrl: item.image_url,
+                placeType: place?.placeType || null,
+                city: place?.city || null,
+                country: place?.country || null,
               };
               window.dispatchEvent(new CustomEvent(ADD_PREFILL_EVENT, { detail }));
             }}

@@ -20,4 +20,8 @@ export type AddPrefill = {
   url: string | null;
   sourceLabel: string | null;
   imageUrl: string | null;
+  // places: OSM type and location, when the item has them
+  placeType?: string | null;
+  city?: string | null;
+  country?: string | null;
 };

@@ -12,6 +12,7 @@ import { SHAPE } from "@/lib/category-display";
 import type { FriendState } from "@/lib/friends";
 import { acceptFriend, addFriend } from "@/app/friends/actions";
 import ListingSheetBody, { Thumb } from "@/components/ListingSheet";
+import { placeDisplay } from "@/lib/place-fields";
 import { isPublicRank } from "@/lib/share-rules";
 import type { PinMap } from "@/lib/item-order";
 
@@ -54,6 +55,7 @@ export default function CategorySection({
   pins?: PinMap | null;
 }) {
   const shape = SHAPE[category.slug];
+  const isPlaces = category.slug === "places";
   const [sheetOpen, setSheetOpen] = useState(false);
   const [active, setActive] = useState<Item | null>(null);
   const [note, setNote] = useState("");
@@ -137,8 +139,9 @@ export default function CategorySection({
             <button type="button" className="item" onClick={() => open(item)}>
               <Thumb item={item} shape={shape} />
               <div className="txt">
+                {isPlaces && placeDisplay(item).placeType && <span className="kind">{placeDisplay(item).placeType}</span>}
                 <span className="title">{item.title}</span>
-                <span className="by">{item.by}</span>
+                <span className="by">{isPlaces ? placeDisplay(item).city : item.by}</span>
                 <span className="date">
                   {item.pinned ? "Pinned · " : ""}
                   {formatDate(item.created_at)}
@@ -208,6 +211,7 @@ export default function CategorySection({
             <>
               <ListingSheetBody
                 item={active}
+                isPlace={isPlaces}
                 shape={shape}
                 titleId={`sheet-title-${category.slug}`}
                 handle={handle}

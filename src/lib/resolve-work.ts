@@ -29,6 +29,10 @@ export type ResolvedWork = {
   // The thing's own website, when the catalog knows it (places from OSM). Used as the
   // listing's link only when the person gave none.
   website?: string | null;
+  // Places only, straight from OSM: the kind of place ("Bar") and where it is.
+  place_type?: string | null;
+  city?: string | null;
+  country?: string | null;
 };
 
 const MB_HEADERS = { "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)", Accept: "application/json" };
@@ -683,11 +687,27 @@ function placeWebsite(r: NominatimResult): string | null {
   }
 }
 
+// The city people would name. OSM's "city" is sometimes an administrative piece of it:
+// London boroughs ("City of Westminster", "Greater London") and Japanese wards ("Chuo",
+// with the city in "state": Tokyo).
+function cityOf(a: Record<string, string>): string | null {
+  const raw = a.city || a.town || a.village || a.municipality || a.county || null;
+  const london = /^(Greater London|City of Westminster|City of London|(London|Royal) Borough of .+)$/;
+  if ((raw && london.test(raw)) || a.state_district === "Greater London" || a.county === "Greater London") return "London";
+  if (a["ISO3166-2-lvl4"] === "JP-13" && raw && TOKYO_WARDS.has(raw.replace(/\s*(City|Ward)$/i, ""))) return "Tokyo";
+  return raw;
+}
+
+const TOKYO_WARDS = new Set([
+  "Chiyoda", "Chuo", "Minato", "Shinjuku", "Bunkyo", "Taito", "Sumida", "Koto", "Shinagawa", "Meguro", "Ota", "Setagaya",
+  "Shibuya", "Nakano", "Suginami", "Toshima", "Kita", "Arakawa", "Itabashi", "Nerima", "Adachi", "Katsushika", "Edogawa",
+]);
+
 function placeToWork(r: NominatimResult, confidence: "high" | "low"): ResolvedWork {
   const parts = r.display_name.split(",").map((s) => s.trim());
   const name = r.namedetails?.name || r.name || parts[0];
   const a = r.address ?? {};
-  const locality = a.city || a.town || a.village || a.municipality || a.county || null;
+  const locality = cityOf(a);
   const kind = placeKind(r);
   const street = [a.road, a.house_number].filter(Boolean).join(" ") || null;
   return {
@@ -702,6 +722,9 @@ function placeToWork(r: NominatimResult, confidence: "high" | "low"): ResolvedWo
     match_confidence: confidence,
     detail: [street, a.suburb ?? a.neighbourhood, locality, a.country].filter(Boolean).join(", ") || parts.slice(1, 4).join(", ") || null,
     website: placeWebsite(r),
+    place_type: kind,
+    city: locality ?? a.state ?? null,
+    country: a.country ?? null,
   };
 }
 

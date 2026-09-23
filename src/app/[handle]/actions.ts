@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeUrl } from "@/lib/normalize-url";
+import { placeLine } from "@/lib/place-fields";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -27,12 +28,31 @@ function safeHttpUrl(raw: string): string | null {
   }
 }
 
+// Place forms send Type and Location as their own fields. The combined line is still
+// written to `by` so everything that reads it keeps working, also before the migration.
+function placeFieldsFrom(formData: FormData) {
+  if (!formData.has("place_type") && !formData.has("city")) return null;
+  const clip = (k: string, max: number) => String(formData.get(k) || "").trim().slice(0, max) || null;
+  return { place_type: clip("place_type", 60), city: clip("city", 120), country: clip("country", 80) };
+}
+
+// Own update: the columns only exist after docs/migrations/2026-09-24-kaito-places.sql.
+async function savePlaceFields(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  itemId: string,
+  fields: ReturnType<typeof placeFieldsFrom>
+) {
+  if (!fields) return;
+  await supabase.from("items").update(fields).eq("id", itemId);
+}
+
 export async function addItem(handle: string, _prev: string | null, formData: FormData) {
   const { supabase, user } = await requireUser();
 
   const categoryId = Number(formData.get("category_id"));
   const title = String(formData.get("title") || "").trim();
-  const by = String(formData.get("by") || "").trim();
+  const place = placeFieldsFrom(formData);
+  const by = place ? placeLine(place.place_type, place.city) : String(formData.get("by") || "").trim();
   const yearRaw = String(formData.get("year") || "").trim();
   const rawUrl = String(formData.get("url") || "").trim();
   const imageUrl = String(formData.get("image_url") || "").trim();
@@ -85,6 +105,8 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
 
   if (error) return error.message;
 
+  if (inserted?.id) await savePlaceFields(supabase, inserted.id, place);
+
   // The pin option is only shown once the pinning migration has run.
   if (formData.get("pin") === "on" && inserted?.id) {
     await supabase.rpc("pin_item", { p_item: inserted.id, p_pin: true });
@@ -134,7 +156,8 @@ export async function updateItem(handle: string, _prev: string | null, formData:
   const itemId = String(formData.get("item_id") || "").trim();
   const categoryId = Number(formData.get("category_id"));
   const title = String(formData.get("title") || "").trim();
-  const by = String(formData.get("by") || "").trim();
+  const place = placeFieldsFrom(formData);
+  const by = place ? placeLine(place.place_type, place.city) : String(formData.get("by") || "").trim();
   const yearRaw = String(formData.get("year") || "").trim();
   const imageUrl = String(formData.get("image_url") || "").trim();
   const note = String(formData.get("note") || "").trim();
@@ -160,6 +183,8 @@ export async function updateItem(handle: string, _prev: string | null, formData:
     .eq("profile_id", user.id);
 
   if (error) return error.message;
+
+  await savePlaceFields(supabase, itemId, place);
 
   if (formData.get("pin_choice") === "1") {
     await supabase.rpc("pin_item", { p_item: itemId, p_pin: formData.get("pin") === "on" });

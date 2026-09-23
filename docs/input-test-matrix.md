@@ -451,3 +451,45 @@ Notes:
   doesn't link it; picking it from the search list does.
 - Games: Steam and BoardGameGeek links resolve exactly through the ids on the Wikidata
   item (confidence high). BGG pages block us, so the title comes from the URL.
+
+
+## Round 7: structured place fields (type, location)
+
+Run with `npx tsx --env-file=.env.local scripts/places-fields-check.ts` against live OSM.
+Found and fixed: London branches came back as "Greater London" / "City of Westminster" and
+Tokyo as its ward "Chuo" (OSM puts districts in `city` there); both now read as the city
+people name. Branches are still told apart by street in the detail line.
+
+```
+## search: type | city | country | by (combined, still written) | detail (street)
+
+"Dishoom London"
+- Dishoom | Indian restaurant | London | United Kingdom | Indian restaurant · London | Boundary Street 7, Whitechapel, London, United Kingdom
+- Dishoom | Indian restaurant | London | United Kingdom | Indian restaurant · London | Upper St Martin's Lane 12, Covent Garden, London, United Kingdom
+- Dishoom | Indian restaurant | London | United Kingdom | Indian restaurant · London | Derry Street 4, Kensington, London, United Kingdom
+
+"Café de Klos Amsterdam"
+- Café De Klos | Barbecue restaurant | Amsterdam | Netherlands | Barbecue restaurant · Amsterdam | Kerkstraat 41-43, Centrum, Amsterdam, Netherlands
+
+"Shakespeare and Company Paris"
+- Shakespeare and Company | Bookshop | Paris | France | Bookshop · Paris | Rue de la Bûcherie 37, 5th Arrondissement, Paris, France
+
+"Vondelpark"
+- Vondelpark | Park | Amsterdam | Netherlands | Park · Amsterdam | Zuid, Amsterdam, Netherlands
+- Vondelpark | Park | Maassluis | Netherlands | Park · Maassluis | Maassluis, Netherlands
+- Vondelpark | Park | Harderwijk | Netherlands | Park · Harderwijk | Harderwijk, Netherlands
+
+"Sukiyabashi Jiro Tokyo"
+- すきやばし次郎 | Sushi restaurant | Tokyo | Japan | Sushi restaurant · Tokyo | Ginza, Ginza 4, Tokyo, Japan
+
+"Pergamonmuseum Berlin"
+- Pergamonmuseum | Museum | Berlin | Germany | Museum · Berlin | Am Kupfergraben 5, Mitte, Berlin, Germany
+
+## resolve (pasted Maps link path)
+Rijksmuseum → Rijksmuseum | Museum | Amsterdam | Netherlands | high
+Café De Klos → Café De Klos | Barbecue restaurant | Amsterdam | Netherlands | high
+
+## helpers
+{"placeType":"Bar","city":"Amsterdam"} {"placeType":"","city":"Amsterdam, Netherlands"} Bar · Amsterdam
+{"placeType":"Museum","city":"Amsterdam","country":""} {"placeType":"Park","city":"Utrecht","country":"Netherlands"}
+```

@@ -96,6 +96,15 @@ alter table public.works add constraint works_source_check
 -- link only when the person gave none.
 alter table public.works add column if not exists website text;
 
+-- Places keep OSM's structure: type ("Bar") and location. The combined "by" line is still
+-- written too. Backfill for existing rows: docs/migrations/2026-09-24-kaito-places.sql.
+alter table public.works add column if not exists place_type text;
+alter table public.works add column if not exists city text;
+alter table public.works add column if not exists country text;
+alter table public.items add column if not exists place_type text;
+alter table public.items add column if not exists city text;
+alter table public.items add column if not exists country text;
+
 alter table public.items add column if not exists work_id uuid references public.works (id);
 
 -- How much to trust that this row really is the work it claims to be, so a future
