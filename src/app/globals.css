@@ -2016,3 +2016,17 @@ button.share-link:disabled {
   flex-direction: column;
   gap: 6px;
 }
+
+/* Places: OSM's type ("Bar", "Museum") small above the name. */
+.kind {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.sheet-in .kind {
+  margin-bottom: -8px;
+}

@@ -6,6 +6,7 @@ import { updateItem } from "./actions";
 import CoverImage from "@/components/CoverImage";
 import PhotoFromPage from "@/components/PhotoFromPage";
 import type { PinMap } from "@/lib/item-order";
+import { placeDisplay } from "@/lib/place-fields";
 
 export default function EditItem({
   handle,
@@ -31,6 +32,7 @@ export default function EditItem({
   const [categoryId, setCategoryId] = useState(String(item.category_id));
   const [title, setTitle] = useState(item.title);
   const [by, setBy] = useState(item.by ?? "");
+  const [place, setPlace] = useState(() => placeDisplay(item));
   const [imageUrl, setImageUrl] = useState(item.image_url ?? "");
   const [options, setOptions] = useState<string[]>(item.image_url ? [item.image_url] : []);
   const [broken, setBroken] = useState<string[]>([]);
@@ -65,10 +67,36 @@ export default function EditItem({
         <label htmlFor="edit-title">Title</label>
         <input id="edit-title" name="title" required value={title} onChange={(e) => setTitle(e.target.value)} />
       </div>
-      <div className="field">
-        <label htmlFor="edit-by">By</label>
-        <input id="edit-by" name="by" value={by} onChange={(e) => setBy(e.target.value)} />
-      </div>
+      {category?.slug === "places" ? (
+        <>
+          <div className="field">
+            <label htmlFor="edit-place-type">Type</label>
+            <input
+              id="edit-place-type"
+              name="place_type"
+              placeholder="Bar, museum, park…"
+              value={place.placeType}
+              onChange={(e) => setPlace((p) => ({ ...p, placeType: e.target.value }))}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="edit-city">Location</label>
+            <input
+              id="edit-city"
+              name="city"
+              placeholder="City"
+              value={place.city}
+              onChange={(e) => setPlace((p) => ({ ...p, city: e.target.value }))}
+            />
+            <input type="hidden" name="country" value={place.country} />
+          </div>
+        </>
+      ) : (
+        <div className="field">
+          <label htmlFor="edit-by">By</label>
+          <input id="edit-by" name="by" value={by} onChange={(e) => setBy(e.target.value)} />
+        </div>
+      )}
       <input type="hidden" name="year" value={item.year ?? ""} />
       <input type="hidden" name="image_url" value={imageUrl} />
       <div className="field">

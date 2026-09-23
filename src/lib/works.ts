@@ -56,5 +56,11 @@ export async function upsertWork(supabase: SupabaseClient, categoryId: number, w
     const { error } = await supabase.from("works").update({ website: w.website }).eq("id", row.id);
     if (!error) row = { ...row, website: w.website };
   }
+  // Same for the structured place fields (docs/migrations/2026-09-24-kaito-places.sql).
+  if (row && (w.place_type || w.city || w.country) && !row.place_type && !row.city) {
+    const fields = { place_type: w.place_type ?? null, city: w.city ?? null, country: w.country ?? null };
+    const { error } = await supabase.from("works").update(fields).eq("id", row.id);
+    if (!error) row = { ...row, ...fields };
+  }
   return row;
 }

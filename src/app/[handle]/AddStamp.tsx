@@ -10,6 +10,7 @@ import CoverImage from "@/components/CoverImage";
 import PhotoFromPage from "@/components/PhotoFromPage";
 import { displayUrl, extractUrl, stripTracking } from "@/lib/link-input";
 import { ADD_PREFILL_EVENT, type AddPrefill, type PinMap } from "@/lib/item-order";
+import { placeLine, splitPlaceLine } from "@/lib/place-fields";
 import { BY_LABEL, COVER_FROM_CATALOG, SEARCHABLE, SEARCH_HINT, SHAPE, SOURCE_NAME } from "@/lib/category-display";
 
 // One decision per screen:
@@ -28,10 +29,14 @@ type Candidate = {
   work_title?: string;
   work_image_url?: string | null;
   detail?: string | null;
+  place_type?: string | null;
+  city?: string | null;
+  country?: string | null;
 };
 
-type Draft = { title: string; by: string; year: string; image: string; note: string };
-const emptyDraft: Draft = { title: "", by: "", year: "", image: "", note: "" };
+// placeType/city/country are only used for places (OSM's type and location).
+type Draft = { title: string; by: string; year: string; image: string; note: string; placeType: string; city: string; country: string };
+const emptyDraft: Draft = { title: "", by: "", year: "", image: "", note: "", placeType: "", city: "", country: "" };
 
 async function fetchJson(url: string, init?: RequestInit, ms = 20000) {
   const controller = new AbortController();
@@ -207,7 +212,17 @@ export default function AddStamp({
       setLanded(null);
       setCategoryId(String(cat.id));
       setWorkId(p.workId ?? "");
-      setDraft({ ...emptyDraft, title: p.title, by: p.by ?? "", year: p.year ? String(p.year) : "", image: p.imageUrl ?? "" });
+      const place = cat.slug === "places" ? { ...splitPlaceLine(p.by), ...(p.placeType || p.city ? { placeType: p.placeType ?? "", city: p.city ?? "" } : {}) } : null;
+      setDraft({
+        ...emptyDraft,
+        title: p.title,
+        by: p.by ?? "",
+        year: p.year ? String(p.year) : "",
+        image: p.imageUrl ?? "",
+        placeType: place?.placeType ?? "",
+        city: place?.city ?? "",
+        country: p.country ?? "",
+      });
       setPhotos(uniq([p.imageUrl]));
       if (p.url) {
         setPath("paste");
@@ -268,6 +283,13 @@ export default function AddStamp({
           by: w.by || d.by,
           year: w.year ? String(w.year) : "",
           image: w.image_url || d.image,
+          // Places: OSM's type and location (before the places migration only the
+          // combined by line exists, so split that).
+          ...(cat.slug === "places"
+            ? w.place_type || w.city
+              ? { placeType: w.place_type ?? "", city: w.city ?? "", country: w.country ?? "" }
+              : splitPlaceLine(w.by)
+            : {}),
         }));
         setPhotos(uniq([w.image_url, ...basePhotos]));
       }
@@ -444,7 +466,16 @@ export default function AddStamp({
     setMatchedSource(id ? r.source : null);
     setCatalogSite(id ? site : "");
     const photo = r.image_url || sitePhoto;
-    setDraft((d) => ({ ...d, title: r.title, by: r.by ?? "", year: r.year ? String(r.year) : "", image: photo }));
+    setDraft((d) => ({
+      ...d,
+      title: r.title,
+      by: r.by ?? "",
+      year: r.year ? String(r.year) : "",
+      image: photo,
+      placeType: r.place_type ?? "",
+      city: r.city ?? "",
+      country: r.country ?? "",
+    }));
     setPhotos(uniq([photo]));
     setBrokenPhotos([]);
     setPicking(null);
@@ -559,7 +590,9 @@ export default function AddStamp({
           </div>
           <div className="txt">
             <span className="title">{draft.title || "Title"}</span>
-            {draft.by && <span className="by">{draft.by}</span>}
+            {slug === "places"
+              ? (draft.placeType || draft.city) && <span className="by">{placeLine(draft.placeType, draft.city)}</span>
+              : draft.by && <span className="by">{draft.by}</span>}
           </div>
         </div>
       </div>
@@ -906,12 +939,42 @@ export default function AddStamp({
                 </button>
               )}
             </div>
-            <div className="field">
-              <label htmlFor="add-by">
-                {BY_LABEL[slug] ?? "By"} <span className="optional">optional</span>
-              </label>
-              <input id="add-by" name="by" value={draft.by} onChange={(e) => setDraft((d) => ({ ...d, by: e.target.value }))} />
-            </div>
+            {slug === "places" ? (
+              <>
+                <div className="field">
+                  <label htmlFor="add-place-type">
+                    Type <span className="optional">optional</span>
+                  </label>
+                  <input
+                    id="add-place-type"
+                    name="place_type"
+                    placeholder="Bar, museum, park…"
+                    value={draft.placeType}
+                    onChange={(e) => setDraft((d) => ({ ...d, placeType: e.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="add-city">
+                    Location <span className="optional">optional</span>
+                  </label>
+                  <input
+                    id="add-city"
+                    name="city"
+                    placeholder="City"
+                    value={draft.city}
+                    onChange={(e) => setDraft((d) => ({ ...d, city: e.target.value }))}
+                  />
+                  <input type="hidden" name="country" value={draft.country} />
+                </div>
+              </>
+            ) : (
+              <div className="field">
+                <label htmlFor="add-by">
+                  {BY_LABEL[slug] ?? "By"} <span className="optional">optional</span>
+                </label>
+                <input id="add-by" name="by" value={draft.by} onChange={(e) => setDraft((d) => ({ ...d, by: e.target.value }))} />
+              </div>
+            )}
 
             {(
               <div className="field">

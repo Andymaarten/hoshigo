@@ -23,6 +23,14 @@ export async function POST(request: NextRequest) {
   if (!work) return NextResponse.json({ work: null });
   // The item shows what was matched (e.g. the translated edition), the id links the work.
   return NextResponse.json({
-    work: { ...work, title: resolved.title, image_url: resolved.image_url ?? work.image_url, by: resolved.by ?? work.by },
+    work: {
+      ...work,
+      title: resolved.title,
+      image_url: resolved.image_url ?? work.image_url,
+      by: resolved.by ?? work.by,
+      place_type: resolved.place_type ?? work.place_type ?? null,
+      city: resolved.city ?? work.city ?? null,
+      country: resolved.country ?? work.country ?? null,
+    },
   });
 }

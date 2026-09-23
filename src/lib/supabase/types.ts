@@ -46,6 +46,10 @@ export interface Item {
   source_label: string | null;
   position: number;
   created_at: string;
+  /** places only; undefined until docs/migrations/2026-09-24-kaito-places.sql has run */
+  place_type?: string | null;
+  city?: string | null;
+  country?: string | null;
 }
 
 export type WorkSource = "tmdb" | "tmdb_tv" | "musicbrainz" | "openlibrary" | "itunes" | "igdb";

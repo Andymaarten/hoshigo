@@ -676,6 +676,16 @@ verandert alleen de foto. Zie `input-test-matrix.md`, "Round 4".
   vindt dezelfde TMDB-id. Dubbele works-rijen samenvoegen: zie
   `docs/migrations/2026-09-24-kaito.sql` (optioneel, handmatig, per paar).
 
+### Ronde 7 (2026-09-24): type en locatie als eigen velden
+
+Plaatsen volgen de OSM-structuur: `place_type` ("Bar", "Museum"), `city` en `country`, op
+`items` en `works` (`docs/migrations/2026-09-24-kaito-places.sql`, met backfill die
+"Bar · Amsterdam" splitst). In de formulieren staan Type en Location in plaats van
+"Where". Het grid en de sheet tonen het type klein boven de naam en de stad als tweede
+regel. De gecombineerde `by` wordt ook nog geschreven, zodat delen, "Add to my hoshigo" en
+de app vóór de migratie blijven werken. Stad: Londense boroughs → "London", Tokiose wijken
+(JP-13) → "Tokyo".
+
 ## Uitbreiden
 
 Nieuwe bron toevoegen aan de categorie-herkenning: `DOMAIN_RULES` / `ruleFromUrl()` in
