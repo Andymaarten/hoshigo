@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseSocialLinksPayload } from "@/lib/social-links";
-import { pendingInvitePath } from "@/lib/post-login";
+import { pendingAddPath, pendingInvitePath } from "@/lib/post-login";
 import { notifyNewSignup } from "@/lib/notify-signup";
 
 const HANDLE_RE = /^[a-z0-9_-]{2,30}$/;
@@ -52,5 +52,5 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
 
   if (isFirstOnboarding) await notifyNewSignup({ handle, displayName, email: user.email });
 
-  redirect((await pendingInvitePath()) ?? `/${handle}`);
+  redirect((await pendingInvitePath()) ?? (await pendingAddPath()) ?? `/${handle}`);
 }

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { INVITE_COOKIE } from "@/lib/friends";
+import { ADD_COOKIE } from "@/lib/add-link";
 
 const TOKEN_RE = /^[a-f0-9]{32}$/;
 
@@ -7,6 +8,11 @@ const TOKEN_RE = /^[a-f0-9]{32}$/;
 export async function pendingInvitePath(): Promise<string | null> {
   const token = (await cookies()).get(INVITE_COOKIE)?.value;
   return token && TOKEN_RE.test(token) ? `/invite/${token}` : null;
+}
+
+/** A link waiting to be added via /add?url= (carried through login in a cookie). */
+export async function pendingAddPath(): Promise<string | null> {
+  return (await cookies()).has(ADD_COOKIE) ? "/add" : null;
 }
 
 /** Only same-site paths, so ?next= can't bounce people to another domain. */
