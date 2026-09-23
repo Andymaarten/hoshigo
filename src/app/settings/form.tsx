@@ -23,11 +23,11 @@ export default function SettingsForm({
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div className="field">
         <label htmlFor="display_name">Name</label>
-        <input id="display_name" name="display_name" maxLength={15} defaultValue={initialName} placeholder="Andreas" />
+        <input id="display_name" name="display_name" maxLength={15} defaultValue={initialName} placeholder="Your name" />
       </div>
       <div className="field">
         <label htmlFor="bio">Bio</label>
-        <textarea id="bio" name="bio" defaultValue={initialBio} placeholder="Founder of hoshigo." />
+        <textarea id="bio" name="bio" defaultValue={initialBio} placeholder="A line about you" />
       </div>
       <div role="group" aria-labelledby="visibility-legend" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <span

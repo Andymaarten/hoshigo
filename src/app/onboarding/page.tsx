@@ -24,8 +24,8 @@ export default async function OnboardingPage() {
         <div className="word" aria-label="hoshigo">
           hosh<span className="tittle">ı</span>go
         </div>
-        <p className="lede">One last thing — pick your handle.</p>
-        <p className="bio">This becomes your page: hoshigo.cc/&lt;handle&gt;. You can change your bio anytime later.</p>
+        <p className="lede">One last thing — pick your page address.</p>
+        <p className="bio">It becomes the link to your page, like hoshigo.cc/yourname. Your name and bio can change anytime later.</p>
       </header>
       <section style={{ maxWidth: 480 }}>
         <OnboardingForm

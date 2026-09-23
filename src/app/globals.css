@@ -469,43 +469,102 @@ a.hero-dot:active {
   opacity: 0.22;
 }
 
+/* The sheet itself never scrolls; .sheet-scroll inside it does. That keeps the close
+   button (sticky in .sheet-bar) reachable on short screens, and svh/dvh keep the bottom
+   out from under mobile browser toolbars. vh stays first as the fallback. */
 dialog.sheet {
   border: 0;
   padding: 0;
-  margin: max(16px, env(safe-area-inset-top, 0px)) auto auto;
-  width: calc(100% - 32px);
+  margin: max(12px, env(safe-area-inset-top, 0px)) auto auto;
+  width: calc(100% - 24px);
   max-width: 480px;
-  max-height: 85vh;
-  overflow: auto;
+  max-height: calc(100vh - 24px);
+  max-height: calc(100svh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
   background: var(--ground);
   color: var(--ink);
   font-family: var(--display);
+}
+
+dialog.sheet[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+@supports (height: 1dvh) {
+  dialog.sheet {
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
 }
 
 dialog.sheet::backdrop {
   background: rgba(10, 10, 9, 0.5);
 }
 
+dialog.sheet.sheet-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(10, 10, 9, 0.5);
+}
+
+.sheet-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: inherit;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sheet-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sheet-bar .close {
+  all: unset;
+  box-sizing: border-box;
+  margin: 6px 6px 0 0;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--ink);
+  background: var(--ground);
+  border-radius: 50%;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.sheet-bar .close:focus-visible {
+  outline: 2px solid var(--ink);
+}
+
 .sheet-in {
   position: relative;
-  padding: 28px 24px;
+  padding: 28px 24px calc(28px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.sheet-in .close {
-  all: unset;
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  color: var(--ink);
-  font-size: 22px;
+@media (max-width: 400px) {
+  .sheet-in {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
 }
 
 .sheet-in h3 {
@@ -514,7 +573,7 @@ dialog.sheet::backdrop {
   line-height: 1.05;
   font-weight: 800;
   letter-spacing: -0.03em;
-  padding-right: 32px;
+  padding-right: 40px;
 }
 
 .field select {
@@ -617,8 +676,15 @@ h2 {
   height: 78px;
 }
 
-.thumb.photo {
-  background: var(--photo);
+/* No cover (or a cover that failed): a calm paper tone with a faint dot, never a black
+   box. A loaded <img> sits on top and hides it. */
+.thumb:not(.nav-thumb),
+.thumb.photo:not(.nav-thumb) {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(29, 28, 26, 0.1) 0 3px, transparent 3.5px),
+    #e3dac9;
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: var(--muted);
 }
 
 .thumb img {
@@ -1107,4 +1173,383 @@ footer .cta {
   font-weight: 700;
   color: var(--accent);
   font-size: 14px;
+}
+
+/* ---------- add flow ---------- */
+
+.cta {
+  border: 0;
+  cursor: pointer;
+  font-family: var(--display);
+}
+
+.cta:disabled,
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.actions .cta {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.linkish {
+  all: unset;
+  cursor: pointer;
+  align-self: flex-start;
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: var(--ink);
+  padding: 6px 0;
+}
+
+.linkish:focus-visible {
+  outline: 2px solid var(--ink);
+}
+
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.choice {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px;
+  min-height: 84px;
+  border: 2px solid var(--ink);
+}
+
+.choice strong {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.choice span {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.choice:hover,
+.choice:focus-visible {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.choice:hover span,
+.choice:focus-visible span {
+  color: var(--ground);
+}
+
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cat-btn {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  min-height: 56px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border: 2px solid var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.cat-btn:hover,
+.cat-btn:focus-visible {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 2px dashed var(--ink);
+}
+
+.notice p {
+  margin: 0;
+  font-size: 15px;
+}
+
+.search-row {
+  display: flex;
+  gap: 8px;
+}
+
+.search-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-row .btn {
+  padding: 0 14px;
+}
+
+.results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--rule);
+}
+
+.result {
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 4px;
+  min-height: 64px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.result:hover,
+.result:focus-visible {
+  background: rgba(29, 28, 26, 0.06);
+}
+
+.result:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.result .thumb {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+
+.result .thumb.tall {
+  height: 66px;
+}
+
+.result .thumb img {
+  filter: none;
+}
+
+.result-txt {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.result-detail {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--muted);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: rgba(29, 28, 26, 0.05);
+}
+
+.preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.preview-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.cat-line {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.cat-line .linkish {
+  padding: 0;
+  font-size: 15px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  min-height: 40px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.chip:hover,
+.chip:focus-visible {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.photo-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.photo-tile {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  position: relative;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  border: 2px solid transparent;
+  outline: 1px solid var(--rule);
+  background: var(--photo);
+  overflow: hidden;
+}
+
+.photo-tile img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-tile.none {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--ground);
+}
+
+.photo-tile.selected {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+}
+
+.photo-tile:focus-visible {
+  outline: 2px solid var(--ink);
+}
+
+.link-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 2px solid var(--ink);
+}
+
+.link-dest-big {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.link-out {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.link-dest {
+  font-size: 13px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.handle-preview {
+  margin: 0;
+  font-size: 15px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.handle-preview strong {
+  color: var(--ink);
 }

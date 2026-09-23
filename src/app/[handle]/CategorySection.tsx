@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Category, Item } from "@/lib/supabase/types";
 import { deleteItem, updateNote } from "./actions";
 import LockIcon from "@/components/icons/LockIcon";
 import EditItem from "./EditItem";
+import Sheet from "@/components/Sheet";
+import CoverImage from "@/components/CoverImage";
+import { imageSrc } from "@/lib/image-src";
+import { displayUrl } from "@/lib/link-input";
+import { SHAPE } from "@/lib/category-display";
 
 // The first page shows 5 items. Every page after that gives up one grid slot
 // to a "previous" tile (instead of a separate button above the grid, which
@@ -15,16 +20,6 @@ import EditItem from "./EditItem";
 const FIRST_PAGE_SIZE = 5;
 const NEXT_PAGE_SIZE = 4;
 
-const SHAPE: Record<string, "tall" | "photo" | undefined> = {
-  films: "tall",
-  books: "tall",
-  tv: "tall",
-  things: "photo",
-  games: "photo",
-  podcasts: "photo",
-  places: "photo",
-  videos: "photo",
-};
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
@@ -46,7 +41,7 @@ function Thumb({ item, shape, big }: { item: Item; shape?: "tall" | "photo"; big
   return (
     <div className={`thumb${shape === "tall" ? " tall" : ""}${shape === "photo" ? " photo" : ""}${big ? " big" : ""}`}>
       {item.year && <span>{item.year}</span>}
-      {item.image_url && <img src={item.image_url} alt="" />}
+      <CoverImage src={item.image_url} eager={big} />
     </div>
   );
 }
@@ -65,7 +60,7 @@ export default function CategorySection({
   allCategories: Category[];
 }) {
   const shape = SHAPE[category.slug];
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [active, setActive] = useState<Item | null>(null);
   const [note, setNote] = useState("");
   const [noteEditing, setNoteEditing] = useState(false);
@@ -104,8 +99,11 @@ export default function CategorySection({
     const nextItems = items.slice(nextStart, nextStart + NEXT_PAGE_SIZE);
     nextItems.forEach((item) => {
       if (!item.image_url) return;
+      const src = imageSrc(item.image_url);
+      if (!src) return;
       const img = new Image();
-      img.src = item.image_url;
+      img.referrerPolicy = "no-referrer";
+      img.src = src;
     });
   }, [isOwner, hasNextPage, pageStart, pageSize, items]);
 
@@ -114,7 +112,7 @@ export default function CategorySection({
     setNote(item.note ?? "");
     setNoteEditing(!item.note);
     setEditing(false);
-    dialogRef.current?.showModal();
+    setSheetOpen(true);
   }
 
   return (
@@ -197,20 +195,7 @@ export default function CategorySection({
         ))}
       </ul>
 
-      <dialog
-        ref={dialogRef}
-        className="sheet"
-        aria-labelledby={`sheet-title-${category.slug}`}
-        onClick={(e) => {
-          // A click that lands on the <dialog> element itself (not any of its
-          // children) means it hit the backdrop — same as pressing the × close.
-          if (e.target === e.currentTarget) dialogRef.current?.close();
-        }}
-      >
-        <div className="sheet-in">
-          <button type="button" className="close" aria-label="Close" onClick={() => dialogRef.current?.close()}>
-            ×
-          </button>
+      <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} labelledBy={`sheet-title-${category.slug}`}>
           {active && editing && (
             <EditItem
               handle={handle}
@@ -219,7 +204,7 @@ export default function CategorySection({
               onCancel={() => setEditing(false)}
               onDone={() => {
                 setEditing(false);
-                dialogRef.current?.close();
+                setSheetOpen(false);
               }}
             />
           )}
@@ -256,6 +241,8 @@ export default function CategorySection({
                         onClick={async () => {
                           setSaving(true);
                           await updateNote(handle, active.id, note);
+                          // Keep the open item in sync so a following Edit doesn't write back the old note.
+                          setActive((a) => (a ? { ...a, note: note || null } : a));
                           setSaving(false);
                           setNoteEditing(false);
                         }}
@@ -285,7 +272,7 @@ export default function CategorySection({
                       className="btn"
                       onClick={() => {
                         deleteItem(handle, active.id);
-                        dialogRef.current?.close();
+                        setSheetOpen(false);
                       }}
                       style={{ color: "var(--accent)", borderColor: "var(--accent)" }}
                     >
@@ -298,14 +285,16 @@ export default function CategorySection({
               )}
 
               {safeHttpUrl(active.url) && (
-                <a href={safeHttpUrl(active.url)!} target="_blank" rel="noopener" className="btn" style={{ alignSelf: "flex-start" }}>
-                  Open {active.source_label || "link"}
-                </a>
+                <div className="link-out">
+                  <a href={safeHttpUrl(active.url)!} target="_blank" rel="noopener" className="btn">
+                    Open {active.source_label || "link"} ↗
+                  </a>
+                  <span className="link-dest">{displayUrl(active.url!)}</span>
+                </div>
               )}
             </>
           )}
-        </div>
-      </dialog>
+      </Sheet>
     </section>
   );
 }

@@ -50,7 +50,7 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
     work_id: workId || null,
     title,
     by: by || null,
-    year: yearRaw ? Number(yearRaw) : null,
+    year: /^\d{3,4}$/.test(yearRaw) ? Number(yearRaw) : null,
     url: url || null,
     // Confirmed-same-link identity for categories with no canonical database (essays,
     // things, etc.) — see docs/sources.md "Non-canonical categories: exact-link matching".
