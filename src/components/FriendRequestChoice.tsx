@@ -33,8 +33,7 @@ export default function FriendRequestChoice({ initialAuto }: { initialAuto: bool
       <p className="bio" style={{ fontSize: 14 }}>
         {auto
           ? "Anyone who adds you becomes your friend right away."
-          : "You approve each request on your Friends page."}{" "}
-        Friends can see everything you&apos;ve added; everyone else sees your latest 5 per category.
+          : "You approve each request on your Friends page."}
       </p>
       <input type="hidden" name="friend_choice" value="1" />
       <input type="checkbox" name="auto_accept_friends" checked={auto} onChange={() => {}} hidden readOnly />

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { saveProfile } from "./actions";
 import SocialLinksEditor from "@/components/SocialLinksEditor";
 import FriendRequestChoice from "@/components/FriendRequestChoice";
+import VisibilityChoice from "@/components/VisibilityChoice";
 import type { SocialLink } from "@/lib/supabase/types";
 
 export default function SettingsForm({
@@ -11,12 +12,14 @@ export default function SettingsForm({
   initialName,
   initialSocialLinks,
   initialAutoAccept,
+  initialIsPrivate,
   friendsEnabled,
 }: {
   initialBio: string;
   initialName: string;
   initialSocialLinks: SocialLink[];
   initialAutoAccept: boolean;
+  initialIsPrivate: boolean;
   friendsEnabled: boolean;
 }) {
   const [error, action, pending] = useActionState(saveProfile, null);
@@ -31,6 +34,7 @@ export default function SettingsForm({
         <label htmlFor="bio">Bio</label>
         <textarea id="bio" name="bio" defaultValue={initialBio} placeholder="A line about you" />
       </div>
+      <VisibilityChoice initialPrivate={initialIsPrivate} />
       {friendsEnabled && <FriendRequestChoice initialAuto={initialAutoAccept} />}
       <SocialLinksEditor initialLinks={initialSocialLinks} />
       {error && <p className="error">{error}</p>}

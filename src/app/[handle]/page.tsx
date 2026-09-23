@@ -8,17 +8,35 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import ProfileSocialLinks from "@/components/ProfileSocialLinks";
 import FriendButton from "@/components/FriendButton";
-import { friendStateWith, PUBLIC_WINDOW, type FriendState } from "@/lib/friends";
+import {
+  friendStateWith,
+  PUBLIC_WINDOW,
+  type FriendState,
+} from "@/lib/friends";
 
-export default async function ProfilePage({ params }: { params: Promise<{ handle: string }> }) {
+export default async function ProfilePage({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}) {
   const { handle } = await params;
   const supabase = await createClient();
 
-  const [{ data: profile }, { data: categories }, { data: user }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("handle", handle).returns<Profile[]>().single(),
-    supabase.from("categories").select("*").order("sort_order").returns<Category[]>(),
-    supabase.auth.getUser(),
-  ]);
+  const [{ data: profile }, { data: categories }, { data: user }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("handle", handle)
+        .returns<Profile[]>()
+        .single(),
+      supabase
+        .from("categories")
+        .select("*")
+        .order("sort_order")
+        .returns<Category[]>(),
+      supabase.auth.getUser(),
+    ]);
 
   if (!profile) notFound();
 
@@ -28,20 +46,32 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   if (user?.user) {
     myHandle = isOwner
       ? profile.handle
-      : (await supabase.from("profiles").select("handle").eq("id", user.user.id).single()).data?.handle;
+      : (
+          await supabase
+            .from("profiles")
+            .select("handle")
+            .eq("id", user.user.id)
+            .single()
+        ).data?.handle;
   }
 
   let friendState: FriendState = "unavailable";
-  if (user?.user && !isOwner) friendState = await friendStateWith(supabase, user.user.id, profile.id);
+  if (user?.user && !isOwner)
+    friendState = await friendStateWith(supabase, user.user.id, profile.id);
   const canBrowseAll = isOwner || friendState === "friends";
 
-  const { data: items } = await supabase
-    .from("items")
-    .select("*")
-    .eq("profile_id", profile.id)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .returns<Item[]>();
+  // A private profile shows non-friends only its name, bio and the friend button.
+  const hideAll = profile.is_private && !canBrowseAll;
+
+  const { data: items } = hideAll
+    ? { data: [] as Item[] }
+    : await supabase
+        .from("items")
+        .select("*")
+        .eq("profile_id", profile.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .returns<Item[]>();
 
   const itemsByCategory = new Map<number, Item[]>();
   (items ?? []).forEach((item) => {
@@ -53,9 +83,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   // Non-friends only ever receive the newest 5 per category. After the friends migration RLS
   // already guarantees this; the slice keeps it true before the migration too.
   const categoriesWithMore = new Set<number>();
-  if (!canBrowseAll) {
-    const { data: more, error } = await supabase.rpc("categories_with_more", { p_profile: profile.id });
-    if (!error) (more as number[] | null)?.forEach((id) => categoriesWithMore.add(id));
+  if (!canBrowseAll && !hideAll) {
+    const { data: more, error } = await supabase.rpc("categories_with_more", {
+      p_profile: profile.id,
+    });
+    if (!error)
+      (more as number[] | null)?.forEach((id) => categoriesWithMore.add(id));
     for (const [categoryId, list] of itemsByCategory) {
       if (list.length > PUBLIC_WINDOW) {
         categoriesWithMore.add(categoryId);
@@ -101,15 +134,32 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             </Link>
           )}
         </div>
+        {hideAll && !user?.user && (
+          <p className="friend-actions">
+            <Link
+              href={`/login?next=${encodeURIComponent(`/${profile.handle}`)}`}
+              className="btn"
+            >
+              Log in to add friend
+            </Link>
+          </p>
+        )}
         {user?.user && !isOwner && (
-          <FriendButton otherId={profile.id} handle={profile.handle} state={friendState} name={displayName} />
+          <FriendButton
+            otherId={profile.id}
+            handle={profile.handle}
+            state={friendState}
+            name={displayName}
+          />
         )}
         <ProfileSocialLinks links={profile.social_links ?? []} />
       </header>
 
       <main id="lists">
         {(categories ?? [])
-          .filter((category) => (itemsByCategory.get(category.id) ?? []).length > 0)
+          .filter(
+            (category) => (itemsByCategory.get(category.id) ?? []).length > 0,
+          )
           .map((category) => (
             <CategorySection
               key={category.id}

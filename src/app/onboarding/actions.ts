@@ -26,7 +26,7 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
 
   const { error } = await supabase
     .from("profiles")
-    .update({ handle, display_name: displayName || null, bio: bio || null, social_links: socialLinks })
+    .update({ handle, display_name: displayName || null, bio: bio || null, social_links: socialLinks, is_private: formData.get("is_private") === "on" })
     .eq("id", user.id);
 
   if (error) {

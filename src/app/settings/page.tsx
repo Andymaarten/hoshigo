@@ -43,6 +43,7 @@ export default async function SettingsPage() {
           initialBio={profile.bio ?? ""}
           initialName={profile.display_name ?? ""}
           initialSocialLinks={profile.social_links ?? []}
+          initialIsPrivate={profile.is_private ?? false}
           initialAutoAccept={profile.auto_accept_friends ?? false}
           friendsEnabled={profile.auto_accept_friends !== undefined}
         />

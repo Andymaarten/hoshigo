@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { saveHandle } from "./actions";
 import SocialLinksEditor from "@/components/SocialLinksEditor";
 import FriendRequestChoice from "@/components/FriendRequestChoice";
+import VisibilityChoice from "@/components/VisibilityChoice";
 import type { SocialLink } from "@/lib/supabase/types";
 
 export default function OnboardingForm({
@@ -52,6 +53,7 @@ export default function OnboardingForm({
         <textarea id="bio" name="bio" defaultValue={initialBio} placeholder="A line about you" />
       </div>
       <SocialLinksEditor initialLinks={initialSocialLinks} />
+      <VisibilityChoice initialPrivate={false} />
       <FriendRequestChoice initialAuto={false} />
       {error && <p className="error">{error}</p>}
       <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>

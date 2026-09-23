@@ -78,12 +78,14 @@ as $$
 $$;
 
 -- which of a person's categories have more than the public 5, so the page can show a
--- "see more" tile without sending the hidden rows
+-- "see more" tile without sending the hidden rows. Nothing at all for a private profile.
 create or replace function public.categories_with_more(p_profile uuid)
 returns setof int
 language sql stable security definer set search_path = public
 as $$
-  select category_id from public.items where profile_id = p_profile
+  select category_id from public.items
+  where profile_id = p_profile
+    and not exists (select 1 from public.profiles p where p.id = p_profile and p.is_private)
   group by category_id having count(*) > 5;
 $$;
 
@@ -163,8 +165,8 @@ revoke execute on function public.request_friend(uuid) from anon;
 revoke execute on function public.accept_friend(uuid) from anon;
 revoke execute on function public.accept_invite(text) from anon;
 
--- No private listings: profiles and items no longer look at is_private (the column stays,
--- unused, so nothing is lost).
+-- Profiles (name, bio, handle) are readable by everyone, private ones included.
+-- is_private is a profile setting: a private profile shows its items to friends only.
 drop policy if exists "profiles are publicly readable" on public.profiles;
 create policy "profiles are publicly readable" on public.profiles
   for select using (true);
@@ -175,7 +177,10 @@ create policy "items are visible to owner, friends, or latest 5" on public.items
   for select using (
     auth.uid() = profile_id
     or public.is_friend_of_viewer(profile_id)
-    or public.item_in_public_window(id)
+    or (
+      not exists (select 1 from public.profiles p where p.id = items.profile_id and p.is_private)
+      and public.item_in_public_window(id)
+    )
   );
 
 -- only after the policy above stops referencing them
