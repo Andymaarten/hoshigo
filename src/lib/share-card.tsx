@@ -263,7 +263,8 @@ export async function renderShareCard(listing: SharedListing, format: ShareForma
       width,
       height,
       fonts,
-      headers: { "Cache-Control": "public, max-age=300, s-maxage=600" },
+      // A day on the CDN makes a repeat share instant; an edited note shows up within the hour.
+      headers: { "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400" },
     }
   );
 }

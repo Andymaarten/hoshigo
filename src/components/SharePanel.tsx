@@ -110,7 +110,7 @@ export default function SharePanel({ handle, itemId, mine, friendsOnly = false }
                       disabled={!files[format]}
                       onClick={() => shareImage(format)}
                     >
-                      {files[format] ? label : `${label} (preparing)`}
+                      {files[format] ? label : `${label} (ready in a few seconds)`}
                     </button>
                   ) : (
                     <a key={format} className="share-link" href={`${path}/card/${format}?download`} download>
