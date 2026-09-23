@@ -652,6 +652,30 @@ og:image en grote afbeeldingen naar voren. Het junkfilter pakt ook tracking pixe
 bot-check-pagina's. De UI (`PhotoFromPage`) zit in alle add-paden en in EditItem, en
 verandert alleen de foto. Zie `input-test-matrix.md`, "Round 4".
 
+### Ronde 6 (2026-09-24): plaatsen, games, vertalingen
+
+- **Plaatsen (Nominatim).** Zoeken met `extratags`, `namedetails` en `addressdetails`. Het
+  soort plek komt uit de OSM-tag (amenity/tourism/shop/leisure) → een kort woord
+  (`PLACE_KIND` in resolve-work.ts), met keuken erbij voor restaurants ("Indian
+  restaurant"). "By" wordt "Soort · Stad", en de detailregel straat, buurt, stad, land.
+  `source_id` is nu het stabiele OSM-id (N/W/R + nummer) in plaats van Nominatims
+  `place_id`, dat bij een herimport verandert. **Website** (`website`/`contact:website`)
+  komt in `works.website`. Een item zonder eigen link krijgt die website als link
+  (`addItem`); een geplakte Maps-link blijft altijd de link. Heeft de plek geen foto, dan
+  pakt de server de beste foto van die website (`withWebsitePhoto`, 6 s max).
+- **Games (Wikidata, zonder key).** Zoeken via `wbsearchentities` in en/nl/de/fr, en
+  alleen items waarvan een "instance of"-klasse als game gelabeld is (video game, board
+  game, card game…). De detailregel toont platforms of "Board game". Steam-links
+  (P1733) en BGG-links (P2339) matchen exact via `haswbstatement`. **BoardGameGeek** geeft
+  nu `401 Unauthorized` op de XML API2 zonder token. Wil de eigenaar BGG erbij: een
+  applicatie registreren via https://boardgamegeek.com/using_the_xml_api, dan de token als
+  `BGG_TOKEN` in Vercel zetten; die wordt nu nog niet gebruikt. IGDB en RAWG vragen ook
+  keys; Wikidata dekt beide soorten games.
+- **Vertalingen.** Boeken groeperen al via Open Library-werk-keys (10 van 10 paren getest).
+  Films: TMDB mist sommige vertaalde titels; een Wikidata-brug (labels/aliassen → P4947/P4983)
+  vindt dezelfde TMDB-id. Dubbele works-rijen samenvoegen: zie
+  `docs/migrations/2026-09-24-kaito.sql` (optioneel, handmatig, per paar).
+
 ## Uitbreiden
 
 Nieuwe bron toevoegen aan de categorie-herkenning: `DOMAIN_RULES` / `ruleFromUrl()` in

@@ -87,9 +87,14 @@ create table if not exists public.works (
 );
 
 -- widen the source check for databases created before tv/songs/podcasts/games existed
+-- 'wikidata' = games (video and board games), see docs/migrations/2026-09-24-kaito.sql
 alter table public.works drop constraint if exists works_source_check;
 alter table public.works add constraint works_source_check
-  check (source in ('tmdb', 'tmdb_tv', 'musicbrainz', 'openlibrary', 'itunes', 'igdb', 'youtube', 'nominatim'));
+  check (source in ('tmdb', 'tmdb_tv', 'musicbrainz', 'openlibrary', 'itunes', 'igdb', 'youtube', 'nominatim', 'wikidata'));
+
+-- The thing's own website when the catalog knows it (places from OSM). Used as an item's
+-- link only when the person gave none.
+alter table public.works add column if not exists website text;
 
 alter table public.items add column if not exists work_id uuid references public.works (id);
 

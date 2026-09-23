@@ -504,7 +504,12 @@ function titleFromPath(url: string): string | null {
     const scored = segments
       .map((s) => words(s))
       .filter((s) => /[a-zA-Z]{3,}/.test(s) && s.split(" ").length >= 2 && !/^(dp|p|product|products|book|show|title|item|en|nl|de)$/i.test(s));
-    const best = scored.sort((a, b) => b.length - a.length)[0];
+    let best = scored.sort((a, b) => b.length - a.length)[0];
+    // "/boardgame/13/catan": a one word slug right after a numeric id is the name.
+    if (!best) {
+      const i = segments.length - 1;
+      if (i > 0 && /^\d+$/.test(segments[i - 1]) && /^[a-z][a-z0-9]{2,}$/i.test(segments[i])) best = segments[i];
+    }
     if (!best) return null;
     return best.charAt(0).toUpperCase() + best.slice(1);
   } catch {

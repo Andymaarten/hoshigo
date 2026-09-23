@@ -4,7 +4,9 @@
 // Both return the same shape so a picked search result and an automatic match are
 // registered in the `works` table identically (see src/lib/works.ts).
 
-export type WorkSource = "tmdb" | "tmdb_tv" | "musicbrainz" | "openlibrary" | "itunes" | "igdb" | "youtube" | "nominatim";
+import { claimIds, claimString, claimYear, commonsImage, getEntities, itemByStatement, label, searchItems, type WdEntity } from "./wikidata";
+
+export type WorkSource = "tmdb" | "tmdb_tv" | "musicbrainz" | "openlibrary" | "itunes" | "igdb" | "youtube" | "nominatim" | "wikidata";
 
 export type ResolvedWork = {
   source: WorkSource;
@@ -24,6 +26,9 @@ export type ResolvedWork = {
   detail?: string | null;
   // Set on list results that aren't catalog rows yet and must be resolved on pick.
   resolve_via?: "song";
+  // The thing's own website, when the catalog knows it (places from OSM). Used as the
+  // listing's link only when the person gave none.
+  website?: string | null;
 };
 
 const MB_HEADERS = { "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)", Accept: "application/json" };
@@ -161,9 +166,37 @@ function showToWork(s: TmdbShow, by: string | null, confidence: "high" | "low"):
   };
 }
 
+// TMDB only matches the titles it has, and many translations are missing ("De reis van
+// Chihiro" finds nothing). Wikidata has labels and aliases in many languages plus the TMDB
+// id (P4947 film, P4983 series), so it bridges to the same TMDB work.
+async function tmdbViaWikidata(title: string, kind: "movie" | "tv"): Promise<ResolvedWork | null> {
+  try {
+    const ids = (await searchItems(title, ["nl", "de", "fr", "es", "it", "en"], 5)).slice(0, 6);
+    const entities = await getEntities(ids, "claims");
+    for (const id of ids) {
+      const tmdbId = claimString(entities[id], kind === "movie" ? "P4947" : "P4983");
+      if (!tmdbId) continue;
+      if (kind === "movie") {
+        const m: TmdbMovie | null = await tmdb(`/movie/${tmdbId}`);
+        if (m?.id) return movieToWork(m, await tmdbDirector(m.id), "low");
+      } else {
+        const s: TmdbShow | null = await tmdb(`/tv/${tmdbId}`);
+        if (s?.id) return showToWork(s, await tmdbCreator(s.id), "low");
+      }
+    }
+  } catch {
+    // bridge is a bonus
+  }
+  return null;
+}
+
 export async function searchFilms(query: string): Promise<ResolvedWork[]> {
   const data = await tmdb(`/search/movie?${new URLSearchParams({ query, include_adult: "false" })}`);
   const results: TmdbMovie[] = (data?.results ?? []).slice(0, 10);
+  if (!results.length) {
+    const bridged = await tmdbViaWikidata(query, "movie");
+    return bridged ? [bridged] : [];
+  }
   const directors = await Promise.all(results.slice(0, 8).map((m) => tmdbDirector(m.id)));
   return results.map((m, i) => movieToWork(m, directors[i] ?? null, "low"));
 }
@@ -171,6 +204,10 @@ export async function searchFilms(query: string): Promise<ResolvedWork[]> {
 export async function searchTv(query: string): Promise<ResolvedWork[]> {
   const data = await tmdb(`/search/tv?${new URLSearchParams({ query })}`);
   const results: TmdbShow[] = (data?.results ?? []).slice(0, 10);
+  if (!results.length) {
+    const bridged = await tmdbViaWikidata(query, "tv");
+    return bridged ? [bridged] : [];
+  }
   const creators = await Promise.all(results.slice(0, 8).map((s) => tmdbCreator(s.id)));
   return results.map((s, i) => showToWork(s, creators[i] ?? null, "low"));
 }
@@ -180,9 +217,9 @@ export async function resolveFilm(title: string, year?: number | null): Promise<
     const params = new URLSearchParams({ query: title, include_adult: "false" });
     if (year) params.set("year", String(year));
     const match: TmdbMovie | undefined = (await tmdb(`/search/movie?${params}`))?.results?.[0];
-    if (!match) return null;
+    if (!match) return await tmdbViaWikidata(title, "movie");
     const quality = assessMatch(title, null, match.title, null) ?? assessMatch(title, null, match.original_title ?? "", null);
-    if (!quality) return null;
+    if (!quality) return await tmdbViaWikidata(title, "movie");
     return movieToWork(match, await tmdbDirector(match.id), quality.confidence);
   } catch {
     return null;
@@ -194,9 +231,9 @@ export async function resolveTv(title: string, year?: number | null): Promise<Re
     const params = new URLSearchParams({ query: title });
     if (year) params.set("first_air_date_year", String(year));
     const match: TmdbShow | undefined = (await tmdb(`/search/tv?${params}`))?.results?.[0];
-    if (!match) return null;
+    if (!match) return await tmdbViaWikidata(title, "tv");
     const quality = assessMatch(title, null, match.name, null) ?? assessMatch(title, null, match.original_name ?? "", null);
-    if (!quality) return null;
+    if (!quality) return await tmdbViaWikidata(title, "tv");
     return showToWork(match, await tmdbCreator(match.id), quality.confidence);
   } catch {
     return null;
@@ -592,34 +629,92 @@ async function resolveBookOnce(title: string, author?: string | null): Promise<R
 
 type NominatimResult = {
   place_id: number;
+  osm_type?: string;
+  osm_id?: number;
   display_name: string;
   name?: string;
   type?: string;
+  category?: string;
   class?: string;
   importance?: number;
   address?: Record<string, string>;
+  extratags?: Record<string, string> | null;
+  namedetails?: Record<string, string> | null;
 };
+
+// OSM tag value → a short word people use. Anything not listed falls back to the tag value
+// itself ("ice_cream" → "Ice cream").
+const PLACE_KIND: Record<string, string> = {
+  restaurant: "Restaurant", cafe: "Café", bar: "Bar", pub: "Pub", biergarten: "Beer garden", fast_food: "Fast food",
+  food_court: "Food court", ice_cream: "Ice cream", nightclub: "Club", cinema: "Cinema", theatre: "Theatre",
+  arts_centre: "Arts centre", concert_hall: "Concert hall", library: "Library", marketplace: "Market",
+  museum: "Museum", gallery: "Gallery", attraction: "Attraction", viewpoint: "Viewpoint", zoo: "Zoo", aquarium: "Aquarium",
+  theme_park: "Theme park", artwork: "Artwork", hotel: "Hotel", hostel: "Hostel", guest_house: "Guest house",
+  camp_site: "Campsite", picnic_site: "Picnic spot", park: "Park", garden: "Garden", nature_reserve: "Nature reserve",
+  beach_resort: "Beach", beach: "Beach", peak: "Mountain", volcano: "Volcano", waterfall: "Waterfall", lake: "Lake",
+  water: "Water", sports_centre: "Sports centre", stadium: "Stadium", swimming_pool: "Swimming pool",
+  books: "Bookshop", bakery: "Bakery", coffee: "Coffee shop", deli: "Deli", wine: "Wine shop", music: "Record shop",
+  clothes: "Clothes shop", supermarket: "Supermarket", department_store: "Department store", mall: "Mall",
+  place_of_worship: "Place of worship", castle: "Castle", monument: "Monument", memorial: "Memorial", ruins: "Ruins",
+  archaeological_site: "Archaeological site", university: "University", city: "City", town: "Town", village: "Village",
+  island: "Island", neighbourhood: "Neighbourhood", suburb: "Neighbourhood", country: "Country", building: "Building",
+};
+
+function placeKind(r: NominatimResult): string | null {
+  const t = r.type && r.type !== "yes" ? r.type : null;
+  const tags = r.extratags ?? {};
+  const cuisine = tags.cuisine?.split(";")[0]?.replace(/_/g, " ");
+  const base = t ? PLACE_KIND[t] ?? t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) : null;
+  // "Restaurant" alone says little; "Japanese restaurant" tells branches and places apart.
+  if (base && cuisine && /^(Restaurant|Café|Fast food)$/.test(base)) return `${cuisine.replace(/^./, (c) => c.toUpperCase())} ${base.toLowerCase()}`;
+  return base;
+}
+
+function placeWebsite(r: NominatimResult): string | null {
+  const tags = r.extratags ?? {};
+  const raw = tags.website || tags["contact:website"] || tags.url || null;
+  if (!raw) return null;
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const u = new URL(withScheme.split(";")[0].trim());
+    return u.protocol === "https:" || u.protocol === "http:" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 function placeToWork(r: NominatimResult, confidence: "high" | "low"): ResolvedWork {
   const parts = r.display_name.split(",").map((s) => s.trim());
-  const name = r.name || parts[0];
+  const name = r.namedetails?.name || r.name || parts[0];
   const a = r.address ?? {};
   const locality = a.city || a.town || a.village || a.municipality || a.county || null;
-  const where = [locality, a.country].filter(Boolean).join(", ") || parts.slice(1).join(", ") || null;
+  const kind = placeKind(r);
+  const street = [a.road, a.house_number].filter(Boolean).join(" ") || null;
   return {
     source: "nominatim",
-    source_id: String(r.place_id),
+    // OSM ids are stable (N/W/R + number); Nominatim's own place_id changes on reimport.
+    source_id: r.osm_type && r.osm_id ? `${r.osm_type[0].toUpperCase()}${r.osm_id}` : String(r.place_id),
     title: name,
-    by: where,
+    // "Restaurant · Amsterdam": what it is and where, which is what tells places apart.
+    by: [kind, locality ?? a.state ?? a.country].filter(Boolean).join(" · ") || parts.slice(1, 3).join(", ") || null,
     year: null,
     image_url: null,
     match_confidence: confidence,
-    detail: [r.type && r.type !== "yes" ? r.type.replace(/_/g, " ") : null, parts.slice(1, 4).join(", ")].filter(Boolean).join(" · ") || null,
+    detail: [street, a.suburb ?? a.neighbourhood, locality, a.country].filter(Boolean).join(", ") || parts.slice(1, 4).join(", ") || null,
+    website: placeWebsite(r),
   };
 }
 
 async function nominatim(q: string, limit: number): Promise<NominatimResult[]> {
-  const params = new URLSearchParams({ q, format: "jsonv2", limit: String(limit), addressdetails: "1", "accept-language": "en" });
+  const params = new URLSearchParams({
+    q,
+    format: "jsonv2",
+    limit: String(limit),
+    addressdetails: "1",
+    extratags: "1",
+    namedetails: "1",
+    "accept-language": "en",
+  });
   return (await fetchJson(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { "User-Agent": MB_HEADERS["User-Agent"] } })) ?? [];
 }
 
@@ -632,12 +727,113 @@ export async function resolvePlace(name: string, context?: string | null): Promi
     const data = await nominatim(context ? `${name} ${context}` : name, 5);
     let best: { r: NominatimResult; confidence: "high" | "low"; score: number } | null = null;
     for (const r of data) {
-      const quality = assessMatch(name, null, r.name || r.display_name.split(",")[0], null);
+      // "Dishoom Covent Garden": people often add the area to the name, so also compare
+      // with the name plus its neighbourhood/city.
+      const own = r.name || r.display_name.split(",")[0];
+      const a = r.address ?? {};
+      const withArea = [own, a.suburb ?? a.neighbourhood ?? a.quarter, a.city ?? a.town].filter(Boolean).join(" ");
+      const q1 = assessMatch(name, null, own, null);
+      const q2 = assessMatch(name, null, withArea, null);
+      const quality = q1 && q2 ? (q1.titleScore >= q2.titleScore ? q1 : q2) : q1 ?? q2;
       if (!quality) continue;
       const score = quality.titleScore * 0.7 + (r.importance ?? 0) * 0.3;
       if (!best || score > best.score) best = { r, confidence: quality.confidence, score };
     }
     return best ? placeToWork(best.r, best.confidence) : null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------- games (Wikidata: video games and board games) ----------
+//
+// Keyless and covers both kinds. An item counts as a game when one of its "instance of"
+// (P31) classes is labelled like "video game", "board game", "card game" etc. IGDB and RAWG
+// need keys; BoardGameGeek's XML API now answers 401 without a registered application token
+// (see docs/sources.md), so Wikidata is the default. BGG and Steam ids on the Wikidata item
+// (P2339, P1733) let pasted store and BGG links resolve exactly.
+
+const GAME_CLASS_RE = /\b(video game|board game|card game|tabletop game|tabletop role-playing game|role-playing game|party game|dice game|puzzle game|wargame|game)\b/i;
+const BOARDISH_RE = /\b(board game|card game|tabletop|dice game|wargame|party game)\b/i;
+
+async function gameClassLabels(entities: Record<string, WdEntity>): Promise<Record<string, string>> {
+  const classIds = [...new Set(Object.values(entities).flatMap((e) => claimIds(e, "P31")))];
+  const classes = await getEntities(classIds, "labels");
+  return Object.fromEntries(classIds.map((id) => [id, label(classes[id], ["en", "mul"]) ?? ""]));
+}
+
+async function peopleLabels(entities: WdEntity[], props: string[]): Promise<Record<string, string>> {
+  const ids = [...new Set(entities.flatMap((e) => props.flatMap((p) => claimIds(e, p).slice(0, 3))))];
+  const people = await getEntities(ids, "labels");
+  return Object.fromEntries(ids.map((id) => [id, label(people[id]) ?? ""]));
+}
+
+function gameToWork(e: WdEntity, classText: string, names: Record<string, string>, confidence: "high" | "low"): ResolvedWork {
+  const board = BOARDISH_RE.test(classText) && !/video game/i.test(classText);
+  const platforms = claimIds(e, "P400").map((id) => names[id]).filter(Boolean).slice(0, 3);
+  const makers = (board ? [...claimIds(e, "P287"), ...claimIds(e, "P123")] : [...claimIds(e, "P178"), ...claimIds(e, "P123")])
+    .map((id) => names[id])
+    .filter(Boolean);
+  const year = claimYear(e);
+  return {
+    source: "wikidata",
+    source_id: e.id,
+    title: label(e) ?? e.id,
+    by: makers[0] ?? null,
+    year,
+    image_url: commonsImage(claimString(e, "P18") ?? claimString(e, "P154")),
+    match_confidence: confidence,
+    // "Board game" or the platforms, which is what tells same-named games apart.
+    detail: board ? ["Board game", year ? String(year) : null].filter(Boolean).join(" · ") : platforms.length ? platforms.join(", ") : "Video game",
+  };
+}
+
+async function gamesFromIds(ids: string[], confidence: "high" | "low"): Promise<ResolvedWork[]> {
+  if (!ids.length) return [];
+  const entities = await getEntities(ids);
+  const classLabels = await gameClassLabels(entities);
+  const games = ids
+    .map((id) => entities[id])
+    .filter((e): e is WdEntity => !!e)
+    .map((e) => ({ e, classText: claimIds(e, "P31").map((c) => classLabels[c]).join(" | ") }))
+    .filter(({ classText }) => GAME_CLASS_RE.test(classText) && !/\b(series|franchise|genre|video game character)\b/i.test(classText));
+  const names = await peopleLabels(games.map((g) => g.e), ["P400", "P178", "P123", "P287"]);
+  return games.map(({ e, classText }) => gameToWork(e, classText, names, confidence));
+}
+
+export async function searchGames(query: string): Promise<ResolvedWork[]> {
+  const ids = await searchItems(query, ["en", "nl", "de", "fr"], 15);
+  return (await gamesFromIds(ids.slice(0, 25), "low")).slice(0, 10);
+}
+
+// Store and catalog titles carry platform noise: "ASTRO BOT - PS5 Games", "Portal 2 on Steam".
+function cleanGameTitle(title: string) {
+  return title
+    .replace(/[™®©]/g, "")
+    .replace(/\s+for\s+(Nintendo Switch\s*\d?|PS[45]|PlayStation\s*\d?|Xbox.*|PC|Mac)$/i, "")
+    .replace(/\s*[-–|:]\s*(PS[45]|PlayStation\s*\d?|Xbox[^|–-]*|Nintendo Switch[^|–-]*|PC|Steam|Games?|Board ?Game(Geek)?)\b.*$/i, "")
+    .replace(/\s+on\s+Steam$/i, "")
+    .trim() || title;
+}
+
+export async function resolveGame(title: string, sourceUrl?: string | null): Promise<ResolvedWork | null> {
+  try {
+    // Exact ids first: Steam app id (P1733) and BoardGameGeek id (P2339) are on the item.
+    const steam = sourceUrl?.match(/store\.steampowered\.com\/app\/(\d+)/)?.[1];
+    const bgg = sourceUrl?.match(/boardgamegeek\.com\/boardgame(?:expansion)?\/(\d+)/)?.[1];
+    const exactId = steam ? await itemByStatement("P1733", steam) : bgg ? await itemByStatement("P2339", bgg) : null;
+    if (exactId) {
+      const [exact] = await gamesFromIds([exactId], "high");
+      if (exact) return exact;
+    }
+    if (!title) return null;
+    const clean = cleanGameTitle(title);
+    const candidates = await gamesFromIds((await searchItems(clean, ["en", "nl", "de"], 8)).slice(0, 12), "low");
+    for (const c of candidates) {
+      const quality = assessMatch(clean, null, c.title, null);
+      if (quality) return { ...c, match_confidence: quality.confidence };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -685,7 +881,7 @@ export async function resolveVideo(sourceUrl: string | null | undefined): Promis
 
 // ---------- dispatch ----------
 
-export const SEARCHABLE_CATEGORIES = ["films", "tv", "albums", "songs", "books", "podcasts", "places"] as const;
+export const SEARCHABLE_CATEGORIES = ["films", "tv", "albums", "songs", "books", "podcasts", "places", "games"] as const;
 
 export async function searchWorks(categorySlug: string, query: string): Promise<ResolvedWork[]> {
   const q = query.trim();
@@ -706,6 +902,8 @@ export async function searchWorks(categorySlug: string, query: string): Promise<
         return await searchPodcasts(q);
       case "places":
         return await searchPlaces(q);
+      case "games":
+        return await searchGames(q);
       default:
         return [];
     }
@@ -722,6 +920,7 @@ export async function resolveWork(
   sourceUrl?: string | null
 ): Promise<ResolvedWork | null> {
   if (categorySlug === "videos") return resolveVideo(sourceUrl);
+  if (categorySlug === "games") return resolveGame(title, sourceUrl);
   if (!title) return null;
   switch (categorySlug) {
     case "films":

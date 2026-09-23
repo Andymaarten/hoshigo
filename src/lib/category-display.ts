@@ -10,7 +10,7 @@ export const SHAPE: Record<string, "tall" | "photo" | undefined> = {
 };
 
 // Categories with a catalog to search. Must match SEARCHABLE_CATEGORIES in resolve-work.ts.
-export const SEARCHABLE = new Set(["films", "tv", "albums", "songs", "books", "podcasts", "places"]);
+export const SEARCHABLE = new Set(["films", "tv", "albums", "songs", "books", "podcasts", "places", "games"]);
 
 // One definitive cover comes from the catalog here, so no photo picker once matched.
 export const COVER_FROM_CATALOG = new Set(["albums", "books", "songs", "podcasts"]);
@@ -37,6 +37,7 @@ export const SEARCH_HINT: Record<string, string> = {
   books: "Title or author, any language",
   podcasts: "Podcast name",
   places: "Place and city, e.g. Rijksmuseum Amsterdam",
+  games: "Video game or board game, e.g. Hades or Catan",
 };
 
 export const SOURCE_NAME: Record<string, string> = {
@@ -48,6 +49,7 @@ export const SOURCE_NAME: Record<string, string> = {
   igdb: "IGDB",
   youtube: "YouTube",
   nominatim: "OpenStreetMap",
+  wikidata: "Wikidata",
 };
 
 // Grouped by how you spend time with them: reading, watching, listening, then the rest.

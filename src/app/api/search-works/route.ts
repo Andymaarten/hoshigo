@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveSong, searchWorks, type ResolvedWork } from "@/lib/resolve-work";
-import { isWorkSource, upsertWork } from "@/lib/works";
+import { isWorkSource, upsertWork, withWebsitePhoto } from "@/lib/works";
 
 // GET: a list of catalog candidates for one category, for the "choose it yourself" search.
 export async function GET(request: NextRequest) {
@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
   }
   const str = (v: unknown, max = 500) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
   const httpUrl = (v: unknown) => (typeof v === "string" && /^https:\/\//.test(v) ? v.slice(0, 1000) : null);
-  const work = await upsertWork(supabase, categoryId, {
+  const anyHttpUrl = (v: unknown) => (typeof v === "string" && /^https?:\/\//.test(v) ? v.slice(0, 1000) : null);
+  const picked = await withWebsitePhoto({
     source: c.source,
     source_id: String(c.source_id).slice(0, 200),
     title: str(c.title)!,
@@ -47,8 +48,11 @@ export async function POST(request: NextRequest) {
     image_url: httpUrl(c.image_url),
     work_title: str(c.work_title) ?? undefined,
     work_image_url: c.work_image_url === undefined ? undefined : httpUrl(c.work_image_url),
+    website: c.source === "nominatim" ? anyHttpUrl(c.website) : null,
     // A person looked at the list and chose this exact entry.
     match_confidence: "high",
   });
-  return NextResponse.json({ work_id: work?.id ?? null });
+  const work = await upsertWork(supabase, categoryId, picked);
+  // image_url: a photo found on the place's own website, for the dialog to show.
+  return NextResponse.json({ work_id: work?.id ?? null, image_url: picked.image_url, website: picked.website ?? null });
 }

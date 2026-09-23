@@ -314,3 +314,140 @@ Guardian page picked by the script (an info page) has only a logo, which is filt
   filter now drops them.
 - Wikipedia (round 3 provider) returned no image for pages whose lead image is non-free
   (film posters): the pageimages API now asks for any license.
+
+
+## Round 6: places, games, same work across languages
+
+Run with `scripts/round6-check.ts` and `scripts/cross-language-check.ts`
+(`npx tsx --env-file=.env.local …`).
+
+### Same work across languages
+
+Books already group correctly: all 10 translation pairs resolve to one Open Library work
+key, both through the paste matcher and the search list's first hit (De jaren / The Years
+/ Les Années → `/works/OL102389W`, Honderd jaar eenzaamheid / One Hundred Years of
+Solitude → `/works/OL274505W`, De avond is ongemak / The Discomfort of Evening →
+`/works/OL19740451W`, …). Nothing needed fixing there.
+
+Films: TMDB has one id per film, but only matches titles it knows. "De zeven samoerai"
+worked; **"De reis van Chihiro" found nothing** (TMDB has no Dutch title for it). Fixed with
+a Wikidata bridge: labels and aliases in nl/de/fr/es/it/en, then the TMDB id (P4947 film,
+P4983 series) → the same TMDB work 129. Still not found: "Het leven van anderen"; Dutch
+Wikipedia and Wikidata list that film under its original title "Das Leben der Anderen",
+which does match.
+
+```
+## Books (resolveBook with author, then the search list's first hit)
+SAME resolve  The Years → /works/OL102389W (The years) | De jaren → /works/OL102389W (De jaren)
+SAME search   The Years → /works/OL102389W | De jaren → /works/OL102389W (De jaren)
+SAME resolve  The Years → /works/OL102389W (The years) | Les Années → /works/OL102389W (The years)
+SAME search   The Years → /works/OL102389W | Les Années → /works/OL102389W (Les années)
+SAME resolve  One Hundred Years of Solitude → /works/OL274505W (One Hundred Years of Solitude) | Honderd jaar eenzaamheid → /works/OL274505W (Honderd jaar eenzaamheid)
+SAME search   One Hundred Years of Solitude → /works/OL274505W | Honderd jaar eenzaamheid → /works/OL274505W (Honderd jaar eenzaamheid)
+SAME resolve  The Discomfort of Evening → /works/OL19740451W (The Discomfort of Evening) | De avond is ongemak → /works/OL19740451W (De avond is ongemak)
+SAME search   The Discomfort of Evening → /works/OL19740451W | De avond is ongemak → /works/OL19740451W (De avond is ongemak)
+SAME resolve  The Name of the Rose → /works/OL8996439W (The  name of the rose) | De naam van de roos → /works/OL8996439W (De naam van de roos)
+SAME search   The Name of the Rose → /works/OL8996439W | De naam van de roos → /works/OL8996439W (De naam van de roos)
+SAME resolve  Steppenwolf → /works/OL872773W (Steppenwolf) | Der Steppenwolf → /works/OL872773W (Steppenwolf)
+SAME search   Steppenwolf → /works/OL872773W | Der Steppenwolf → /works/OL872773W (Der Steppenwolf)
+SAME resolve  The Stranger → /works/OL1230613W (The Stranger) | L'étranger → /works/OL1230613W (L'étranger Par Albert Camus)
+SAME search   The Stranger → /works/OL1230613W | L'étranger → /works/OL1230613W (L'étranger Par Albert Camus)
+SAME resolve  The Stranger → /works/OL1230613W (The Stranger) | De vreemdeling → /works/OL1230613W (De Vreemdeling)
+SAME search   The Stranger → /works/OL1230613W | De vreemdeling → /works/OL1230613W (De Vreemdeling)
+SAME resolve  The Discovery of Heaven → /works/OL659062W (The Discovery of Heaven) | De ontdekking van de hemel → /works/OL659062W (De ontdekking van de hemel)
+SAME search   The Discovery of Heaven → /works/OL659062W | De ontdekking van de hemel → /works/OL659062W (De ontdekking van de hemel)
+SAME resolve  The Dinner → /works/OL2486917W (The Dinner) | Het diner → /works/OL2486917W (The Dinner)
+SAME search   The Dinner → /works/OL2486917W | Het diner → /works/OL2486917W (Het Diner)
+
+## Films
+SAME Seven Samurai → 346 | De zeven samoerai → 346 (Seven Samurai); search first: 346 Seven Samurai
+DIFF Spirited Away → 129 | De reis van Chihiro → undefined (undefined); search first: undefined undefined
+SAME The Lives of Others → 582 | Das Leben der Anderen → 582 (The Lives of Others); search first: 582 The Lives of Others
+SAME Amélie → 194 | Le Fabuleux Destin d'Amélie Poulain → 194 (Amélie); search first: 194 Amélie
+```
+
+### Places, games, film bridge
+
+```
+## Places: search list (kind · city, website)
+
+"Rijksmuseum Amsterdam" (1)
+- Rijksmuseum | Museum · Amsterdam | Hobbemastraat, Zuid, Amsterdam, Netherlands | site: https://www.rijksmuseum.nl/ | id W29989787
+
+"Café de Klos Amsterdam" (1)
+- Café De Klos | Barbecue restaurant · Amsterdam | Kerkstraat 41-43, Centrum, Amsterdam, Netherlands | site: https://dekloscafe.wordpress.com/ | id N2626432820
+
+"Dishoom London" (7)
+- Dishoom | Indian restaurant · Greater London | Boundary Street 7, Whitechapel, Greater London, United Kingdom | site: https://www.dishoom.com/shoreditch/ | id W276329431
+- Dishoom | Indian restaurant · City of Westminster | Upper St Martin's Lane 12, Covent Garden, City of Westminster, United Kingdom | site: http://www.dishoom.com/covent-garden/ | id W207104925
+- Dishoom | Indian restaurant · Greater London | Derry Street 4, Kensington, Greater London, United Kingdom | site: https://www.dishoom.com/kensington/ | id N6306940350
+
+"Noma Copenhagen" (1)
+- Noma | Regional restaurant · Copenhagen | Bjørnekloen, Amagerbro, Copenhagen, Denmark | site: https://noma.dk/ | id N5416925514
+
+"Pllek Amsterdam" (2)
+- Pllek | Beach · Amsterdam | Noord, Amsterdam, Netherlands | site: https://www.pllek.nl/ | id W254154642
+- Pllek | Restaurant · Amsterdam | tt. Neveritaweg 59, Noord, Amsterdam, Netherlands | site: https://pllek.nl/ | id N4913392670
+
+"Shakespeare and Company Paris" (1)
+- Shakespeare and Company | Bookshop · Paris | Rue de la Bûcherie 37, 5th Arrondissement, Paris, France | site: https://www.shakespeareandcompany.com/ | id N251373380
+
+## Places: resolve + website photo
+Rijksmuseum → Rijksmuseum | Museum · Amsterdam | high | site https://www.rijksmuseum.nl/ | photo https://www.rijksmuseum.nl/assets/147dde9e-c250-4ed9-b941-39800085a4e3?w=2880&h=
+Dishoom Covent Garden → Dishoom | Indian restaurant · City of Westminster | low | site http://www.dishoom.com/covent-garden/ | photo https://cdn.sanity.io/images/daku84np/production/b492504165ed7b5327abddaf1086b7a
+
+## Games: search
+
+"Hades" (2, 4173ms)
+- Hades | Supergiant Games | 2018 | Nintendo Switch, Microsoft Windows, macOS | img yes | Q59756366
+- Hades II | Supergiant Games | 2024 | Microsoft Windows, Nintendo Switch, Nintendo Switch 2 | img yes | Q115641620
+
+"Catan" (4, 2049ms)
+- The Settlers of Catan | Franckh-Kosmos | 1995 | Board game · 1995 | img yes | Q17271
+- Catan | Game Republic | 2008 | PlayStation 3 | img no | Q5051418
+- Catan | Big Huge Games | 2007 | Xbox 360 | img no | Q16266534
+
+"Wingspan" (2, 1881ms)
+- Wingspan |  | 2020 | Microsoft Windows, macOS, Nintendo Switch | img no | Q111109349
+- Wingspan | Feuerland Spiele | 2019 | Board game · 2019 | img yes | Q65784798
+
+"Zelda Tears of the Kingdom" (1, 1927ms)
+- The Legend of Zelda: Tears of the Kingdom | Nintendo Entertainment Planning & Development | 2022 | Nintendo Switch, Nintendo Switch 2 | img yes | Q64577191
+
+"Celeste" (2, 2146ms)
+- Celeste | Maddy Makes Games | 2018 | Microsoft Windows, Nintendo Switch, Linux | img yes | Q28451532
+- Celeste Classic | Maddy Thorson | 2015 | PICO-8, web browser | img yes | Q99593577
+
+"Ticket to Ride" (3, 1783ms)
+- Ticket to Ride | Days of Wonder | 2004 | Board game · 2004 | img yes | Q228308
+- Ticket to Ride | Next Level Games | 2008 | Android, Xbox 360, Microsoft Windows | img no | Q7800668
+- Ticket to Ride |  | 2023 | Microsoft Windows | img no | Q124050300
+
+"Portal 2" (3, 1630ms)
+- Portal 2 | Valve Corporation | 2011 | Microsoft Windows, macOS, PlayStation 3 | img yes | Q279446
+- Portal 2 Sixense Perceptual Pack |  | 2013 | Microsoft Windows | img no | Q124069832
+- Portal 2: Confinement |  | 2024 | Microsoft Windows, macOS, Linux | img no | Q141483864
+
+## Games: pasted links
+store.steampowered.com/app/1145360/Hades/ → games (domain: store.steampowered.com) "Hades" → Hades [Q59756366] Nintendo Switch, Microsoft Windows, macOS high
+store.steampowered.com/app/620/Portal_2/ → games (domain: store.steampowered.com) "Portal 2" → Portal 2 [Q279446] Microsoft Windows, macOS, PlayStation 3 high
+boardgamegeek.com/boardgame/13/catan → games (domain: boardgamegeek.com) "Catan" → The Settlers of Catan [Q17271] Board game · 1995 high
+boardgamegeek.com/boardgame/266192/wingspan → games (domain: boardgamegeek.com) "Wingspan" → Wingspan [Q65784798] Board game · 2019 high
+www.playstation.com/en-us/games/astro-bot/ → games (path: playstation game) "ASTRO BOT - PS5 Games" → Astro Bot [Q126199700] PlayStation 5 high
+www.nintendo.com/us/store/products/the-legend-of-zelda-tears-o → games (path: nintendo game) "The Legend of Zelda™: Tears of the Kingdom for Nintendo Switch" → The Legend of Zelda: Tears of the Kingdom [Q64577191] Nintendo Switch, Nintendo Switch 2 high
+maddymakesgames.itch.io/celeste-classic → games (domain: maddymakesgames.itch.io) "Celeste classic" → Celeste Classic [Q99593577] PICO-8, web browser high
+en.wikipedia.org/wiki/Hollow_Knight → games (wikidata: video game) "Hollow Knight" → Hollow Knight [Q29300592] Microsoft Windows, macOS, Linux high
+
+## Films: Dutch titles
+De reis van Chihiro → resolve 129 Spirited Away | search 129 Spirited Away
+De zeven samoerai → resolve 346 Seven Samurai | search 346 Seven Samurai
+Het leven van anderen → resolve undefined undefined | search undefined undefined
+```
+
+Notes:
+- Places now show kind and city in the "by" line ("Indian restaurant · City of
+  Westminster"); three Dishoom branches are told apart by street in the detail line.
+- "Dishoom Covent Garden" matches the right branch at *low* confidence, so the dialog
+  doesn't link it; picking it from the search list does.
+- Games: Steam and BoardGameGeek links resolve exactly through the ids on the Wikidata
+  item (confidence high). BGG pages block us, so the title comes from the URL.
