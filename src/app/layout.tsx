@@ -15,6 +15,7 @@ const serif = Newsreader({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://hoshigo.cc"),
   title: "hoshigo",
   description: "Five five stars per list.",
 };

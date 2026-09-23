@@ -171,6 +171,7 @@ export default async function ProfilePage({
               hasMore={categoriesWithMore.has(category.id)}
               lock={lock}
               allCategories={categories ?? []}
+              isPrivate={profile.is_private}
             />
           ))}
         {isOwner && (items ?? []).length === 0 && (

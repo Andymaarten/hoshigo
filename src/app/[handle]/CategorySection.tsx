@@ -13,6 +13,8 @@ import { displayUrl } from "@/lib/link-input";
 import { SHAPE } from "@/lib/category-display";
 import type { FriendState } from "@/lib/friends";
 import { acceptFriend, addFriend } from "@/app/friends/actions";
+import SharePanel from "@/components/SharePanel";
+import { isPublicRank, PUBLIC_PER_CATEGORY } from "@/lib/share-rules";
 
 export type Lock = { kind: "login" } | { kind: FriendState; otherId: string };
 
@@ -59,6 +61,7 @@ export default function CategorySection({
   hasMore,
   lock,
   allCategories,
+  isPrivate = false,
 }: {
   category: Category;
   items: Item[];
@@ -68,6 +71,7 @@ export default function CategorySection({
   hasMore: boolean;
   lock: Lock;
   allCategories: Category[];
+  isPrivate?: boolean;
 }) {
   const shape = SHAPE[category.slug];
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -298,6 +302,12 @@ export default function CategorySection({
                   </a>
                   <span className="link-dest">{displayUrl(active.url!)}</span>
                 </div>
+              )}
+
+              {isPublicRank(items.findIndex((i) => i.id === active.id)) ? (
+                <SharePanel key={active.id} handle={handle} itemId={active.id} title={active.title} by={active.by} mine={isOwner} friendsOnly={isPrivate} />
+              ) : (
+                <p className="meta">Only your newest {PUBLIC_PER_CATEGORY} per list are public, so this one can&rsquo;t be shared yet.</p>
               )}
             </>
           )}
