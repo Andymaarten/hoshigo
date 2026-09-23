@@ -3,117 +3,116 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Category } from "@/lib/supabase/types";
 import { addItem } from "./actions";
+import Sheet from "@/components/Sheet";
+import CoverImage from "@/components/CoverImage";
+import { displayUrl, extractUrl, stripTracking } from "@/lib/link-input";
+import { BY_LABEL, COVER_FROM_CATALOG, SEARCHABLE, SEARCH_HINT, SHAPE, SOURCE_NAME } from "@/lib/category-display";
 
-type Step = "link" | "review";
+// One decision per screen:
+//   start → "Paste a link" → link → (what is it?) → details
+//   start → "Find it yourself" → what is it? → search (or manual) → details
+type Screen = "start" | "link" | "category" | "search" | "details";
+type Path = "paste" | "choose";
 
-const emptyFields = {
-  title: "",
-  by: "",
-  year: "",
-  image_url: "",
-  note: "",
-  source_label: "",
+type Candidate = {
+  source: string;
+  source_id: string;
+  title: string;
+  by: string | null;
+  year: number | null;
+  image_url: string | null;
+  work_title?: string;
+  work_image_url?: string | null;
+  detail?: string | null;
 };
 
-// These categories have one definitive cover from their canonical catalog (an album's
-// artwork, a book's cover, a song's release art, a podcast's show art) — letting someone
-// swap in a random photo scraped off the source page doesn't make sense there. Every other
-// category (including canonically-matched ones like films) allows picking between whatever
-// candidate photos were found.
-const NO_PHOTO_CHOICE = new Set(["albums", "books", "songs", "podcasts"]);
+type Draft = { title: string; by: string; year: string; image: string; note: string };
+const emptyDraft: Draft = { title: "", by: "", year: "", image: "", note: "" };
 
-const WORK_SOURCE_LABEL: Record<string, string> = {
-  tmdb: "TMDB",
-  tmdb_tv: "TMDB",
-  musicbrainz: "MusicBrainz",
-  openlibrary: "Open Library",
-  itunes: "iTunes",
-  igdb: "IGDB",
-  youtube: "YouTube",
-  nominatim: "OpenStreetMap",
-};
+async function fetchJson(url: string, init?: RequestInit, ms = 20000) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(url, { ...init, signal: controller.signal });
+    if (!res.ok) throw new Error(String(res.status));
+    return await res.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function uniq(list: (string | null | undefined)[]) {
+  return [...new Set(list.filter((s): s is string => !!s))];
+}
 
 export default function AddStamp({ handle, categories }: { handle: string; categories: Category[] }) {
   const [pinned, setPinned] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
   const boundAdd = addItem.bind(null, handle);
   const [error, action, pending] = useActionState(boundAdd, null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const wasPending = useRef(false);
 
-  const [step, setStep] = useState<Step>("link");
-  const [categoryId, setCategoryId] = useState(String(categories[0]?.id ?? ""));
-  const [url, setUrl] = useState("");
-  const [fetching, setFetching] = useState(false);
-  const [fetchFailed, setFetchFailed] = useState(false);
-  const [autoDetected, setAutoDetected] = useState(false);
-  const [fields, setFields] = useState(emptyFields);
+  const [screen, setScreen] = useState<Screen>("start");
+  const [path, setPath] = useState<Path>("paste");
+  const [categoryId, setCategoryId] = useState("");
+  const [suggested, setSuggested] = useState<string[]>([]);
+  const [showAllCategories, setShowAllCategories] = useState(false);
+
+  const [linkInput, setLinkInput] = useState("");
+  const [notALink, setNotALink] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [readNotice, setReadNotice] = useState("");
+  const [link, setLink] = useState("");
+  const [target, setTarget] = useState("");
+  const [sourceLabel, setSourceLabel] = useState("");
+  const [ownLink, setOwnLink] = useState("");
+
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Candidate[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
+  const [picking, setPicking] = useState<string | null>(null);
+  const searchSeq = useRef(0);
+
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [brokenPhotos, setBrokenPhotos] = useState<string[]>([]);
+  const [showPhotoLink, setShowPhotoLink] = useState(false);
   const [workId, setWorkId] = useState("");
-  const [matchedVia, setMatchedVia] = useState<string | null>(null);
-  const [matching, setMatching] = useState(false);
-  const [imageCandidates, setImageCandidates] = useState<string[]>([]);
-  const [imageIndex, setImageIndex] = useState(0);
+  const [matchedSource, setMatchedSource] = useState<string | null>(null);
+  const [looking, setLooking] = useState(false);
+  const [formError, setFormError] = useState("");
 
-  function resetForm() {
-    setStep("link");
-    setUrl("");
-    setFields(emptyFields);
-    setFetchFailed(false);
-    setAutoDetected(false);
-    setCategoryId(String(categories[0]?.id ?? ""));
+  const category = categories.find((c) => String(c.id) === categoryId);
+  const slug = category?.slug ?? "";
+
+  function reset() {
+    setScreen("start");
+    setPath("paste");
+    setCategoryId("");
+    setSuggested([]);
+    setShowAllCategories(false);
+    setLinkInput("");
+    setNotALink(false);
+    setReading(false);
+    setReadNotice("");
+    setLink("");
+    setTarget("");
+    setSourceLabel("");
+    setOwnLink("");
+    setQuery("");
+    setResults(null);
+    setSearching(false);
+    setSearchFailed(false);
+    setPicking(null);
+    setDraft(emptyDraft);
+    setPhotos([]);
+    setBrokenPhotos([]);
+    setShowPhotoLink(false);
     setWorkId("");
-    setMatchedVia(null);
-    setImageCandidates([]);
-    setImageIndex(0);
-  }
-
-  function cyclePhoto(direction: 1 | -1) {
-    if (imageCandidates.length < 2) return;
-    const next = (imageIndex + direction + imageCandidates.length) % imageCandidates.length;
-    setImageIndex(next);
-    setFields((f) => ({ ...f, image_url: imageCandidates[next] }));
-  }
-
-  async function lookUpCanonical(title: string, catId: string, by?: string, year?: string, sourceUrl?: string) {
-    if (!catId) return;
-    setMatching(true);
-    try {
-      const category = categories.find((c) => String(c.id) === catId);
-      if (!category) return;
-      if (!title && category.slug !== "videos") return;
-      const res = await fetch("/api/resolve-work", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category_id: category.id,
-          category_slug: category.slug,
-          title,
-          by,
-          year: year ? Number(year) : undefined,
-          // only used for the videos category's ID-based YouTube resolver — see resolve-work.ts
-          url: sourceUrl,
-        }),
-      });
-      const data = await res.json();
-      if (data.work) {
-        setFields((f) => ({
-          ...f,
-          title: data.work.title,
-          by: data.work.by || f.by,
-          year: data.work.year ? String(data.work.year) : f.year,
-          image_url: data.work.image_url || f.image_url,
-        }));
-        setWorkId(data.work.id);
-        setMatchedVia(data.work.source);
-      } else {
-        setWorkId("");
-        setMatchedVia(null);
-      }
-    } catch {
-      // canonical lookup is a bonus — the OG/manual data we already have still works
-    } finally {
-      setMatching(false);
-    }
+    setMatchedSource(null);
+    setFormError("");
   }
 
   useEffect(() => {
@@ -128,62 +127,258 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
   }, []);
 
   useEffect(() => {
-    if (!pending && !error && formRef.current) {
-      formRef.current.reset();
-      dialogRef.current?.close();
-      resetForm();
+    if (wasPending.current && !pending && !error) {
+      setOpen(false);
+      reset();
     }
+    wasPending.current = pending;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
 
-  function openDialog() {
-    resetForm();
-    dialogRef.current?.showModal();
+  function clearMatch() {
+    setWorkId("");
+    setMatchedSource(null);
   }
 
-  async function goToReview(skipFetch: boolean) {
-    if (skipFetch || !url) {
-      setStep("review");
+  // Tries to tie what we read from a link to a catalog entry. Never touches the link.
+  async function lookUp(catId: string, title: string, by: string, year: string, url: string, basePhotos: string[]) {
+    const cat = categories.find((c) => String(c.id) === catId);
+    clearMatch();
+    if (!cat || (!SEARCHABLE.has(cat.slug) && cat.slug !== "videos")) return;
+    if (!title && cat.slug !== "videos") return;
+    setLooking(true);
+    try {
+      const data = await fetchJson(
+        "/api/resolve-work",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category_id: cat.id,
+            category_slug: cat.slug,
+            title,
+            by: by || undefined,
+            year: year ? Number(year) : undefined,
+            url: url || undefined,
+          }),
+        },
+        15000
+      );
+      const w = data?.work;
+      if (w) {
+        setWorkId(w.id);
+        setMatchedSource(w.source);
+        setDraft((d) => ({
+          ...d,
+          title: w.title || d.title,
+          by: w.by || d.by,
+          year: w.year ? String(w.year) : "",
+          image: w.image_url || d.image,
+        }));
+        setPhotos(uniq([w.image_url, ...basePhotos]));
+      }
+    } catch {
+      // no match is fine: what we read from the page still works
+    } finally {
+      setLooking(false);
+    }
+  }
+
+  async function readLink() {
+    const url = extractUrl(linkInput);
+    if (!url) {
+      setNotALink(true);
       return;
     }
-    setFetching(true);
-    setFetchFailed(false);
-    let detectedCategoryId = categoryId;
+    setNotALink(false);
+    setReading(true);
+    setReadNotice("");
+    const cleaned = stripTracking(url);
+    let data: Record<string, unknown> = {};
     try {
-      const res = await fetch(`/api/fetch-metadata?url=${encodeURIComponent(url)}`);
-      const data = await res.json();
-      if (data.title || data.image_url) {
-        setFields((f) => ({
-          ...f,
-          title: data.title || "",
-          by: data.by || f.by,
-          image_url: data.image_url || "",
-          year: data.year ? String(data.year) : "",
-          source_label: data.source_label || "",
-        }));
-        setImageCandidates(data.image_urls || []);
-        setImageIndex(0);
-        const match = categories.find((c) => c.slug === data.category_slug);
-        if (match) {
-          detectedCategoryId = String(match.id);
-          setCategoryId(detectedCategoryId);
-          setAutoDetected(true);
-        }
-      } else {
-        setFetchFailed(true);
-      }
-      if (data.title || data.category_slug === "videos")
-        await lookUpCanonical(data.title, detectedCategoryId, data.by, data.year ? String(data.year) : undefined, url);
+      data = await fetchJson(`/api/fetch-metadata?url=${encodeURIComponent(url)}`);
     } catch {
-      setFetchFailed(true);
-    } finally {
-      setFetching(false);
-      setStep("review");
+      data = { status: "timeout" };
+    }
+    const finalLink = typeof data.link === "string" ? data.link : cleaned;
+    setLink(finalLink);
+    setTarget(typeof data.target === "string" ? data.target : "");
+    setSourceLabel(typeof data.source_label === "string" ? data.source_label : new URL(finalLink).hostname.replace(/^www\./, ""));
+    const title = typeof data.title === "string" ? data.title : "";
+    const by = typeof data.by === "string" ? data.by : "";
+    const year = typeof data.year === "number" ? String(data.year) : "";
+    const pagePhotos = uniq([data.image_url as string, ...((data.image_urls as string[]) ?? [])]);
+    setDraft({ ...emptyDraft, title, by, image: pagePhotos[0] ?? "" });
+    setPhotos(pagePhotos);
+    setBrokenPhotos([]);
+    clearMatch();
+
+    if (!title) {
+      setReadNotice(
+        data.status === "blocked"
+          ? "That site doesn't let us read its pages, so fill in the title yourself."
+          : data.status === "timeout"
+            ? "That page took too long to answer, so fill in the title yourself."
+            : "We couldn't read that page, so fill in the title yourself."
+      );
+    } else if (data.title_from_url) {
+      setReadNotice("We couldn't read that page, so we guessed the title from the link. Check it below.");
+    }
+
+    const alternatives = ((data.alternatives as string[]) ?? []).filter((s) => categories.some((c) => c.slug === s));
+    const detected = categories.find((c) => c.slug === data.category_slug);
+    setPath("paste");
+    setReading(false);
+    if (!detected || data.confidence === "low") {
+      setSuggested(alternatives.length ? alternatives : uniq([detected?.slug, "things", "essays"]));
+      setCategoryId("");
+      setShowAllCategories(false);
+      setScreen("category");
+      return;
+    }
+    setCategoryId(String(detected.id));
+    setSuggested(data.confidence === "medium" ? alternatives : []);
+    setScreen("details");
+    await lookUp(String(detected.id), title, by, year, finalLink, pagePhotos);
+  }
+
+  function chooseCategory(id: string) {
+    const cat = categories.find((c) => String(c.id) === id);
+    if (!cat) return;
+    setCategoryId(id);
+    setShowAllCategories(false);
+    if (path === "choose") {
+      clearMatch();
+      setResults(null);
+      if (SEARCHABLE.has(cat.slug)) {
+        setScreen("search");
+        if (query.trim()) runSearch(query, cat.slug);
+      } else {
+        setDraft((d) => ({ ...d, title: d.title || query.trim() }));
+        setScreen("details");
+      }
+    } else {
+      setScreen("details");
+      lookUp(id, draft.title, draft.by, "", link, photos);
     }
   }
 
-  const activeCategorySlug = categories.find((c) => String(c.id) === categoryId)?.slug;
-  const allowPhotoChoice = !activeCategorySlug || !NO_PHOTO_CHOICE.has(activeCategorySlug);
+  async function runSearch(q: string, catSlug = slug) {
+    const term = q.trim();
+    if (!term || !catSlug) return;
+    const seq = ++searchSeq.current;
+    setSearching(true);
+    setSearchFailed(false);
+    try {
+      const data = await fetchJson(`/api/search-works?category=${encodeURIComponent(catSlug)}&q=${encodeURIComponent(term)}`);
+      if (seq === searchSeq.current) setResults(data.results ?? []);
+    } catch {
+      if (seq === searchSeq.current) {
+        setSearchFailed(true);
+        setResults(null);
+      }
+    } finally {
+      if (seq === searchSeq.current) setSearching(false);
+    }
+  }
+
+  useEffect(() => {
+    if (screen !== "search" || query.trim().length < 2) return;
+    const t = setTimeout(() => runSearch(query), 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, screen]);
+
+  async function pickResult(r: Candidate) {
+    setPicking(r.source_id);
+    let id = "";
+    try {
+      const data = await fetchJson(
+        "/api/search-works",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category_id: category?.id, candidate: r }) },
+        10000
+      );
+      id = data?.work_id ?? "";
+    } catch {
+      // still usable without the catalog link
+    }
+    setWorkId(id);
+    setMatchedSource(id ? r.source : null);
+    setDraft((d) => ({ ...d, title: r.title, by: r.by ?? "", year: r.year ? String(r.year) : "", image: r.image_url ?? "" }));
+    setPhotos(uniq([r.image_url]));
+    setBrokenPhotos([]);
+    setPicking(null);
+    setScreen("details");
+  }
+
+  function addByHand() {
+    clearMatch();
+    setDraft((d) => ({ ...d, title: d.title || query.trim(), by: "", year: "", image: "" }));
+    setPhotos([]);
+    setScreen("details");
+  }
+
+  function searchInstead() {
+    setQuery(draft.title);
+    setResults(null);
+    setScreen("search");
+    if (draft.title) runSearch(draft.title);
+  }
+
+  const visiblePhotos = photos.filter((p) => !brokenPhotos.includes(p));
+  const coverLocked = !!workId && COVER_FROM_CATALOG.has(slug);
+  const ownLinkClean = ownLink.trim() ? extractUrl(ownLink) : null;
+  const finalUrl = path === "paste" ? link : ownLinkClean ? stripTracking(ownLinkClean) : "";
+  const finalSourceLabel =
+    path === "paste" ? sourceLabel : finalUrl ? new URL(finalUrl).hostname.replace(/^www\./, "") : "";
+
+  function renderPreview() {
+    const shape = SHAPE[slug];
+    return (
+      <div className="preview" aria-label="Preview of your listing">
+        <span className="preview-label">Preview</span>
+        <div className="preview-item">
+          <div className={`thumb${shape === "tall" ? " tall" : ""}${shape === "photo" ? " photo" : ""}`}>
+            {draft.year && <span>{draft.year}</span>}
+            <CoverImage src={draft.image} eager />
+          </div>
+          <div className="txt">
+            <span className="title">{draft.title || "Title"}</span>
+            {draft.by && <span className="by">{draft.by}</span>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderBack(to: Screen) {
+    return (
+      <button type="button" className="btn" onClick={() => setScreen(to)}>
+        Back
+      </button>
+    );
+  }
+
+  function renderCategoryButtons(slugs?: string[]) {
+    const list = slugs ? slugs.map((s) => categories.find((c) => c.slug === s)).filter((c): c is Category => !!c) : categories;
+    return (
+      <div className="cat-grid">
+        {list.map((c) => (
+          <button key={c.id} type="button" className="cat-btn" onClick={() => chooseCategory(String(c.id))}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  const title = {
+    start: "Add a hoshigo",
+    link: "Paste a link",
+    category: path === "paste" ? "What is this?" : "What are you adding?",
+    search: `Find ${category?.label ?? "it"}`,
+    details: "Check and add",
+  }[screen];
 
   return (
     <>
@@ -193,7 +388,10 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
           className={`stamp${pinned ? " pinned" : ""}`}
           aria-haspopup="dialog"
           aria-label="Press here to add a hoshigo"
-          onClick={openDialog}
+          onClick={() => {
+            reset();
+            setOpen(true);
+          }}
         >
           <svg viewBox="0 0 116 116" aria-hidden="true" focusable="false">
             <defs>
@@ -209,188 +407,337 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
         </button>
       </div>
 
-      <dialog
-        ref={dialogRef}
-        className="sheet"
-        aria-labelledby="add-title"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) dialogRef.current?.close();
-        }}
-      >
-        <div className="sheet-in">
-          <button type="button" className="close" aria-label="Close" onClick={() => dialogRef.current?.close()}>
-            ×
-          </button>
-          <h3 id="add-title">Add a hoshigo</h3>
+      <Sheet open={open} onClose={() => setOpen(false)} labelledBy="add-title">
+        <h3 id="add-title">{title}</h3>
 
-          {step === "link" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <p className="bio" style={{ marginTop: 0 }}>
-                Paste a link and we&apos;ll figure out what it is.
-              </p>
-              <div className="field">
-                <label htmlFor="link-url">Link</label>
-                <input
-                  id="link-url"
-                  type="url"
-                  placeholder="https://…"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <button
-                type="button"
-                className="cta"
-                style={{ border: "none" }}
-                disabled={fetching || !url}
-                onClick={() => goToReview(false)}
-              >
-                {fetching ? "Reading link…" : "Continue"}
-              </button>
-              <button type="button" className="btn" onClick={() => goToReview(true)}>
-                No link — add manually
-              </button>
+        {screen === "start" && (
+          <div className="choice-list">
+            <button type="button" className="choice" onClick={() => setScreen("link")}>
+              <strong>Paste a link</strong>
+              <span>From Spotify, IMDb, Goodreads, a shop, anywhere. We fill in the rest.</span>
+            </button>
+            <button
+              type="button"
+              className="choice"
+              onClick={() => {
+                setPath("choose");
+                setScreen("category");
+              }}
+            >
+              <strong>Find it yourself</strong>
+              <span>Pick a category and search for the film, album, book or place.</span>
+            </button>
+          </div>
+        )}
+
+        {screen === "link" && (
+          <form
+            className="stack"
+            onSubmit={(e) => {
+              e.preventDefault();
+              readLink();
+            }}
+          >
+            <div className="field">
+              <label htmlFor="link-input">Link</label>
+              <input
+                id="link-input"
+                type="text"
+                inputMode="url"
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                placeholder="Paste it here"
+                value={linkInput}
+                onChange={(e) => {
+                  setLinkInput(e.target.value);
+                  setNotALink(false);
+                }}
+                autoFocus
+              />
+              <span className="hint">Share text from an app works too.</span>
             </div>
-          )}
-
-          {step === "review" && (
-            <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <input type="hidden" name="url" value={url} />
-              <input type="hidden" name="source_label" value={fields.source_label} />
-              <input type="hidden" name="work_id" value={workId} />
-
-              {fetchFailed && (
-                <p className="bio" style={{ fontStyle: "italic", marginTop: 0 }}>
-                  Couldn&apos;t read that link automatically — fill it in below.
-                </p>
-              )}
-
-              <div className="field">
-                <label htmlFor="category_id">
-                  Category{autoDetected && <span style={{ color: "var(--accent)" }}> — detected</span>}
-                </label>
-                <select
-                  id="category_id"
-                  name="category_id"
-                  value={categoryId}
-                  onChange={(e) => {
-                    setCategoryId(e.target.value);
-                    setAutoDetected(false);
-                    setWorkId("");
-                    setMatchedVia(null);
+            {notALink && (
+              <div className="notice">
+                <p>That doesn&apos;t look like a link.</p>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setQuery(linkInput.trim());
+                    setPath("choose");
+                    setScreen("category");
                   }}
                 >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
+                  Search for “{linkInput.trim().slice(0, 40)}” instead
+                </button>
               </div>
-              <div className="field">
-                <label htmlFor="title">
-                  Title
-                  {matchedVia && (
-                    <span style={{ color: "var(--accent)" }}> — matched via {WORK_SOURCE_LABEL[matchedVia]}</span>
-                  )}
-                </label>
-                <input
-                  id="title"
-                  name="title"
-                  required
-                  value={fields.title}
-                  onChange={(e) => {
-                    setFields((f) => ({ ...f, title: e.target.value }));
-                    setWorkId("");
-                    setMatchedVia(null);
-                  }}
-                />
-                {!matchedVia && (
-                  <button
-                    type="button"
-                    className="btn"
-                    style={{ alignSelf: "flex-start", fontSize: 13, minHeight: 36, padding: "0 12px" }}
-                    disabled={matching || !fields.title}
-                    onClick={() => lookUpCanonical(fields.title, categoryId, fields.by, fields.year)}
-                  >
-                    {matching ? "Looking up…" : "Look up canonical record"}
-                  </button>
-                )}
-              </div>
-              <div className="field">
-                <label htmlFor="by">By</label>
-                <input
-                  id="by"
-                  name="by"
-                  value={fields.by}
-                  onChange={(e) => setFields((f) => ({ ...f, by: e.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="year">Year</label>
-                <input
-                  id="year"
-                  name="year"
-                  inputMode="numeric"
-                  value={fields.year}
-                  onChange={(e) => setFields((f) => ({ ...f, year: e.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="image_url">Image URL</label>
-                <input
-                  id="image_url"
-                  name="image_url"
-                  type="url"
-                  placeholder="https://…"
-                  value={fields.image_url}
-                  onChange={(e) => setFields((f) => ({ ...f, image_url: e.target.value }))}
-                />
-                {allowPhotoChoice && imageCandidates.length > 1 && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-                    {fields.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={fields.image_url}
-                        alt=""
-                        style={{ width: 44, height: 44, objectFit: "cover", border: "2px solid var(--ink)" }}
-                      />
-                    )}
-                    <button type="button" className="btn" style={{ minHeight: 36, padding: "0 10px" }} onClick={() => cyclePhoto(-1)}>
-                      ‹
+            )}
+            <div className="actions">
+              {renderBack("start")}
+              <button type="submit" className="cta" disabled={reading || !linkInput.trim()}>
+                {reading ? "Reading the link…" : "Continue"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {screen === "category" && (
+          <div className="stack">
+            {path === "paste" && readNotice && <p className="hint">{readNotice}</p>}
+            {path === "paste" && suggested.length > 0 && !showAllCategories ? (
+              <>
+                <p className="hint">We&apos;re not sure. Tap the one that fits.</p>
+                {renderCategoryButtons(suggested)}
+                <button type="button" className="linkish" onClick={() => setShowAllCategories(true)}>
+                  Something else
+                </button>
+              </>
+            ) : (
+              renderCategoryButtons()
+            )}
+            <div className="actions">
+              {renderBack(path === "paste" ? "link" : "start")}
+            </div>
+          </div>
+        )}
+
+        {screen === "search" && (
+          <div className="stack">
+            <form
+              className="search-row"
+              role="search"
+              onSubmit={(e) => {
+                e.preventDefault();
+                runSearch(query);
+              }}
+            >
+              <input
+                aria-label={`Search ${category?.label ?? ""}`}
+                type="search"
+                enterKeyHint="search"
+                placeholder={SEARCH_HINT[slug] ?? "Search"}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                autoFocus
+              />
+              <button type="submit" className="btn" disabled={!query.trim() || searching}>
+                Search
+              </button>
+            </form>
+
+            {searching && <p className="hint">Searching…</p>}
+            {!searching && searchFailed && <p className="hint">Search isn&apos;t answering right now. Try again, or add it by hand.</p>}
+            {!searching && results && results.length === 0 && (
+              <p className="hint">Nothing found for “{query.trim()}”. Try fewer words, or check the spelling.</p>
+            )}
+            {results && results.length > 0 && (
+              <ul className="results" aria-busy={searching}>
+                {results.map((r) => (
+                  <li key={`${r.source}:${r.source_id}`}>
+                    <button type="button" className="result" disabled={!!picking} onClick={() => pickResult(r)}>
+                      <span className={`thumb${SHAPE[slug] === "tall" ? " tall" : ""}${SHAPE[slug] === "photo" ? " photo" : ""}`}>
+                        <CoverImage src={r.image_url} />
+                      </span>
+                      <span className="result-txt">
+                        <span className="title">{r.title}</span>
+                        <span className="by">{[r.by, r.year].filter(Boolean).join(", ")}</span>
+                        {r.detail && <span className="result-detail">{r.detail}</span>}
+                      </span>
+                      {picking === r.source_id && <span className="hint">…</span>}
                     </button>
-                    <span style={{ fontSize: 13, color: "var(--muted)" }}>
-                      {imageIndex + 1} / {imageCandidates.length}
-                    </span>
-                    <button type="button" className="btn" style={{ minHeight: 36, padding: "0 10px" }} onClick={() => cyclePhoto(1)}>
-                      ›
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button type="button" className="linkish" onClick={addByHand}>
+              Can&apos;t find it? Add it by hand
+            </button>
+            <div className="actions">
+              {renderBack(path === "paste" ? "details" : "category")}
+            </div>
+          </div>
+        )}
+
+        {screen === "details" && (
+          <form
+            action={(fd) => {
+              if (path === "choose" && ownLink.trim() && !ownLinkClean) {
+                setFormError("That link doesn't look right. Fix it or leave it empty.");
+                return;
+              }
+              setFormError("");
+              action(fd);
+            }}
+            className="stack"
+          >
+            <input type="hidden" name="category_id" value={categoryId} />
+            <input type="hidden" name="url" value={finalUrl} />
+            <input type="hidden" name="source_label" value={finalUrl ? finalSourceLabel : ""} />
+            <input type="hidden" name="work_id" value={workId} />
+            <input type="hidden" name="year" value={workId ? draft.year : ""} />
+            <input type="hidden" name="image_url" value={draft.image} />
+
+            {readNotice && path === "paste" && <p className="hint">{readNotice}</p>}
+
+            {renderPreview()}
+
+            <p className="cat-line">
+              In <strong>{category?.label}</strong>
+              {looking && <span> · looking it up…</span>}
+              {!looking && matchedSource && <span> · found in {SOURCE_NAME[matchedSource] ?? matchedSource}</span>}
+              {" · "}
+              <button type="button" className="linkish" onClick={() => setScreen("category")}>
+                change
+              </button>
+              {SEARCHABLE.has(slug) && (
+                <>
+                  {" · "}
+                  <button type="button" className="linkish" onClick={searchInstead}>
+                    {matchedSource ? "not this one?" : "search for it"}
+                  </button>
+                </>
+              )}
+            </p>
+            {path === "paste" && suggested.length > 1 && !workId && (
+              <div className="chip-row" aria-label="Other likely categories">
+                {suggested
+                  .filter((s) => s !== slug)
+                  .map((s) => {
+                    const c = categories.find((x) => x.slug === s);
+                    return c ? (
+                      <button key={s} type="button" className="chip" onClick={() => chooseCategory(String(c.id))}>
+                        Is it {c.label}?
+                      </button>
+                    ) : null;
+                  })}
+              </div>
+            )}
+
+            <div className="field">
+              <label htmlFor="add-title-input">Title</label>
+              <input
+                id="add-title-input"
+                name="title"
+                required
+                value={draft.title}
+                onChange={(e) => {
+                  setDraft((d) => ({ ...d, title: e.target.value }));
+                  if (workId) clearMatch();
+                }}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="add-by">
+                {BY_LABEL[slug] ?? "By"} <span className="optional">optional</span>
+              </label>
+              <input id="add-by" name="by" value={draft.by} onChange={(e) => setDraft((d) => ({ ...d, by: e.target.value }))} />
+            </div>
+
+            {!coverLocked && (
+              <div className="field">
+                <span className="field-label">Photo</span>
+                {visiblePhotos.length > 0 && (
+                  <div className="photo-row" role="radiogroup" aria-label="Choose a photo">
+                    {visiblePhotos.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        role="radio"
+                        aria-checked={draft.image === p}
+                        className={`photo-tile${draft.image === p ? " selected" : ""}`}
+                        onClick={() => setDraft((d) => ({ ...d, image: p }))}
+                      >
+                        <CoverImage
+                          src={p}
+                          onFail={() => {
+                            setBrokenPhotos((b) => [...b, p]);
+                            setDraft((d) => (d.image === p ? { ...d, image: "" } : d));
+                          }}
+                        />
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={!draft.image}
+                      className={`photo-tile none${!draft.image ? " selected" : ""}`}
+                      onClick={() => setDraft((d) => ({ ...d, image: "" }))}
+                    >
+                      No photo
                     </button>
                   </div>
                 )}
+                <button type="button" className="linkish" onClick={() => setShowPhotoLink((v) => !v)}>
+                  {showPhotoLink ? "Hide photo link" : visiblePhotos.length ? "Use another photo" : "Add a photo"}
+                </button>
+                {showPhotoLink && (
+                  <input
+                    aria-label="Photo link"
+                    type="url"
+                    inputMode="url"
+                    placeholder="Paste a link to a photo"
+                    onChange={(e) => {
+                      const u = extractUrl(e.target.value);
+                      if (u) {
+                        setPhotos((ps) => uniq([u, ...ps]));
+                        setDraft((d) => ({ ...d, image: u }));
+                      }
+                    }}
+                  />
+                )}
               </div>
+            )}
+
+            <div className="field">
+              <label htmlFor="add-note">
+                Why five stars? <span className="optional">optional</span>
+              </label>
+              <textarea id="add-note" name="note" value={draft.note} onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))} />
+            </div>
+
+            {path === "paste" ? (
+              <div className="link-box">
+                <span className="field-label">Visitors will go to</span>
+                <a href={link} target="_blank" rel="noopener" className="link-dest-big">
+                  {displayUrl(link, 80)}
+                </a>
+                {target && <span className="hint">This short link opens {displayUrl(target, 60)}</span>}
+                <button type="button" className="linkish" onClick={() => setScreen("link")}>
+                  Use a different link
+                </button>
+              </div>
+            ) : (
               <div className="field">
-                <label htmlFor="note">Note</label>
-                <textarea
-                  id="note"
-                  name="note"
-                  value={fields.note}
-                  onChange={(e) => setFields((f) => ({ ...f, note: e.target.value }))}
+                <label htmlFor="add-own-link">
+                  Link <span className="optional">optional</span>
+                </label>
+                <input
+                  id="add-own-link"
+                  type="text"
+                  inputMode="url"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  placeholder="Where should visitors go?"
+                  value={ownLink}
+                  onChange={(e) => setOwnLink(e.target.value)}
                 />
+                <span className="hint">
+                  {finalUrl ? `Visitors will go to ${displayUrl(finalUrl, 60)}` : "Without a link, your listing doesn't open anything."}
+                </span>
               </div>
-              {error && <p className="error">{error}</p>}
-              <div style={{ display: "flex", gap: 10 }}>
-                <button type="button" className="btn" onClick={() => setStep("link")}>
-                  Back
-                </button>
-                <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>
-                  {pending ? "Adding…" : "Add"}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </dialog>
+            )}
+
+            {(formError || error) && <p className="error">{formError || error}</p>}
+            <div className="actions">
+              {renderBack(path === "paste" ? "link" : SEARCHABLE.has(slug) ? "search" : "category")}
+              <button type="submit" className="cta" disabled={pending || !draft.title.trim() || looking}>
+                {pending ? "Adding…" : "Add"}
+              </button>
+            </div>
+          </form>
+        )}
+      </Sheet>
     </>
   );
 }

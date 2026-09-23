@@ -13,7 +13,7 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
   const socialLinks = parseSocialLinksPayload(String(formData.get("social_links") || ""));
 
   if (!HANDLE_RE.test(handle)) {
-    return "Handle must be 2–30 characters: lowercase letters, numbers, - or _.";
+    return "Your page address needs 2 to 30 characters: lowercase letters, numbers, underscores or minus signs.";
   }
   if (displayName.length > 15) return "Name needs to be 15 characters or fewer.";
 
@@ -29,7 +29,7 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
     .eq("id", user.id);
 
   if (error) {
-    if (error.code === "23505") return "That handle is already taken.";
+    if (error.code === "23505") return "That page address is already taken. Try another one.";
     return error.message;
   }
 

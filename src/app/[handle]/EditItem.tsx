@@ -1,12 +1,9 @@
 "use client";
 
-// Reuses the same review-step form shape as AddStamp's "review" step — title,
-// category, by, year, image URL, note — so editing an item feels like the
-// same screen used to add it, now pre-filled, with a Back button to return to
-// the item view instead of the grid.
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Category, Item } from "@/lib/supabase/types";
 import { updateItem } from "./actions";
+import CoverImage from "@/components/CoverImage";
 
 export default function EditItem({
   handle,
@@ -29,8 +26,8 @@ export default function EditItem({
   const [categoryId, setCategoryId] = useState(String(item.category_id));
   const [title, setTitle] = useState(item.title);
   const [by, setBy] = useState(item.by ?? "");
-  const [year, setYear] = useState(item.year ? String(item.year) : "");
   const [imageUrl, setImageUrl] = useState(item.image_url ?? "");
+  const [showPhotoLink, setShowPhotoLink] = useState(false);
   const [note, setNote] = useState(item.note ?? "");
 
   useEffect(() => {
@@ -63,20 +60,33 @@ export default function EditItem({
         <label htmlFor="edit-by">By</label>
         <input id="edit-by" name="by" value={by} onChange={(e) => setBy(e.target.value)} />
       </div>
+      <input type="hidden" name="year" value={item.year ?? ""} />
+      <input type="hidden" name="image_url" value={imageUrl} />
       <div className="field">
-        <label htmlFor="edit-year">Year</label>
-        <input id="edit-year" name="year" inputMode="numeric" value={year} onChange={(e) => setYear(e.target.value)} />
-      </div>
-      <div className="field">
-        <label htmlFor="edit-image_url">Image URL</label>
-        <input
-          id="edit-image_url"
-          name="image_url"
-          type="url"
-          placeholder="https://…"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-        />
+        <span className="field-label">Photo</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="thumb" style={{ width: 52, height: 52 }}>
+            <CoverImage src={imageUrl} />
+          </div>
+          <button type="button" className="linkish" onClick={() => setShowPhotoLink((v) => !v)}>
+            {showPhotoLink ? "Done" : "Use a different photo"}
+          </button>
+          {imageUrl && (
+            <button type="button" className="linkish" onClick={() => setImageUrl("")}>
+              Remove photo
+            </button>
+          )}
+        </div>
+        {showPhotoLink && (
+          <input
+            aria-label="Photo link"
+            type="url"
+            inputMode="url"
+            placeholder="Paste a link to a photo"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value.trim())}
+          />
+        )}
       </div>
       <div className="field">
         <label htmlFor="edit-note">Note</label>

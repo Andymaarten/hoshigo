@@ -1,0 +1,43 @@
+"use client";
+
+import { useState } from "react";
+import { imageSrc } from "@/lib/image-src";
+
+// Every cover and photo goes through here: right sized source, no referrer (several
+// image hosts block hotlinks based on it), lazy decoding, and it removes itself when the
+// image fails so a broken icon never shows. The parent's block color stays as fallback.
+export default function CoverImage({
+  src,
+  alt = "",
+  className,
+  style,
+  eager,
+  onFail,
+}: {
+  src: string | null | undefined;
+  alt?: string;
+  className?: string;
+  style?: React.CSSProperties;
+  eager?: boolean;
+  onFail?: () => void;
+}) {
+  const resolved = imageSrc(src);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!resolved || failedSrc === resolved) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={resolved}
+      alt={alt}
+      className={className}
+      style={style}
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => {
+        setFailedSrc(resolved);
+        onFail?.();
+      }}
+    />
+  );
+}

@@ -540,10 +540,73 @@ regressie uit te sluiten:
 Geen regressie op titel/categorie/canonieke-match-logica — alleen `collectImageCandidates()` is
 aangeraakt, de rest van de route is ongewijzigd.
 
+## Ronde "robuuste invoer" (2026-09-23)
+
+Testresultaten: [`input-test-matrix.md`](input-test-matrix.md).
+
+**Code-indeling.** `/api/fetch-metadata` is nu een dunne wrapper (login-check + categorieën)
+rond `readLink()` in [`src/lib/read-link.ts`](../src/lib/read-link.ts). Classificatie zit in
+[`src/lib/classify.ts`](../src/lib/classify.ts), link-opschoning in
+[`src/lib/link-input.ts`](../src/lib/link-input.ts) (gedeeld met de client).
+
+**Invoer.** `extractUrl()` pakt de eerste URL uit willekeurige deeltekst, trimt, voegt
+`https://` toe aan kale domeinen en haalt afsluitende leestekens weg. Niet-URL-tekst geeft
+`status: "not_a_link"`, en de dialoog biedt dan "Search for … instead". Tracking-params
+(`utm_*`, `si`, `fbclid`, `gclid`, `igsh`, `ref_src`, …) gaan eraf; verder blijft de link
+exact zoals geplakt.
+
+**Eerlijke link.** `link` in de response is wat de listing opslaat en waar bezoekers heen
+gaan. Een canonieke match verandert nooit de link, alleen titel, maker, jaar en cover.
+Korte links (spotify.link, maps.app.goo.gl, a.co, amzn.eu/to, bit.ly, t.co, …) worden
+server-side gevolgd (`target`), maar alleen om metadata te lezen. De opgeslagen link blijft
+de korte link, en de dialoog toont "This short link opens …".
+
+**Geblokkeerd / timeout.** 403, Cloudflare/DataDome-challenges en timeouts (8 s) geven
+`status: "blocked" | "timeout"`. De titel wordt dan uit het URL-pad geraden
+(`title_from_url`), anders volgt een handmatig titelveld. Er is nooit een doodlopende weg.
+
+**Classificatie (gelaagd, `reason` in de response).**
+1. Domein- en padregels, bijv. Apple Music `?i=` → songs, Amazon ISBN-10 of `-ebook` →
+   books, Spotify track/show/episode.
+2. JSON-LD (`@graph`, `mainEntity` doorzocht) en og:type. Movie/TVSeries/Book/MusicAlbum/
+   Place/… zijn *high*; Article/NewsArticle/Product/VideoObject/Recipe zijn *medium*.
+3. Alleen als 1 en 2 geen *high* opleveren: Claude Haiku 4.5
+   (`claude-haiku-4-5-20251001`) via `@anthropic-ai/sdk`, geforceerde tool-call met een
+   enum van de echte category-slugs, `max_tokens` 200, 5 s timeout, geen retries, in-memory
+   cache per URL. Zonder `ANTHROPIC_API_KEY` of bij een fout: alleen regels.
+Is de confidence *low*, dan kiest de dialoog niet zelf maar toont 2 of 3 knoppen. Bij
+*medium* wordt de categorie voorgekozen, met "Is it …?"-chips.
+
+**Zoeken ("Find it yourself").** `GET /api/search-works?category=&q=` geeft een lijst:
+TMDB (films/tv, met regisseur/maker en originele titel), MusicBrainz release-groups
+(albums, gesorteerd op aantal releases), iTunes (songs; de keuze wordt server-side naar de
+MusicBrainz-recording opgelost, zodat plakken en kiezen op dezelfde `works`-rij uitkomen),
+Open Library (books), iTunes (podcasts) en Nominatim (places). `POST` registreert de
+gekozen rij in `works` met `match_confidence: 'high'`, want iemand heeft hem zelf gekozen.
+
+**Vertaalde boeken.** Open Library `search.json?q=` met `fields=…,editions,editions.*`
+geeft per werk de editie die het best bij de zoekterm past. De listing toont die editie
+(vertaalde titel + cover van die editie); `works` krijgt de titel en cover van het werk,
+dus alle vertalingen komen op één werk-rij uit. Google Books als fallback is getest maar
+niet gebouwd: de keyless quota gaf direct `429 RESOURCE_EXHAUSTED`.
+
+**Afbeeldingen.** Gemeten: Cover Art Archive `front-250` 1,2–2,4 s en Open Library
+`-M/-L` 0,7–1,5 s, door een redirect-keten naar archive.org-nodes. TMDB `w342` kost
+~150 ms (48 KB), `original` 1,1 s (1,8 MB). Aanpak:
+- TMDB standaard `w342` (was `w500`), Open Library `-M` (was `-L`), iTunes 300px.
+- `/api/img?u=` proxy't alleen `coverartarchive.org` en `covers.openlibrary.org` (allowlist)
+  met `s-maxage=31536000, immutable`, zodat de Vercel-CDN het eindbestand cachet. De mapping
+  gebeurt bij het renderen (`imageSrc()`), dus bestaande rijen profiteren ook. Lokaal (zonder
+  CDN) is er geen winst gemeten; de winst in productie is nog niet gemeten.
+- `<CoverImage>`: `referrerPolicy="no-referrer"`, lazy decoding, en bij `onError` verdwijnt
+  de img, zodat er nooit een kapot-icoon staat.
+- Geen Supabase Storage-kopie: of er een `covers`-bucket bestaat kon ik niet vaststellen
+  (geen service-role key lokaal; de anon-key geeft voor elke bucketnaam `200 []`).
+
 ## Uitbreiden
 
-Nieuwe bron toevoegen aan de categorie-herkenning: `HOSTNAME_CATEGORY` in
-[`src/app/api/fetch-metadata/route.ts`](../src/app/api/fetch-metadata/route.ts). Nieuwe
+Nieuwe bron toevoegen aan de categorie-herkenning: `DOMAIN_RULES` / `ruleFromUrl()` in
+[`src/lib/classify.ts`](../src/lib/classify.ts). Nieuwe
 catalogus-bron toevoegen (naast TMDB/MusicBrainz/Open Library): nieuwe `resolve*`-functie in
 [`src/lib/resolve-work.ts`](../src/lib/resolve-work.ts) plus een nieuwe waarde in de
 `source`-check van de `works`-tabel (`supabase/schema.sql`).
