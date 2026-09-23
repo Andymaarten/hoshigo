@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import OnboardingForm from "./form";
 import type { Profile } from "@/lib/supabase/types";
-import { pendingInvitePath } from "@/lib/post-login";
+import { pendingAddPath, pendingInvitePath } from "@/lib/post-login";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -19,8 +19,12 @@ export default async function OnboardingPage() {
     .returns<Pick<Profile, "handle" | "display_name" | "bio" | "social_links">[]>()
     .single();
 
+  const hasHandle = !!profile?.handle && !profile.handle.startsWith("user-");
   const invitePath = await pendingInvitePath();
-  if (invitePath && profile?.handle && !profile.handle.startsWith("user-")) redirect(invitePath);
+  if (invitePath && hasHandle) redirect(invitePath);
+  // Magic link logins land here; an existing account with a link waiting goes on to add it.
+  const addPath = await pendingAddPath();
+  if (addPath && hasHandle) redirect(addPath);
 
   return (
     <div className="page">

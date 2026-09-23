@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Category } from "@/lib/supabase/types";
 import { addItem } from "./actions";
+import { clearPendingAdd } from "../add/actions";
 import Sheet from "@/components/Sheet";
 import CoverImage from "@/components/CoverImage";
 import PhotoFromPage from "@/components/PhotoFromPage";
@@ -46,7 +47,16 @@ function uniq(list: (string | null | undefined)[]) {
   return [...new Set(list.filter((s): s is string => !!s))];
 }
 
-export default function AddStamp({ handle, categories }: { handle: string; categories: Category[] }) {
+export default function AddStamp({
+  handle,
+  categories,
+  initialAddLink,
+}: {
+  handle: string;
+  categories: Category[];
+  // Set when arriving from /add?url=…: open on "Paste a link" with this text and read it.
+  initialAddLink?: string;
+}) {
   const [pinned, setPinned] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -150,6 +160,24 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
 
+  // Arriving from /add?url=…: open on "Paste a link" with the text filled in and start
+  // reading it at once. The address bar goes back to the plain page, and the carried
+  // link is forgotten so it doesn't open again on the next visit.
+  const addStarted = useRef(false);
+  useEffect(() => {
+    if (initialAddLink === undefined || addStarted.current) return;
+    addStarted.current = true;
+    window.history.replaceState(null, "", `/${handle}`);
+    clearPendingAdd().catch(() => {});
+    reset();
+    setPath("paste");
+    setScreen("link");
+    setLinkInput(initialAddLink);
+    setOpen(true);
+    if (initialAddLink.trim()) readLink(initialAddLink);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAddLink]);
+
   function clearMatch() {
     setWorkId("");
     setMatchedSource(null);
@@ -202,10 +230,10 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     }
   }
 
-  async function readLink() {
-    const url = extractUrl(linkInput);
+  async function readLink(input = linkInput) {
+    const url = extractUrl(input);
     if (!url) {
-      setNotALinkQuery(linkInput.trim());
+      setNotALinkQuery(input.trim());
       return;
     }
     setNotALinkQuery("");
@@ -220,7 +248,7 @@ export default function AddStamp({ handle, categories }: { handle: string; categ
     }
     if (data.status === "not_a_link") {
       setReading(false);
-      setNotALinkQuery(typeof data.query === "string" && data.query ? data.query : linkInput.trim());
+      setNotALinkQuery(typeof data.query === "string" && data.query ? data.query : input.trim());
       return;
     }
     const finalLink = typeof data.link === "string" ? data.link : cleaned;

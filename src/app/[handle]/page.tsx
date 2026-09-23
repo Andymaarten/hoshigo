@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import { ADD_COOKIE } from "@/lib/add-link";
 import { createClient } from "@/lib/supabase/server";
 import type { Category, Item, Profile } from "@/lib/supabase/types";
 import Link from "next/link";
@@ -17,10 +19,13 @@ import { sortCategories } from "@/lib/category-display";
 
 export default async function ProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ handle: string }>;
+  searchParams: Promise<{ adding?: string }>;
 }) {
   const { handle } = await params;
+  const { adding } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: profile }, { data: rawCategories }, { data: user }] =
@@ -126,7 +131,14 @@ export default async function ProfilePage({
           </div>
           <SiteNav loggedIn={!!user?.user} handle={myHandle} />
         </div>
-        {isOwner && <AddStamp handle={handle} categories={categories ?? []} />}
+        {isOwner && (
+          <AddStamp
+            handle={handle}
+            categories={categories ?? []}
+            // Arriving from /add?url=: open the dialog with that link (docs/add-link.md).
+            initialAddLink={adding === "1" ? (await cookies()).get(ADD_COOKIE)?.value ?? "" : undefined}
+          />
+        )}
         <h1>{displayName}.</h1>
         <div className="bio-row">
           {profile.bio && <p className="bio">{profile.bio}</p>}
