@@ -20,7 +20,10 @@ export async function GET() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || !to || user.email?.toLowerCase() !== to.toLowerCase()) {
+  const { data: me } = user ? await supabase.from("profiles").select("handle").eq("id", user.id).maybeSingle() : { data: null };
+  // Temporary diagnostic; the owner's hoshigo login and Resend login use different addresses.
+  const isOwner = me?.handle === "andymaarten";
+  if (!user || !to || !isOwner) {
     // Yes/no answers only: never echo the configured address to someone who isn't the owner.
     return Response.json(
       {
