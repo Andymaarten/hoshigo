@@ -12,8 +12,8 @@ type Props = {
 };
 
 const IMAGES = [
-  { format: "story", label: "Story image" },
-  { format: "portrait", label: "Post image" },
+  { format: "story", label: "Story" },
+  { format: "portrait", label: "Post" },
 ] as const;
 type Format = (typeof IMAGES)[number]["format"];
 
@@ -30,7 +30,7 @@ function canShareImageFiles(): boolean {
 }
 
 // On a private profile the images are never rendered for outsiders, so only the link is offered.
-export default function SharePanel({ handle, itemId, mine, friendsOnly = false }: Props) {
+export default function SharePanel({ handle, itemId, title, by, mine, friendsOnly = false }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [files, setFiles] = useState<Partial<Record<Format, File>>>({});
@@ -79,6 +79,15 @@ export default function SharePanel({ handle, itemId, mine, friendsOnly = false }
     } catch {}
   }
 
+  async function more() {
+    try {
+      await navigator.share({ title, url });
+    } catch {}
+  }
+
+  const message = `${mine ? "One of my five stars" : "Five stars"}: ${title}${by ? `, ${by}` : ""} ${url}`;
+  const canShareLink = onClient && typeof navigator.share === "function";
+
   return (
     <div className="share">
       <button type="button" className="btn" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
@@ -90,8 +99,16 @@ export default function SharePanel({ handle, itemId, mine, friendsOnly = false }
             <button type="button" className="btn" onClick={copy}>
               {copied ? "Copied" : "Copy link"}
             </button>
-            <span className="link-dest">{url.replace(/^https?:\/\//, "")}</span>
+            <a className="btn share-btn" href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener">
+              WhatsApp
+            </a>
+            {canShareLink && (
+              <button type="button" className="btn share-btn" onClick={more}>
+                More
+              </button>
+            )}
           </div>
+          <span className="link-dest">{url.replace(/^https?:\/\//, "")}</span>
           {friendsOnly ? (
             <p className="meta">
               {mine ? "Your page is private, so this link" : "This page is private, so the link"} only opens for
@@ -99,21 +116,23 @@ export default function SharePanel({ handle, itemId, mine, friendsOnly = false }
             </p>
           ) : (
             <>
-              <div className="share-label">Images to post</div>
+              {/* Instagram has no web link that accepts an image, so on phones these hand the
+                  image to the system share sheet, where Instagram and Save Image are listed. */}
+              <div className="share-label">Instagram</div>
               <div className="share-row">
                 {IMAGES.map(({ format, label }) =>
                   shareFiles ? (
                     <button
                       key={format}
                       type="button"
-                      className="share-link"
+                      className="btn share-btn"
                       disabled={!files[format]}
                       onClick={() => shareImage(format)}
                     >
-                      {files[format] ? label : `${label} (ready in a few seconds)`}
+                      {files[format] ? label : "Preparing"}
                     </button>
                   ) : (
-                    <a key={format} className="share-link" href={`${path}/card/${format}?download`} download>
+                    <a key={format} className="btn share-btn" href={`${path}/card/${format}?download`} download>
                       {label}
                     </a>
                   )
@@ -121,8 +140,8 @@ export default function SharePanel({ handle, itemId, mine, friendsOnly = false }
               </div>
               <p className="meta share-hint">
                 {shareFiles
-                  ? "Opens your phone's share menu. Choose Save Image or Instagram."
-                  : "Downloads the image, sized for Instagram."}
+                  ? "Opens your phone's share menu. Pick Instagram, or Save Image to post it later."
+                  : "Downloads the image in Instagram's size. Post it from your phone."}
               </p>
             </>
           )}

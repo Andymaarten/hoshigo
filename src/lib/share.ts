@@ -49,7 +49,10 @@ export async function getSharedListing(
     .maybeSingle();
   if (!item) return null;
 
-  const [{ count: newer }, { data: category }] = await Promise.all([
+  // The public window is "the pinned listing first, then the newest". `pinned` may not exist
+  // yet (before that migration), so it is read defensively and the pin query may just fail.
+  const isPinned = (item as Item & { pinned?: boolean }).pinned === true;
+  const [{ count: newer }, { data: category }, pinnedOther] = await Promise.all([
     supabase
       .from("items")
       .select("id", { count: "exact", head: true })
@@ -57,10 +60,68 @@ export async function getSharedListing(
       .eq("category_id", item.category_id)
       .gt("created_at", item.created_at),
     supabase.from("categories").select("*").eq("id", item.category_id).returns<Category[]>().maybeSingle(),
+    isPinned
+      ? Promise.resolve({ data: null })
+      : supabase
+          .from("items")
+          .select("created_at")
+          .eq("profile_id", profile.id)
+          .eq("category_id", item.category_id)
+          .eq("pinned", true)
+          .neq("id", item.id)
+          .limit(1)
+          .returns<{ created_at: string }[]>(),
   ]);
 
-  if (!canViewItem(viewer, newer ?? Infinity)) return null;
+  // A newer pinned listing is already counted in `newer`; only an older one pushes this one down.
+  const pin = pinnedOther.data?.[0];
+  let rank = isPinned ? 0 : (newer ?? Infinity);
+  if (pin && pin.created_at <= item.created_at) rank += 1;
+
+  if (!canViewItem(viewer, rank)) return null;
   return { kind: "listing", profile, item, category: category ?? null };
+}
+
+export type ProfileCard = { profile: Profile; coverUrls: string[] };
+
+// What a link preview of someone's page may show: always what an anonymous visitor sees,
+// so a private page gives name and bio only, and a public one only covers inside the
+// public window of each category.
+export async function getProfileCard(handle: string): Promise<ProfileCard | null> {
+  const supabase = await createClient();
+  const { data: profile } = await supabase.from("profiles").select("*").eq("handle", handle).returns<Profile[]>().maybeSingle();
+  if (!profile) return null;
+  const anonymous: Viewer = { userId: null, isOwner: false, isFriend: false };
+  if (!canViewProfileItems(anonymous, profile.is_private)) return { profile, coverUrls: [] };
+
+  const { data: items } = await supabase
+    .from("items")
+    .select("*")
+    .eq("profile_id", profile.id)
+    .order("created_at", { ascending: false })
+    .limit(60)
+    .returns<(Item & { pinned?: boolean })[]>();
+
+  // Pinned listings lead their category's public window, so they are ranked first.
+  const ordered = [...(items ?? [])].sort((a, b) => Number(b.pinned === true) - Number(a.pinned === true));
+  const rank = new Map<number, number>();
+  const coverUrls: string[] = [];
+  for (const it of ordered) {
+    const r = rank.get(it.category_id) ?? 0;
+    rank.set(it.category_id, r + 1);
+    if (it.image_url && canViewItem(anonymous, r) && coverUrls.length < 5) coverUrls.push(it.image_url);
+  }
+  return { profile, coverUrls };
+}
+
+// Invite tokens are secrets that let someone befriend the inviter, so the preview only
+// resolves them to a handle (via a narrow database function) and shows that person's
+// public card. Returns null before the migration has run.
+export async function inviteHandle(token: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("invite_preview_handle", { invite_token: token });
+  if (error || typeof data !== "string") return null;
+  return data;
 }
 
 export function sharePath(handle: string, itemId: string) {

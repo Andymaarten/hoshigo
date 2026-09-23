@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { safeFetch } from "@/lib/safe-fetch";
-import { excerpt, SHARE_FORMATS, type ShareFormat, type SharedListing } from "@/lib/share";
+import { excerpt, SHARE_FORMATS, type ProfileCard, type ShareFormat, type SharedListing } from "@/lib/share";
 
 const GROUND = "#efe7d8";
 const INK = "#1d1c1a";
@@ -264,6 +264,63 @@ export async function renderShareCard(listing: SharedListing, format: ShareForma
       height,
       fonts,
       // A day on the CDN makes a repeat share instant; an edited note shows up within the hour.
+      headers: { "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400" },
+    }
+  );
+}
+
+// Link preview for a whole page (/handle) or for an invite link from that person.
+export async function renderProfileCard(card: ProfileCard, variant: "profile" | "invite") {
+  const { profile } = card;
+  const name = profile.display_name || profile.handle;
+  const fonts = await fontsPromise;
+  const covers = (await Promise.all(card.coverUrls.map((u) => loadCover(u)))).filter((c): c is Cover => !!c).slice(0, 3);
+  const bio = excerpt(profile.bio, covers.length ? 120 : 200);
+  const kicker = variant === "invite" ? `${name} invites you to be friends` : "A handful of five stars";
+  const nameSize = name.length > 16 ? 76 : name.length > 10 ? 96 : 118;
+
+  return new ImageResponse(
+    (
+      <div style={{ display: "flex", width: "100%", height: "100%", background: GROUND, color: INK, padding: 56, gap: 48 }}>
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-between" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div style={{ display: "flex", fontFamily: "Schibsted Grotesk", fontSize: 22, letterSpacing: "0.08em", textTransform: "uppercase", color: MUTED }}>
+              {excerpt(kicker, 48)}
+            </div>
+            <div style={{ display: "flex", fontFamily: "Schibsted Grotesk", fontSize: nameSize, lineHeight: 0.95, letterSpacing: "-0.04em", color: ACCENT }}>
+              {`${excerpt(name, 28)}.`}
+            </div>
+            {bio && (
+              <div style={{ display: "flex", fontFamily: "Newsreader", fontStyle: "italic", fontSize: 30, lineHeight: 1.3, color: INK, maxWidth: covers.length ? 560 : 900 }}>
+                {bio}
+              </div>
+            )}
+          </div>
+          <Brand handle={profile.handle} size={46} />
+        </div>
+        {covers.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            {covers.map((c, i) => {
+              const { width, height } = fit(c, 170, 250);
+              return (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={c.src}
+                  width={width}
+                  height={height}
+                  alt=""
+                  style={{ width, height, objectFit: "cover", boxShadow: "0 14px 30px rgba(29,28,26,0.25)" }}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+    ),
+    {
+      ...SHARE_FORMATS.og,
+      fonts,
       headers: { "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400" },
     }
   );

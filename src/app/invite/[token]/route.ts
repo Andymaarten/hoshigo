@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { INVITE_COOKIE } from "@/lib/friends";
 import { TOKEN_RE } from "@/lib/post-login";
+import { invitePreviewResponse, isPreviewBot } from "@/lib/invite-preview";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const to = (path: string) => NextResponse.redirect(new URL(path, request.url));
 
   if (!TOKEN_RE.test(token)) return to("/friends");
+  if (isPreviewBot(request.headers.get("user-agent"))) return invitePreviewResponse(token, request.url);
 
   const supabase = await createClient();
   const {
