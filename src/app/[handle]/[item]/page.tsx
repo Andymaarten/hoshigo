@@ -79,7 +79,8 @@ export default async function ListingPage({ params }: Params) {
   }
 
   const { item, category } = listing;
-  const shape = category ? SHAPE[category.slug] : undefined;
+  // Podcast art is square; cropping it to the 4:3 photo frame cuts off the show title.
+  const shape = category?.slug === "podcasts" ? undefined : category ? SHAPE[category.slug] : undefined;
 
   return (
     <div className="page">
@@ -87,7 +88,7 @@ export default async function ListingPage({ params }: Params) {
 
       <main className="listing">
         <div className={`listing-cover${shape === "tall" ? "" : shape === "photo" ? " photo" : " square"}`}>
-          <CoverImage src={item.image_url} alt="" eager />
+          <CoverImage src={item.image_url} alt="" eager large />
         </div>
         <div className="listing-body">
           <div className="listing-kicker">
