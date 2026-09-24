@@ -3,9 +3,10 @@ import { profileMetadata } from "@/lib/profile-metadata";
 
 // Chat apps and social sites fetch a link to draw its preview. They must get a page with
 // Open Graph tags instead of the redirect to signup that people get. (iMessage identifies
-// as facebookexternalhit/Twitterbot.)
+// as facebookexternalhit/Twitterbot.) Only crawler names: in-app browsers of Snapchat, Viber,
+// Facebook and others carry their app name too, and people there must reach signup.
 const PREVIEW_BOT =
-  /facebookexternalhit|facebookcatalog|Twitterbot|WhatsApp|Slackbot|TelegramBot|Discordbot|LinkedInBot|SkypeUriPreview|Pinterestbot|redditbot|Applebot|bsky|Mastodon|Signal|Iframely|Embedly|vkShare|Google-PageRenderer|Snapchat|Viber/i;
+  /facebookexternalhit|Twitterbot|WhatsApp\/|Slackbot|TelegramBot|Discordbot|LinkedInBot|SkypeUriPreview|Pinterestbot|redditbot|Applebot|Googlebot|Cardyb|Mastodon\/|Iframely|Embedly/i;
 
 export function isPreviewBot(userAgent: string | null): boolean {
   return !!userAgent && PREVIEW_BOT.test(userAgent);
@@ -44,7 +45,7 @@ export async function invitePreviewResponse(token: string, requestUrl: string): 
     `<meta name="twitter:image" content="${esc(image)}">`,
     `<meta name="robots" content="noindex">`,
   ];
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>${tags.join("")}</head><body><p>${esc(title)}</p></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>${tags.join("")}<meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;padding:48px 20px;background:#efe7d8;color:#1d1c1a;font-family:Georgia,serif;text-align:center"><p style="font-size:22px">${esc(title)}</p><p><a href="${esc(`/invite/${token}?go=1`)}" style="display:inline-block;padding:14px 22px;border:2px solid #1d1c1a;color:#1d1c1a;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-weight:700">Continue to hoshigo</a></p></body></html>`;
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store" },
   });
