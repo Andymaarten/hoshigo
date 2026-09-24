@@ -1,6 +1,7 @@
 "use server";
 
-import { headers } from "next/headers";
+import { createHmac } from "node:crypto";
+import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 function escapeHtml(s: string) {
@@ -33,12 +34,66 @@ async function emailOwner(message: string, page: string, who: string): Promise<b
 
 export type FeedbackResult = { ok: true } | { ok: false; error: string };
 
+const PER_HOUR = 5;
+const COOLDOWN_MS = 60_000;
+const COOKIE = "hoshigo_fb";
+const LIMITED = "Thank you, we have your notes. Give it a little while before sending more.";
+
+// The user's feedback timestamps from the last hour, read with the service role key because
+// the table has no select policy. Null when that isn't possible (no key, or no table yet).
+async function recentFeedback(userId: string): Promise<number[] | null> {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!key || !base) return null;
+  const since = new Date(Date.now() - 3_600_000).toISOString();
+  try {
+    const res = await fetch(
+      `${base}/rest/v1/feedback?select=created_at&user_id=eq.${userId}&created_at=gte.${encodeURIComponent(since)}&order=created_at.desc&limit=${PER_HOUR}`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(4000), cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    return ((await res.json()) as { created_at: string }[]).map((r) => Date.parse(r.created_at));
+  } catch {
+    return null;
+  }
+}
+
+// Fallback cooldown that works without the table: a signed cookie holding when this user last sent.
+function sign(value: string) {
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.RESEND_API_KEY?.trim() || "hoshigo";
+  return createHmac("sha256", secret).update(value).digest("hex").slice(0, 32);
+}
+
+async function cookieCooldownActive(userId: string): Promise<boolean> {
+  const raw = (await cookies()).get(COOKIE)?.value;
+  const [id, at, sig] = raw?.split(".") ?? [];
+  if (!id || !at || !sig || id !== userId || sign(`${id}.${at}`) !== sig) return false;
+  return Date.now() - Number(at) < COOLDOWN_MS;
+}
+
+async function markSent(userId: string) {
+  const value = `${userId}.${Date.now()}`;
+  (await cookies()).set(COOKIE, `${value}.${sign(value)}`, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 3600,
+  });
+}
+
 export async function sendFeedback(message: string, page: string): Promise<FeedbackResult> {
   const text = message.trim().slice(0, 4000);
   if (!text) return { ok: false, error: "Write a few words first." };
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) return { ok: false, error: "Log in to send feedback." };
+
+  const recent = await recentFeedback(data.user.id);
+  if (recent && (recent.length >= PER_HOUR || (recent[0] && Date.now() - recent[0] < COOLDOWN_MS))) {
+    return { ok: false, error: LIMITED };
+  }
+  if (await cookieCooldownActive(data.user.id)) return { ok: false, error: LIMITED };
 
   const pagePath = page.slice(0, 500);
   const userAgent = (await headers()).get("user-agent")?.slice(0, 500) ?? null;
@@ -52,5 +107,6 @@ export async function sendFeedback(message: string, page: string): Promise<Feedb
   ]);
   if (error) console.error("feedback insert failed", error.message);
   if (error && !emailed) return { ok: false, error: "That didn't go through. Please try again in a moment." };
+  await markSent(data.user.id);
   return { ok: true };
 }

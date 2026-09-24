@@ -11,7 +11,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const to = (path: string) => NextResponse.redirect(new URL(path, request.url));
 
   if (!TOKEN_RE.test(token)) return to("/friends");
-  if (isPreviewBot(request.headers.get("user-agent"))) return invitePreviewResponse(token, request.url);
+  // ?go=1 is the preview page's own "Continue" link, for a person mistaken for a crawler.
+  if (!request.nextUrl.searchParams.has("go") && isPreviewBot(request.headers.get("user-agent"))) return invitePreviewResponse(token, request.url);
 
   const supabase = await createClient();
   const {
