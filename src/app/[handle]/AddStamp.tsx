@@ -107,6 +107,9 @@ export default function AddStamp({
   const [searchFailed, setSearchFailed] = useState(false);
   const [picking, setPicking] = useState<string | null>(null);
   const searchSeq = useRef(0);
+  // Bumped whenever the match is cleared (category changed, new link, search pick), so a
+  // catalog lookup that answers late can't attach its work to a different category.
+  const matchSeq = useRef(0);
 
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -200,6 +203,8 @@ export default function AddStamp({
     setScreen("link");
     setLinkInput(initialAddLink);
     setOpen(true);
+    // Runs once on arrival; readLink is declared further down and only called here.
+    // eslint-disable-next-line react-hooks/immutability
     if (initialAddLink.trim()) readLink(initialAddLink);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialAddLink]);
@@ -244,6 +249,7 @@ export default function AddStamp({
   }, [categories]);
 
   function clearMatch() {
+    matchSeq.current++;
     setWorkId("");
     setMatchedSource(null);
     setCatalogSite("");
@@ -254,6 +260,7 @@ export default function AddStamp({
   async function lookUp(catId: string, title: string, by: string, year: string, url: string, basePhotos: string[]) {
     const cat = categories.find((c) => String(c.id) === catId);
     clearMatch();
+    const seq = matchSeq.current;
     if (!cat || (!SEARCHABLE.has(cat.slug) && cat.slug !== "videos")) return;
     if (!title && cat.slug !== "videos") return;
     setLooking(true);
@@ -274,6 +281,7 @@ export default function AddStamp({
         },
         15000
       );
+      if (seq !== matchSeq.current) return;
       const w = data?.work;
       // A fuzzy place hit is often a different place with a similar name; don't link it.
       const sure = w?.match_confidence === "high";
@@ -449,6 +457,8 @@ export default function AddStamp({
   }, [query, screen]);
 
   async function pickResult(r: Candidate) {
+    clearMatch();
+    const seq = matchSeq.current;
     setPicking(r.source_id);
     let id = "";
     let site = "";
@@ -465,6 +475,10 @@ export default function AddStamp({
       sitePhoto = !r.image_url && typeof data?.image_url === "string" ? data.image_url : "";
     } catch {
       // still usable without the catalog link
+    }
+    if (seq !== matchSeq.current) {
+      setPicking(null);
+      return;
     }
     setWorkId(id);
     setMatchedSource(id ? r.source : null);

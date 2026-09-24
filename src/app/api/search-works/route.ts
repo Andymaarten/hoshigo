@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
   const categoryId = Number(body?.category_id);
   if (categoryId && c?.resolve_via === "song" && typeof c.title === "string") {
     const rec = await resolveSong(c.title, typeof c.by === "string" ? c.by : null);
+    if (!rec) console.error(`[works] no MusicBrainz recording for picked song "${c.title}" by ${c.by ?? "?"}`);
     const work = rec ? await upsertWork(supabase, categoryId, rec) : null;
     return NextResponse.json({ work_id: work?.id ?? null });
   }
@@ -39,7 +40,10 @@ export async function POST(request: NextRequest) {
   // Only the source and id are taken from the browser; everything stored on the shared work
   // comes from looking that id up in the catalog again (verifyWork).
   const verified = await verifyWork(c.source, String(c.source_id).slice(0, 200));
-  if (!verified) return NextResponse.json({ work_id: null });
+  if (!verified) {
+    console.error(`[works] could not verify picked ${c.source}:${String(c.source_id).slice(0, 80)} at the catalog`);
+    return NextResponse.json({ work_id: null });
+  }
   const picked = await withWebsitePhoto(verified);
   const work = await upsertWork(supabase, categoryId, picked);
   // image_url: the catalog cover, or a photo from the place's own website, for the dialog.

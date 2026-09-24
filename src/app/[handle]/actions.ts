@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { normalizeUrl } from "@/lib/normalize-url";
 import { isWorkSource } from "@/lib/works";
 import { placeLine } from "@/lib/place-fields";
+import { sourceFitsCategory } from "@/lib/category-display";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -68,8 +69,14 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
   // Owner rule: a hoshigo without a catalog match must have a link, so visitors can find it.
   let linkedWork = false;
   if (workId) {
-    const { data: work } = await supabase.from("works").select("id").eq("id", workId).maybeSingle();
-    linkedWork = !!work;
+    const [{ data: work }, { data: cat }] = await Promise.all([
+      supabase.from("works").select("id, source").eq("id", workId).maybeSingle(),
+      supabase.from("categories").select("slug").eq("id", categoryId).maybeSingle(),
+    ]);
+    // Only link a work from this category's own catalog: a book must never end up linked to
+    // a café from OSM (a late lookup, or a category changed after the match).
+    linkedWork = !!work && sourceFitsCategory(work.source, cat?.slug);
+    if (work && !linkedWork) console.error(`[works] refused to link ${work.source} work ${workId} to a ${cat?.slug ?? categoryId} item "${title}"`);
   }
   // A pick from a catalog search counts too, even when saving it to our works table failed
   // (e.g. a source the database doesn't accept yet): the dialog then shows the link as optional.
@@ -170,10 +177,21 @@ export async function updateItem(handle: string, _prev: string | null, formData:
   if (!title || !categoryId) return "Title and category are required.";
   if (imageUrl && !safeHttpUrl(imageUrl)) return "That image URL doesn't look like a valid web address.";
 
+  // Moving an item to another category: drop its catalog link when the work belongs to a
+  // different catalog (a book moved to places can't keep its Open Library work).
+  const [{ data: current }, { data: cat }] = await Promise.all([
+    supabase.from("items").select("work_id, works(source)").eq("id", itemId).maybeSingle(),
+    supabase.from("categories").select("slug").eq("id", categoryId).maybeSingle(),
+  ]);
+  const currentSource = (current?.works as { source?: string } | { source?: string }[] | null | undefined);
+  const source = Array.isArray(currentSource) ? currentSource[0]?.source : currentSource?.source;
+  const unlink = !!current?.work_id && !sourceFitsCategory(source, cat?.slug);
+
   const { error } = await supabase
     .from("items")
     .update({
       category_id: categoryId,
+      ...(unlink ? { work_id: null } : {}),
       title,
       by: by || null,
       year: yearRaw ? Number(yearRaw) : null,

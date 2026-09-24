@@ -736,6 +736,27 @@ listed? Paste its BoardGameGeek link".
 BGG vraagt om bronvermelding: bij BGG-resultaten staat "BoardGameGeek" in de detailregel,
 en de gekozen bron heet "BoardGameGeek" in het formulier.
 
+### Ronde 10 (2026-09-24): backfill, bron-per-categorie, luide logs
+
+- **Backfill** (alleen eigenaar, `OWNER_HANDLES`): open https://www.hoshigo.cc/admin/backfill,
+  druk *Dry run* (20 items per keer), controleer de lijst, druk *Link sure matches*. Daarna
+  *Next 20* tot de lijst leeg is. Alleen `items.work_id` wordt gezet; titel, maker, link,
+  foto en notitie blijven zoals ze zijn. Lage zekerheid wordt overgeslagen. Onderaan staan
+  items die aan een work uit de verkeerde catalogus hangen (alleen gemeld, niet gewijzigd).
+  De JSON-versie: GET/POST `/api/admin/backfill-works?limit=20&offset=0`.
+- **"De Jaren" als plek.** Die works-rij is Café de Jaren in Amsterdam (echt, categorie
+  places): iemand zocht of plakte "De Jaren" als plek. Kwetsbaar was dat een boek-item aan
+  zo'n work kon hangen. Dat kan nu niet meer:
+  1. `addItem` koppelt alleen een work waarvan de bron bij de categorie past
+     (`CATEGORY_SOURCES` in category-display.ts), en logt anders.
+  2. `/api/resolve-work` leest de categorie uit de database in plaats van de client.
+  3. In de dialoog kan een laat antwoord van een catalogus-lookup geen work meer zetten
+     nadat de categorie of keuze is veranderd.
+  4. Bij bewerken naar een andere categorie verdwijnt een work-koppeling die niet meer past.
+- **Logs.** Elk falen rond works geeft `console.error` met `[works]`, de provider en de reden:
+  een onbereikbare provider, een foutstatus, geen match, een mislukte insert of update, een
+  ontbrekende service key, of een geweigerde koppeling.
+
 ## Uitbreiden
 
 Nieuwe bron toevoegen aan de categorie-herkenning: `DOMAIN_RULES` / `ruleFromUrl()` in

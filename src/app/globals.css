@@ -2157,3 +2157,18 @@ button.share-link:disabled {
 .sheet-in .kind {
   margin-bottom: -8px;
 }
+
+/* Owner-only /admin/backfill */
+.backfill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.backfill-table th,
+.backfill-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--rule);
+}
