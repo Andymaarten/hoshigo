@@ -392,7 +392,7 @@ h1 {
   font-size: 16px;
   font-weight: 400;
   line-height: 1.3;
-  color: var(--muted);
+  color: var(--ink);
   text-align: center;
 }
 
@@ -478,8 +478,30 @@ h1 {
   outline-offset: 3px;
 }
 
+/* A slow breath hints that the circles can be pressed. Delays are staggered
+   by row and position so they never pulse in unison. */
+@keyframes hero-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+.hero-circle img {
+  animation: hero-breathe 5.2s ease-in-out infinite;
+  animation-delay: calc(var(--row-d, 0s) + var(--col-d, 0s));
+}
+
+.hero-row:nth-child(2) { --row-d: -1.7s; }
+.hero-row:nth-child(3) { --row-d: -3.4s; }
+.hero-circle:nth-of-type(2) { --col-d: -2.6s; }
+
+.hero-circle:hover img,
+.hero-circle:focus-visible img {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-circle { transition: none; }
+  .hero-circle img { animation: none; }
 }
 
 /* The sheet itself never scrolls; .sheet-scroll inside it does. That keeps the close
@@ -992,7 +1014,7 @@ footer .cta {
 .manifesto {
   font-family: var(--serif);
   text-align: center;
-  margin: 64px auto 8px;
+  margin: 28px auto 8px;
   max-width: 760px;
   padding: 0 8px;
 }
@@ -1005,7 +1027,7 @@ footer .cta {
 .manifesto-lead,
 .manifesto-mid,
 .manifesto-coda {
-  font-size: clamp(18px, 2vw, 22px);
+  font-size: clamp(17px, 1.8vw, 20px);
   line-height: 1.5;
   max-width: 46ch;
 }
@@ -1021,7 +1043,7 @@ footer .cta {
 
 @media (max-width: 640px) {
   .manifesto {
-    margin-top: 44px;
+    margin-top: 24px;
   }
 
   .manifesto-sep {
