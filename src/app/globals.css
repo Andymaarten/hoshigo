@@ -188,20 +188,26 @@ a.word {
     padding-right: 0;
   }
 
+  /* One quiet row. The negative margin lets the first label's padding hang
+     outside, so its text lines up with the wordmark above. */
   .masthead:has(.menu form) .menu {
     position: static;
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px 16px;
-    padding-top: 18px;
-    margin-top: 10px;
-    border-top: 1px solid var(--rule);
-    justify-content: initial;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 2px;
+    padding-top: 0;
+    margin: 6px 0 0 -6px;
   }
 
-  .masthead:has(.menu form) .menu > * {
-    width: 100%;
+  .masthead:has(.menu form) .menu a,
+  .masthead:has(.menu form) .menu .menu-link {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .masthead:has(.menu form) .menu form {
+    order: 1;
+    display: flex;
   }
 }
 
