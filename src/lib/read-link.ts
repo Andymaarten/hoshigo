@@ -491,6 +491,17 @@ function titleFromPath(url: string): string | null {
     const u = new URL(url);
     const ta = u.pathname.match(/Reviews-([^-]+)-/);
     if (/tripadvisor\./.test(u.hostname) && ta) return ta[1].replace(/_/g, " ");
+    // BoardGameGeek blocks our fetches; its slug is the game's name:
+    // /boardgame/378524/monsters-of-loch-lomond → "Monsters of Loch Lomond"
+    const bggSlug = /(^|\.)boardgamegeek\.com$/.test(u.hostname) && u.pathname.match(/^\/boardgame(?:expansion)?\/\d+\/([^/]+)/)?.[1];
+    if (bggSlug) {
+      const small = /^(a|an|and|at|by|for|in|of|on|or|the|to|vs)$/i;
+      return decodeURIComponent(bggSlug)
+        .split("-")
+        .filter(Boolean)
+        .map((w, i) => (i > 0 && small.test(w) ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+        .join(" ");
+    }
     const segments = u.pathname.split("/").filter(Boolean).map((s) => decodeURIComponent(s));
     const words = (s: string) =>
       s

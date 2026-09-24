@@ -2,7 +2,7 @@ import { createClient as createSupabaseClient, type SupabaseClient } from "@supa
 import type { ResolvedWork, WorkSource } from "./resolve-work";
 import { readPhotos } from "./read-link";
 
-const SOURCES: WorkSource[] = ["tmdb", "tmdb_tv", "musicbrainz", "openlibrary", "itunes", "igdb", "youtube", "nominatim", "wikidata"];
+const SOURCES: WorkSource[] = ["tmdb", "tmdb_tv", "musicbrainz", "openlibrary", "itunes", "igdb", "youtube", "nominatim", "wikidata", "bgg"];
 
 export function isWorkSource(s: unknown): s is WorkSource {
   return typeof s === "string" && (SOURCES as string[]).includes(s);

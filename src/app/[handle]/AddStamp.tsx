@@ -843,6 +843,23 @@ export default function AddStamp({
                 ))}
               </ul>
             )}
+            {slug === "games" && (
+              <p className="hint">
+                A board game that isn&apos;t listed?{" "}
+                <button
+                  type="button"
+                  className="linkish"
+                  style={{ padding: 0 }}
+                  onClick={() => {
+                    setPath("paste");
+                    setLinkInput("");
+                    setScreen("link");
+                  }}
+                >
+                  Paste its BoardGameGeek link
+                </button>
+              </p>
+            )}
             <button type="button" className="linkish" onClick={addByHand}>
               Can&apos;t find it? Add it by hand
             </button>

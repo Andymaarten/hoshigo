@@ -699,6 +699,43 @@ YouTube), en alleen dat antwoord komt in `works`. Lege velden van een bestaande 
 overschreven. Zonder service key valt de server terug op de sessie van de gebruiker
 (met een waarschuwing in de log); dat werkt tot de migratie draait.
 
+### Ronde 9 (2026-09-24): BoardGameGeek als tweede games-bron
+
+Wikidata mist kleinere bordspellen ("Monsters of Loch Lomond"). BoardGameGeek heeft ze, maar
+de XML API2 vraagt sinds juli 2025 bij elke aanroep `Authorization: Bearer <token>` en
+geeft zonder token `401`. De integratie staat klaar achter `BGG_TOKEN`:
+- zoeken (`search?type=boardgame`) + details (`thing?id=…&stats=1`): naam, jaar, ontwerper
+  of uitgever, afbeelding;
+- de zoeklijst voegt Wikidata en BGG samen. Een BGG-hit die Wikidata al heeft (zelfde id in
+  P2339) valt weg, en exacte titelmatches komen bovenaan;
+- een geplakte BGG-link: eerst het Wikidata-item met dat BGG-id, anders BGG zelf;
+- een gekozen BGG-resultaat wordt server-side opnieuw bij BGG opgehaald (`verifyWork`) en
+  via de service-role writer opgeslagen (source `bgg`, migratie
+  `docs/migrations/2026-09-24-bgg.sql`).
+
+Zonder token: een geplakte BGG-link werkt toch (categorie games, titel uit de URL:
+`monsters-of-loch-lomond` → "Monsters of Loch Lomond", link blijft). Een foto lukt niet:
+BGG blokkeert onze server ook voor de pagina zelf. "Use another photo" met bijvoorbeeld de
+website van de uitgever werkt wel. Bij zoeken in games staat "A board game that isn't
+listed? Paste its BoardGameGeek link".
+
+**Token aanvragen (eigenaar, eenmalig):**
+1. Log in op boardgamegeek.com met een eigen account.
+2. Open https://boardgamegeek.com/using_the_xml_api en volg daar de link om een applicatie
+   te registreren (de "Applications"-pagina van je account).
+3. Vul in: naam "hoshigo", website https://www.hoshigo.cc, en als omschrijving iets als
+   "Looks up board game names, years, designers and images when someone adds a board game
+   they love to their public list; links back to the game's BGG page". Kies de
+   niet-commerciële licentie zolang hoshigo gratis is (tot 2027 volgens de planning; lees
+   BGG's voorwaarden opnieuw voordat er betaald wordt).
+4. Wacht op goedkeuring (handmatig door BGG, dit kan dagen duren). Maak daarna op dezelfde
+   pagina een token aan en kopieer die.
+5. Zet de token in Vercel als environment variable `BGG_TOKEN` (Production en Preview) en
+   redeploy. Lokaal: `BGG_TOKEN=…` in `.env.local`.
+6. Run `docs/migrations/2026-09-24-bgg.sql` in de Supabase SQL-editor.
+BGG vraagt om bronvermelding: bij BGG-resultaten staat "BoardGameGeek" in de detailregel,
+en de gekozen bron heet "BoardGameGeek" in het formulier.
+
 ## Uitbreiden
 
 Nieuwe bron toevoegen aan de categorie-herkenning: `DOMAIN_RULES` / `ruleFromUrl()` in
