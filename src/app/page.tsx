@@ -76,7 +76,7 @@ export default async function HomePage({
         </p>
       </section>
 
-      <p className="hero-prompt">Press one of the hoshigo&apos;s below to get inspired.</p>
+      <p className="hero-prompt">Press one of the hoshigos below to get inspired.</p>
 
       <HeroField />
 

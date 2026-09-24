@@ -568,7 +568,7 @@ export default function AddStamp({
             ? `Visitors will go to ${displayUrl(finalUrl, 60)}`
             : linkRequired
               ? "Needed so visitors can find it. We'll fill in the rest from the page."
-              : "Add a link so your friends can easily visit it. You can also save without one."}
+              : "A link lets your friends find it. You can also keep it without one."}
         </span>
         {!ownLinkClean && linkHelp(slug, draft.title || query).length > 0 && (
           <div className="link-help">
@@ -640,11 +640,11 @@ export default function AddStamp({
   }
 
   const title = {
-    start: "Add a hoshigo",
+    start: "Keep a hoshigo",
     link: "Paste a link",
-    category: path === "paste" ? "What is this?" : "What are you adding?",
+    category: path === "paste" ? "What is this?" : "What are you keeping?",
     search: `Find ${category?.label ?? "it"}`,
-    details: gate ? "Add its link" : "Check and add",
+    details: gate ? "Add its link" : "Check and keep",
   }[screen];
 
   return (
@@ -654,7 +654,7 @@ export default function AddStamp({
           type="button"
           className={`stamp${pinned ? " pinned" : ""}`}
           aria-haspopup="dialog"
-          aria-label="Press here to add a hoshigo"
+          aria-label="Press here to keep a hoshigo"
           onClick={() => {
             reset();
             setOpen(true);
@@ -667,7 +667,7 @@ export default function AddStamp({
             <circle cx="58" cy="58" r="30" />
             <text>
               <textPath href="#ring" textLength="292">
-                press here to add a hoshigo · press here to add a hoshigo ·{" "}
+                press here to keep a hoshigo · press here to keep a hoshigo ·{" "}
               </textPath>
             </text>
           </svg>
@@ -820,7 +820,7 @@ export default function AddStamp({
             </form>
 
             {searching && <p className="hint">Searching…</p>}
-            {!searching && searchFailed && <p className="hint">Search isn&apos;t answering right now. Try again, or add it by hand.</p>}
+            {!searching && searchFailed && <p className="hint">Search isn&apos;t answering right now. Try again, or write it in by hand.</p>}
             {!searching && results && results.length === 0 && (
               <p className="hint">Nothing found for “{query.trim()}”. Try fewer words, or check the spelling.</p>
             )}
@@ -899,8 +899,8 @@ export default function AddStamp({
 
             {gate && (
               <p className="cat-line">
-                Adding to <strong>{category?.label}</strong>
-                {query.trim() && SEARCHABLE.has(slug) && <span> · not found in the catalog</span>}
+                Keeping in <strong>{category?.label}</strong>
+                {query.trim() && SEARCHABLE.has(slug) && <span> · not found in the catalogue</span>}
               </p>
             )}
             {handFirst && renderOwnLink(gate)}
@@ -1106,7 +1106,7 @@ export default function AddStamp({
                 </button>
               ) : (
                 <button type="submit" className="cta" disabled={pending || !draft.title.trim() || looking || (linkRequired && !finalUrl)}>
-                  {pending ? "Adding…" : !finalUrl && !linkRequired ? "Save without link" : "Add"}
+                  {pending ? "Keeping…" : !finalUrl && !linkRequired ? "Keep without a link" : "Keep"}
                 </button>
               )}
             </div>
@@ -1117,7 +1117,7 @@ export default function AddStamp({
       {landed && (
         <div className="add-toast" role="status">
           <span>
-            Added to your {landed.label}.{" "}
+            Kept in your {landed.label}.{" "}
             <Link href={`/${handle}#h-${landed.slug}`} onClick={() => setLanded(null)}>
               See it on your page
             </Link>

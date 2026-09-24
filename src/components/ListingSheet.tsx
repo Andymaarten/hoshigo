@@ -105,7 +105,7 @@ export default function ListingSheetBody({
               window.dispatchEvent(new CustomEvent(ADD_PREFILL_EVENT, { detail }));
             }}
           >
-            Add to my hoshigo
+            Keep in my hoshigo
           </button>
         )}
         {href && <span className="link-dest">{displayUrl(item.url!)}</span>}

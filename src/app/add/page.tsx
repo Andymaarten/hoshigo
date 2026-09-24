@@ -25,7 +25,7 @@ export default function AddPage() {
     <div className="page">
       <header className="hero">
         <Wordmark />
-        <p className="lede">Opening the add screen…</p>
+        <p className="lede">Opening your notebook…</p>
       </header>
     </div>
   );

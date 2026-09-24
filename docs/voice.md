@@ -4,12 +4,33 @@ The living guide to how hoshigo sounds, on the site and in every email.
 Kept by Yuki. When the owner corrects something, it goes in the feedback log
 at the bottom, and the rules above get updated to match.
 
+## The heart: a small notebook
+
+hoshigo reads like someone's own notebook. The kind with a few pages that
+matter: the film you still think about, the café you'd send a friend to, the
+essay you reread. You don't post things here. You keep them.
+
+Around it is an ocean of generated stuff. We don't need to say that often,
+and we never lecture about it. It shows in what we choose to say: things
+kept by hand, chosen by a person, for reasons they could tell you over
+coffee. One line of contrast now and then is enough; the rest of the time we
+simply sound like a person, and that is the argument.
+
+Words of the notebook: keep, kept, choose, your own, a page, a few, a
+handful, worth keeping, your world of inspiration. "Curate" is the idea, but
+in copy prefer "keep" and "choose"; "curate" works in the manifesto, where we
+talk about the idea, not in buttons.
+
 ## In one line
 
-A quiet, warm person who likes you, says little, and now and then lets a
-small bit of magic through the door.
+A quiet, warm person who keeps a small notebook of things they love, says
+little, and now and then lets a bit of magic through the door.
 
 ## Principles
+
+0. **Keep, don't post.** The verb for putting something on your page is
+   "keep": "Keep a hoshigo", "Keep", "Kept in your films". Never "post",
+   "share" (for adding), "upload" or "add" when the thing is a hoshigo.
 
 1. **Plain first.** Most sentences are just clear. The voice lives in the
    one line that isn't.
@@ -43,8 +64,7 @@ with a straight face; one imagined world ("enter the world of"), not five.
   rephrase ("five star page", "log in", "sign up").
 - No emoji. Anywhere.
 - "hoshigo" is always lowercase, even at the start of a sentence.
-- English copy, British or American spelling is fine but stay consistent
-  within one screen.
+- British English: favourite, colour, catalogue, centre, organise, theatre.
 - Headings on the site are lowercase and end with a full stop when they are
   a statement ("your friends.", "nothing here.").
 - Buttons say what happens: "Choose a new password", not "Continue" or
@@ -69,14 +89,14 @@ with a straight face; one imagined world ("enter the world of"), not five.
 ## Words to avoid
 
 Oops, whoops, uh oh, awesome, amazing, excited, unlock, journey, elevate,
-seamless, curate, discover (as a verb in taglines), empower, leverage,
-community (as a selling point), personalized, rest assured, don't worry,
+seamless, curate (in buttons and emails; fine in the manifesto), discover (as a verb in taglines), empower, leverage,
+community (as a selling point), personalised, content (for what people keep), post, rest assured, don't worry,
 simply, just (as in "just click"), feed (for what friends added; prefer
 "latest from your friends").
 
 ## Words we like
 
-keep, handful, five stars, quiet, place, page, door, press (not click or
+keep, kept, worth keeping, your own, notebook, handful, five stars, quiet, place, page, door, press (not click or
 tap), friends, real people, latest, a line, a few words.
 
 ## Glossary
@@ -87,13 +107,52 @@ tap), friends, real people, latest, a line, a few words.
   **hoshigos** (no apostrophe).
 - **five stars**: the only rating there is. If it's on a page, it's five
   stars. We never talk about four.
-- **Hoshi**: a quiet presence, the keeper of the stars. Not a mascot, never
-  drawn, never chatty. Appears where something is being confirmed or kept
-  safe. At most once per message, and not in every message.
+- **Hoshi**: the small keeper of the stars. See "Hoshi" below.
 - **page**: a person's hoshigo profile (hoshigo.cc/name). Prefer "page" over
   "profile" in user copy.
 - **friends**: people who see everything on each other's page.
-- **the red stamp**: the round red button that adds a hoshigo.
+- **the red stamp**: the round red button you press to keep a hoshigo.
+
+## Hoshi
+
+**Who Hoshi is.** A small person who looks after the stars at hoshigo. Old
+in the way a librarian or a lighthouse keeper is old: patient, precise, fond
+of people without making a fuss about it. Hoshi keeps a ledger of every five
+star thing anyone has kept, and takes that job seriously. Hoshi is not an
+assistant, not a bot, not a helper who "can do anything for you". Hoshi does
+one thing: keeps the stars safe and in order.
+
+**How Hoshi speaks.** We never quote Hoshi directly; we report what Hoshi
+would like, has done, or is doing, in third person. Short, dry, a little
+formal. Hoshi has opinions about carelessness and none about taste.
+- "Hoshi would like to confirm this before anyone starts giving out five
+  stars on your behalf."
+- "Hoshi looked everywhere."
+- "Hoshi is still polishing it, and refuses to be rushed."
+Never: "Hoshi says hi!", "Hoshi is sad you're leaving", Hoshi with an
+exclamation mark, Hoshi explaining a feature, Hoshi in a button.
+
+**When Hoshi appears.**
+- Where something is being confirmed or guarded: signing up, reauthenticating.
+- Where something is missing or unfinished and nothing is at stake: the 404,
+  the pricing page.
+- At most once per screen or email, and in well under half of them. If you
+  can't remember the last place you saw Hoshi, that's about right.
+
+**When Hoshi does not appear.** Errors that cost the user something (a lost
+note, a failed save), anything about money or privacy, the manifesto, empty
+states the person sees every day, and any line that has to be understood in
+one glance.
+
+**Brief for an illustrator (for later).** Hoshi is small, about the height of
+a teacup beside a notebook. Drawn in ink, one line weight, on warm paper; the
+only colour is a single red dot, the same red as the dot on the ı, worn as a
+button, a lantern or a star Hoshi is carrying. Round, quiet, a bit
+bookish; could be read as a tiny elder or a child in an oversized coat.
+No face beyond two dots, or none at all. Poses: carrying a star, writing in a
+ledger, peering around a page, asleep on an open book. Mood: Japanese picture
+book, not mascot; nearer to a stamp than a cartoon. Must work at 24px and in
+black only.
 
 ## Emails
 
@@ -125,3 +184,21 @@ Newest at the bottom. Each entry: date, what was said, what changed.
 - Changed: all Supabase auth emails rewritten, three new ones drafted, app
   emails reworded, site wide copy review written for the owner to react to
   (docs/copy-review.md) before anything is applied.
+
+### 2026-09-24 — answers to round 1 questions
+
+- Plural: "hoshigos". "Good plan."
+- Hoshi may appear, and may become a little character ("een persoontje").
+  Defined in the Hoshi section above, with an illustrator brief for later.
+- "keep" instead of "add" in the interface: yes.
+- "within minutes" is canonical ("Actually, we would like you to be gone
+  within minutes.").
+- The pricing page may carry a joke (not linked anywhere yet).
+- British English.
+- Direction for the whole voice, in his words (Dutch, translated): "It should
+  become the language of: keep things. Your inspiration. Your world of
+  inspiration in between an ocean of AI generated stuff. To curate. That kind
+  of language. As if it's about your small diary."
+- Changed: added "The heart: a small notebook" and principle 0 (keep, don't
+  post); British spelling rule; Hoshi section; "keep" applied across the add
+  dialog, stamp, listing sheet and empty states; "catalogue"; pricing joke.
