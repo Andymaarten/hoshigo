@@ -50,8 +50,9 @@ async function fetchJson(url: string, init?: RequestInit) {
     throw e;
   }
   // MusicBrainz allows one request per second per IP and answers 503 above that.
-  if (res.status === 503 && url.includes("musicbrainz.org")) {
-    await new Promise((r) => setTimeout(r, 1200));
+  // Two retries: one busy second (a search right before a pick) easily uses up the first.
+  for (let attempt = 1; res.status === 503 && url.includes("musicbrainz.org") && attempt <= 2; attempt++) {
+    await new Promise((r) => setTimeout(r, 1200 * attempt));
     res = await fetch(url, { ...init, signal: AbortSignal.timeout(6000) });
   }
   if (!res.ok) {
@@ -378,24 +379,48 @@ function primaryArtist(artist?: string | null) {
   return artist?.split(/,|&|\s+feat\.?\s+|\s+ft\.?\s+|\s+x\s+|\s+and\s+/i)[0].trim() || null;
 }
 
+// The credited artist closest to who the store names. Classical releases credit the
+// composers first ("Claude Debussy, Jean‐Philippe Rameau, Víkingur Ólafsson") while Spotify
+// names the performer, so comparing only the first credit rejected the right album.
+function closestCredit(artist: string | null, credit?: { name: string }[]): string | null {
+  const names = (credit ?? []).map((c) => c.name);
+  if (!names.length) return null;
+  if (!artist) return names[0];
+  return names.reduce((best, n) => (similarity(artist, n) > similarity(artist, best) ? n : best), names[0]);
+}
+
+// Search words without quotes or punctuation: "Debussy – Rameau" is "Debussy / Rameau" in
+// MusicBrainz, which a quoted phrase search doesn't find.
+function looseTerms(s: string) {
+  return s.replace(/[^\p{L}\p{N}\s']+/gu, " ").replace(/\s+/g, " ").trim();
+}
+
 export async function resolveAlbum(rawTitle: string, rawArtist?: string | null): Promise<ResolvedWork | null> {
   const title = coreTitle(rawTitle);
   const artist = primaryArtist(rawArtist);
   try {
-    const query = artist ? `release:"${title}" AND artist:"${artist}"` : `release:"${title}"`;
-    const data = await fetchJson(
-      `https://musicbrainz.org/ws/2/release-group/?query=${encodeURIComponent(query)}&fmt=json&limit=6`,
-      { headers: MB_HEADERS }
-    );
-    const candidates: MbReleaseGroup[] = data?.["release-groups"] ?? [];
+    // Exact phrase first; when that gives nothing usable, the same words without quotes.
+    const queries = [
+      artist ? `release:"${title}" AND artist:"${artist}"` : `release:"${title}"`,
+      looseTerms(`${title} ${artist ?? ""}`),
+    ];
     let best: { rg: MbReleaseGroup; confidence: "high" | "low"; score: number } | null = null;
-    for (const rg of candidates) {
-      const quality = assessMatch(title, artist, rg.title, rg["artist-credit"]?.[0]?.name ?? null);
-      if (!quality) continue;
-      const isAlbum = (rg["primary-type"] ?? null) === "Album" && !rg["secondary-types"]?.length;
-      const score =
-        quality.titleScore * 0.55 + quality.byScore * 0.3 + (looksExact(title, rg.title) ? 0.25 : 0) + (isAlbum ? 0.1 : -0.05);
-      if (!best || score > best.score) best = { rg, confidence: quality.confidence, score };
+    for (const query of queries) {
+      const data = await fetchJson(
+        `https://musicbrainz.org/ws/2/release-group/?query=${encodeURIComponent(query)}&fmt=json&limit=10`,
+        { headers: MB_HEADERS }
+      );
+      const candidates: MbReleaseGroup[] = data?.["release-groups"] ?? [];
+      for (const rg of candidates) {
+        const quality = assessMatch(title, artist, rg.title, closestCredit(artist, rg["artist-credit"]));
+        if (!quality) continue;
+        const isAlbum = (rg["primary-type"] ?? null) === "Album" && !rg["secondary-types"]?.length;
+        const score =
+          quality.titleScore * 0.55 + quality.byScore * 0.3 + (looksExact(title, rg.title) ? 0.25 : 0) + (isAlbum ? 0.1 : -0.05);
+        if (!best || score > best.score) best = { rg, confidence: quality.confidence, score };
+      }
+      if (best) break;
+      await new Promise((r) => setTimeout(r, 1100)); // MusicBrainz: one request per second
     }
     if (!best) return null;
     const match = best.rg;
@@ -403,7 +428,7 @@ export async function resolveAlbum(rawTitle: string, rawArtist?: string | null):
       source: "musicbrainz",
       source_id: match.id,
       title: match.title,
-      by: match["artist-credit"]?.[0]?.name ?? artist ?? null,
+      by: artistOf(match["artist-credit"]) ?? artist ?? null,
       year: yearOf(match["first-release-date"]),
       image_url: (await caaExists(match.id)) ? caaThumb(match.id) : null,
       match_confidence: best.confidence,
@@ -419,21 +444,28 @@ export async function resolveSong(rawTitle: string, rawArtist?: string | null): 
   const title = coreTitle(rawTitle);
   const artist = primaryArtist(rawArtist);
   try {
-    const query = artist ? `recording:"${title}" AND artist:"${artist}"` : `recording:"${title}"`;
-    const data = await fetchJson(
-      `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=8`,
-      { headers: MB_HEADERS }
-    );
-    const candidates: MbRecording[] = data?.recordings ?? [];
+    const queries = [
+      artist ? `recording:"${title}" AND artist:"${artist}"` : `recording:"${title}"`,
+      looseTerms(`${title} ${artist ?? ""}`),
+    ];
     let best: { rec: MbRecording; confidence: "high" | "low"; score: number } | null = null;
-    for (const rec of candidates) {
-      const quality = assessMatch(title, artist, rec.title, rec["artist-credit"]?.[0]?.name ?? null);
-      if (!quality) continue;
-      const dubious =
-        rec.video === true || LOW_QUALITY_HINTS.test(rec.title) || LOW_QUALITY_HINTS.test(rec.disambiguation ?? "");
-      const score =
-        quality.titleScore * 0.55 + quality.byScore * 0.35 + (dubious ? -0.2 : 0) + (rec["first-release-date"] ? 0.05 : 0);
-      if (!best || score > best.score) best = { rec, confidence: quality.confidence, score };
+    for (const query of queries) {
+      const data = await fetchJson(
+        `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=10`,
+        { headers: MB_HEADERS }
+      );
+      const candidates: MbRecording[] = data?.recordings ?? [];
+      for (const rec of candidates) {
+        const quality = assessMatch(title, artist, rec.title, closestCredit(artist, rec["artist-credit"]));
+        if (!quality) continue;
+        const dubious =
+          rec.video === true || LOW_QUALITY_HINTS.test(rec.title) || LOW_QUALITY_HINTS.test(rec.disambiguation ?? "");
+        const score =
+          quality.titleScore * 0.55 + quality.byScore * 0.35 + (dubious ? -0.2 : 0) + (rec["first-release-date"] ? 0.05 : 0);
+        if (!best || score > best.score) best = { rec, confidence: quality.confidence, score };
+      }
+      if (best) break;
+      await new Promise((r) => setTimeout(r, 1100));
     }
     if (!best) return null;
     const match = best.rec;
@@ -442,7 +474,7 @@ export async function resolveSong(rawTitle: string, rawArtist?: string | null): 
       source: "musicbrainz",
       source_id: match.id,
       title: match.title,
-      by: match["artist-credit"]?.[0]?.name ?? artist ?? null,
+      by: artistOf(match["artist-credit"]) ?? artist ?? null,
       year: yearOf(match["first-release-date"]),
       image_url: rgId && (await caaExists(rgId)) ? caaThumb(rgId) : null,
       match_confidence: best.confidence,

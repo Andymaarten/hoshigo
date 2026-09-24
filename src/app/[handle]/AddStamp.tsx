@@ -123,6 +123,8 @@ export default function AddStamp({
   const [catalogSite, setCatalogSite] = useState("");
   // the catalog entry the person picked, even when saving it to our catalog failed
   const [catalogPick, setCatalogPick] = useState("");
+  // a picked catalog record that couldn't be linked (catalog busy): say so, don't show a match
+  const [linkFailed, setLinkFailed] = useState("");
   const [lastFound, setLastFound] = useState<string[]>([]);
   const [landed, setLanded] = useState<{ label: string; slug: string } | null>(null);
   const submittedCategory = useRef<{ label: string; slug: string } | null>(null);
@@ -254,6 +256,7 @@ export default function AddStamp({
     setMatchedSource(null);
     setCatalogSite("");
     setCatalogPick("");
+    setLinkFailed("");
   }
 
   // Tries to tie what we read from a link to a catalog entry. Never touches the link.
@@ -484,6 +487,7 @@ export default function AddStamp({
     setMatchedSource(id ? r.source : null);
     setCatalogSite(id ? site : "");
     setCatalogPick(r.source);
+    setLinkFailed(id ? "" : r.source);
     const photo = r.image_url || sitePhoto;
     setDraft((d) => ({
       ...d,
@@ -536,15 +540,16 @@ export default function AddStamp({
     try {
       const data = await fetchJson(`/api/fetch-metadata?url=${encodeURIComponent(ownLinkClean)}`, undefined, 15000);
       const found = uniq([data?.image_url, ...((data?.image_urls as string[]) ?? [])]);
-      setDraft((d) => ({
-        ...d,
-        title: (typeof data?.title === "string" && data.title) || d.title,
-        by: (typeof data?.by === "string" && data.by) || d.by,
-        image: d.image || found[0] || "",
-      }));
+      const pageTitle = (typeof data?.title === "string" && data.title) || draft.title;
+      const pageBy = (typeof data?.by === "string" && data.by) || draft.by;
+      setDraft((d) => ({ ...d, title: pageTitle || d.title, by: pageBy || d.by, image: d.image || found[0] || "" }));
       if (found.length) setPhotos((ps) => uniq([...ps, ...found]));
       const other = categories.find((c) => c.slug === data?.category_slug);
       if (data?.confidence === "high" && other && other.slug !== slug) setCategoryHint(other.label);
+      // Same as a pasted link: look it up in this category's catalog straight away.
+      if (SEARCHABLE.has(slug) && pageTitle) {
+        await lookUp(categoryId, pageTitle, pageBy, typeof data?.year === "number" ? String(data.year) : "", ownLinkClean, found);
+      }
     } catch {
       // reading the page is a bonus; the fields stay editable
     } finally {
@@ -936,6 +941,12 @@ export default function AddStamp({
               In <strong>{category?.label}</strong>
               {looking && <span> · looking it up…</span>}
               {!looking && matchedSource && <span> · found in {SOURCE_NAME[matchedSource] ?? matchedSource}</span>}
+              {!looking && !matchedSource && linkFailed && (
+                <span className="error">
+                  {" "}
+                  · couldn&apos;t link it to {SOURCE_NAME[linkFailed] ?? linkFailed} right now, so it will be kept without that link. Try picking it again in a moment.
+                </span>
+              )}
               {" · "}
               <button
                 type="button"

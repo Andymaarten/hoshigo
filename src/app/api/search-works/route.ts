@@ -39,13 +39,25 @@ export async function POST(request: NextRequest) {
   }
   // Only the source and id are taken from the browser; everything stored on the shared work
   // comes from looking that id up in the catalog again (verifyWork).
-  const verified = await verifyWork(c.source, String(c.source_id).slice(0, 200));
+  const id = String(c.source_id).slice(0, 200);
+  let verified = await verifyWork(c.source, id);
   if (!verified) {
-    console.error(`[works] could not verify picked ${c.source}:${String(c.source_id).slice(0, 80)} at the catalog`);
-    return NextResponse.json({ work_id: null });
+    // A busy catalog (MusicBrainz 503 right after the search) is the usual cause: one more try.
+    await new Promise((r) => setTimeout(r, 1500));
+    verified = await verifyWork(c.source, id);
+  }
+  if (!verified) {
+    console.error(`[works] could not verify picked ${c.source}:${id.slice(0, 80)} at the catalog (twice)`);
+    return NextResponse.json({ work_id: null, link_failed: true });
   }
   const picked = await withWebsitePhoto(verified);
   const work = await upsertWork(supabase, categoryId, picked);
   // image_url: the catalog cover, or a photo from the place's own website, for the dialog.
-  return NextResponse.json({ work_id: work?.id ?? null, image_url: picked.image_url, website: work?.website ?? picked.website ?? null });
+  // link_failed: the dialog must say it couldn't link, instead of showing a match.
+  return NextResponse.json({
+    work_id: work?.id ?? null,
+    link_failed: !work,
+    image_url: picked.image_url,
+    website: work?.website ?? picked.website ?? null,
+  });
 }
