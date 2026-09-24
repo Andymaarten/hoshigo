@@ -19,8 +19,8 @@ export async function notifyNewSignup({ handle, displayName, email }: { handle: 
       body: JSON.stringify({
         from: process.env.SIGNUP_NOTIFY_FROM?.trim() || "hoshigo <onboarding@resend.dev>",
         to: [to],
-        subject: `New on hoshigo: ${name} (@${handle})`,
-        html: `<p><strong>${escapeHtml(name)}</strong> just joined hoshigo.</p>
+        subject: `Someone new: ${name} (@${handle})`,
+        html: `<p><strong>${escapeHtml(name)}</strong> just made a hoshigo page.</p>
 <p>Page: <a href="${site}/${encodeURIComponent(handle)}">${site}/${escapeHtml(handle)}</a><br>Email: ${escapeHtml(email ?? "unknown")}</p>`,
       }),
       signal: AbortSignal.timeout(5000),
