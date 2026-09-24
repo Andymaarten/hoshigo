@@ -85,62 +85,86 @@ export default async function HomePage({
   );
 }
 
-// A staggered grid of flat stamps, wider than the frame so the outer columns
-// bleed off both edges. Rows are rendered explicitly so alternating rows can be
-// offset half a step; the row simply clips where the viewport ends.
-const HERO_ROWS = 6;
-const HERO_PER_ROW = 18;
+// Where the red hoshigos lead, in order of appearance. Cycled if a layout has
+// more circles than entries.
+const HOSHIGO_LINKS = ["/testuser", "/andymaarten", "/testuser", "/testuser", "/andymaarten", "/testuser"];
 
-// PLACEHOLDER: profiles have no avatar field yet, so every real stamp reveals
-// one of five bundled textures instead of a real person's photo, and every
-// stamp links to the seeded demo profile.
-const HERO_PHOTOS = [1, 2, 3, 4, 5].map((n) => `/hero/placeholder-${n}.jpg`);
+const BAR_SIZES: [number, number][] = [
+  [59, 400], [55, 400], [54, 400], [58, 400], [56, 400], [56, 400], [55, 400],
+  [57, 400], [58, 401], [54, 400], [54, 399], [58, 401], [58, 399],
+];
+const CIRCLE_SIZES: [number, number][] = [[300, 310], [300, 315], [300, 313], [300, 309], [300, 314]];
 
-// Only a handful of stamps are real, clickable hoshigo's — the rest are plain
-// grey noise, so the few red ones actually read as "the few things worth your
-// attention" instead of every circle competing for it. Column position varies
-// a lot row to row (not the same one or two columns repeated down the grid,
-// which reads as vertical lines rather than a diffuse scatter) and avoids the
-// far-left/right columns, which bleed off the frame and get clipped.
-// Most preview the seeded demo profile; a few point at the real owner profile.
-const REAL_LINKS = new Map<number, string>([
-  [4, "/testuser"], // row 0, col 4
-  [14, "/andymaarten"], // row 0, col 14
-  [26, "/testuser"], // row 1, col 8
-  [38, "/testuser"], // row 2, col 2
-  [48, "/andymaarten"], // row 2, col 12
-  [60, "/testuser"], // row 3, col 6
-  [69, "/testuser"], // row 3, col 15
-  [75, "/andymaarten"], // row 4, col 3
-  [82, "/testuser"], // row 4, col 10
-  [97, "/testuser"], // row 5, col 7
-  [104, "/andymaarten"], // row 5, col 14
-]);
+// Separate layouts per width instead of shrinking one: the drawing keeps its
+// stroke size and simply loses bars. Numbers are the bar index a circle sits
+// before, staggered so no two rows line up.
+const HERO_LAYOUTS: { name: string; bars: number; circles: number[][] }[] = [
+  { name: "wide", bars: 24, circles: [[4, 17], [8, 20], [2, 15]] },
+  { name: "mid", bars: 16, circles: [[3, 11], [7, 14], [1, 9]] },
+  { name: "narrow", bars: 8, circles: [[1], [5], [3]] },
+];
+
+// Deterministic so server and client render the same drawing.
+function noise(seed: number) {
+  let x = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b);
+  x ^= x >>> 13;
+  x = Math.imul(x, 0xc2b2ae35);
+  x ^= x >>> 16;
+  return (x >>> 0) / 4294967296;
+}
+
+function wobble(seed: number, px: number, deg: number) {
+  const y = ((noise(seed) - 0.5) * 2 * px).toFixed(1);
+  const r = ((noise(seed + 101) - 0.5) * 2 * deg).toFixed(2);
+  return { "--y": `${y}px`, "--r": `${r}deg` } as React.CSSProperties;
+}
 
 function HeroField() {
   return (
-    <div className="hero-field" aria-label="Preview hoshigo pages">
-      <div className="hero-grid">
-        {Array.from({ length: HERO_ROWS }, (_, row) => (
-          <div key={row} className={row % 2 ? "hero-row hero-row-offset" : "hero-row"}>
-            {Array.from({ length: HERO_PER_ROW }, (_, col) => {
-              const i = row * HERO_PER_ROW + col;
-              const href = REAL_LINKS.get(i);
-              if (!href) {
-                return <span key={col} className="hero-dot hero-dot-noise" aria-hidden="true" />;
+    <div className="hero-field">
+      {HERO_LAYOUTS.map((layout, li) => {
+        let circleCount = 0;
+        let prevBar = -1;
+        let prevCircle = -1;
+        return (
+          <div key={layout.name} className={`hero-paper hero-${layout.name}`}>
+            {layout.circles.map((spots, row) => {
+              const items: React.ReactNode[] = [];
+              for (let b = 0; b <= layout.bars; b++) {
+                const seed = li * 1000 + row * 100 + b;
+                if (spots.includes(b)) {
+                  let v = Math.floor(noise(seed + 7) * CIRCLE_SIZES.length);
+                  if (v === prevCircle) v = (v + 1) % CIRCLE_SIZES.length;
+                  prevCircle = v;
+                  const [w, h] = CIRCLE_SIZES[v];
+                  const href = HOSHIGO_LINKS[circleCount++ % HOSHIGO_LINKS.length];
+                  items.push(
+                    <Link key={`c${b}`} href={href} className="hero-circle" style={wobble(seed + 3, 5, 4)}>
+                      <img src={`/hero/redhoshigos_${v + 1}.png`} width={w} height={h} alt="" loading="lazy" decoding="async" />
+                      <span className="sr-only">Open a hoshigo page</span>
+                    </Link>,
+                  );
+                }
+                if (b === layout.bars) break;
+                let v = Math.floor(noise(seed) * BAR_SIZES.length);
+                if (v === prevBar) v = (v + 1 + Math.floor(noise(seed + 50) * (BAR_SIZES.length - 1))) % BAR_SIZES.length;
+                prevBar = v;
+                const [w, h] = BAR_SIZES[v];
+                items.push(
+                  <span key={`b${b}`} className="hero-bar" aria-hidden="true" style={wobble(seed, 6, 1.2)}>
+                    <img src={`/hero/bluelines_${v + 1}.png`} width={w} height={h} alt="" loading="lazy" decoding="async" />
+                  </span>,
+                );
               }
               return (
-                <Link key={col} href={href} className="hero-dot">
-                  <span className="hero-disc">
-                    <img className="hero-photo" src={HERO_PHOTOS[i % HERO_PHOTOS.length]} alt="" aria-hidden="true" />
-                  </span>
-                  <span className="sr-only">Preview a hoshigo profile</span>
-                </Link>
+                <div key={row} className="hero-row">
+                  {items}
+                </div>
               );
             })}
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
