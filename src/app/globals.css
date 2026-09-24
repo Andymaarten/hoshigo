@@ -1626,6 +1626,129 @@ footer .cta {
   text-underline-offset: 2px;
 }
 
+/* ---------- owner stats ---------- */
+
+.stats-main {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  padding-bottom: 56px;
+}
+
+.stats-main h2 {
+  margin-bottom: 14px;
+}
+
+.stats-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+
+.stats-totals dt {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.stats-totals dd {
+  margin: 4px 0 0;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.stats-sparks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+}
+
+.stats-spark {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.stats-spark svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.stats-spark figcaption {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.stats-spark rect.on {
+  fill: var(--accent);
+}
+
+.stats-spark rect.off {
+  fill: var(--rule);
+}
+
+.stats-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 560px;
+}
+
+.stats-bars li {
+  display: grid;
+  grid-template-columns: 90px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.stats-bar {
+  display: block;
+  height: 10px;
+  background: var(--ink);
+  min-width: 1px;
+}
+
+.stats-list {
+  margin: 0 0 28px;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 15px;
+}
+
+.stats-list .by {
+  color: var(--muted);
+}
+
+.stats-feedback {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 62ch;
+}
+
+.stats-feedback li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.stats-feedback p {
+  margin: 6px 0 0;
+  font-family: var(--serif);
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
 .link-help {
   display: flex;
   flex-direction: column;

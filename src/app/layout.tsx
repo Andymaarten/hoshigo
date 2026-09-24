@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Schibsted_Grotesk, Newsreader } from "next/font/google";
 import "./globals.css";
 import FeedbackTab from "@/components/FeedbackTab";
+import { Analytics } from "@vercel/analytics/next";
 
 const display = Schibsted_Grotesk({
   variable: "--font-display",
@@ -37,6 +38,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <FeedbackTab />
+        {/* Vercel Web Analytics: cookieless page views, so no consent banner */}
+        <Analytics />
       </body>
     </html>
   );
