@@ -509,3 +509,9 @@ alter table public.feedback enable row level security;
 drop policy if exists "people add their own feedback" on public.feedback;
 create policy "people add their own feedback" on public.feedback
   for insert to authenticated with check (auth.uid() = user_id);
+-- Pick which profiles the red hoshigos on the homepage lead to.
+-- Put 1 to 10 in profiles.homepage_order (Table Editor → profiles); lowest first, empty = not shown.
+-- If nobody has a number, the homepage falls back to /testuser and /andymaarten.
+-- Safe to run more than once.
+alter table public.profiles add column if not exists homepage_order smallint
+  check (homepage_order between 1 and 10);

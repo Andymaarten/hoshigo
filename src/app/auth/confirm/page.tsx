@@ -6,6 +6,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Wordmark from "@/components/Wordmark";
 
+function friendly(message: string) {
+  if (/code verifier|different browser|storage/i.test(message)) {
+    return "This link was opened in a different browser than the one you used to log in. Open it there, or ask for a fresh link below.";
+  }
+  if (/expired|invalid/i.test(message)) return "That link has expired or was already used. Ask for a fresh one below.";
+  return "That link didn't work. Ask for a fresh one below.";
+}
+
 export default function AuthConfirmPage() {
   return (
     <Suspense fallback={null}>
@@ -39,6 +47,24 @@ function AuthConfirmInner() {
 
     async function run() {
       const code = searchParams.get("code");
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
+
+      // token_hash links (see docs/email-templates) work in any browser, including when a mail
+      // app opens the link somewhere else than where the login was requested.
+      if (tokenHash && type) {
+        const otpType = type === "recovery" ? "recovery" : type === "email_change" ? "email_change" : type === "invite" ? "invite" : "email";
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: otpType });
+        if (error) {
+          setError(friendly(error.message));
+          return;
+        }
+        if (otpType === "recovery") {
+          recovering.current = true;
+          router.replace("/reset-password");
+          return;
+        }
+      }
 
       // Magic-link and some signup-confirmation emails put the session in the URL's
       // hash fragment (#access_token=...) instead of a ?code= query param — the hash
@@ -49,7 +75,7 @@ function AuthConfirmInner() {
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          setError(error.message);
+          setError(friendly(error.message));
           return;
         }
       }

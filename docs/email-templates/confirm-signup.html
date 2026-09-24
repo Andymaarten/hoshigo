@@ -34,7 +34,7 @@
             <tr>
               <td style="padding-bottom:16px;">
                 <a
-                  href="{{ .ConfirmationURL }}"
+                  href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email"
                   style="display:inline-block; padding:14px 28px; background-color:#d8321f; color:#efe7d8; font-family:Helvetica,Arial,sans-serif; font-size:16px; font-weight:700; text-decoration:none;"
                   >Yes, it&rsquo;s me</a
                 >
@@ -42,7 +42,7 @@
             </tr>
             <tr>
               <td style="font-family:Helvetica,Arial,sans-serif; font-size:13px; line-height:1.5; color:#5b574f; padding-bottom:28px;">
-                The link works once and expires after an hour. If the button doesn&rsquo;t work, copy this into your browser:<br /><a href="{{ .ConfirmationURL }}" style="color:#5b574f; word-break:break-all;">{{ .ConfirmationURL }}</a>
+                The link works once and expires after an hour. If the button doesn&rsquo;t work, copy this into your browser:<br /><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="color:#5b574f; word-break:break-all;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email</a>
               </td>
             </tr>
             <tr>

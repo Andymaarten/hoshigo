@@ -25,9 +25,17 @@ export default async function HomePage({
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [
+    {
+      data: { user },
+    },
+    { data: featured },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    // profiles.homepage_order (1 to 10) is set by hand in Supabase to pick who the red hoshigos show.
+    supabase.from("profiles").select("handle").not("homepage_order", "is", null).order("homepage_order").limit(10),
+  ]);
+  const heroLinks = featured?.length ? featured.map((p) => `/${p.handle}`) : HOSHIGO_LINKS;
 
   if (user) {
     const { data: profile } = await supabase.from("profiles").select("handle").eq("id", user.id).single();
@@ -75,17 +83,17 @@ export default async function HomePage({
         </p>
       </section>
 
-      <p className="hero-prompt">Press one of the hoshigos below to get inspired.</p>
+      <p className="hero-prompt">Press one of the red hoshigos below to get inspired.</p>
 
-      <HeroField />
+      <HeroField links={heroLinks} />
 
       <SiteFooter />
     </div>
   );
 }
 
-// Where the red hoshigos lead, in order of appearance. Cycled if a layout has
-// more circles than entries.
+// Fallback for where the red hoshigos lead when no profile has a homepage_order yet.
+// Cycled if a layout has more circles than entries.
 const HOSHIGO_LINKS = ["/testuser", "/andymaarten", "/testuser", "/testuser", "/andymaarten", "/testuser"];
 
 const BAR_SIZES: [number, number][] = [
@@ -119,7 +127,7 @@ function wobble(seed: number, px: number, deg: number) {
   return { "--y": `${y}px`, "--r": `${r}deg` } as React.CSSProperties;
 }
 
-function HeroField() {
+function HeroField({ links }: { links: string[] }) {
   return (
     <div className="hero-field">
       {HERO_LAYOUTS.map((layout, li) => {
@@ -137,7 +145,7 @@ function HeroField() {
                   if (v === prevCircle) v = (v + 1) % CIRCLE_SIZES.length;
                   prevCircle = v;
                   const [w, h] = CIRCLE_SIZES[v];
-                  const href = HOSHIGO_LINKS[circleCount++ % HOSHIGO_LINKS.length];
+                  const href = links[circleCount++ % links.length];
                   items.push(
                     <Link key={`c${b}`} href={href} className="hero-circle" style={wobble(seed + 3, 5, 4)}>
                       <img src={`/hero/redhoshigos_${v + 1}.png`} width={w} height={h} alt="" loading="lazy" decoding="async" />
