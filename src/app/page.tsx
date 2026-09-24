@@ -97,11 +97,12 @@ const CIRCLE_SIZES: [number, number][] = [[300, 310], [300, 315], [300, 313], [3
 
 // Separate layouts per width instead of shrinking one: the drawing keeps its
 // stroke size and simply loses bars. Numbers are the bar index a circle sits
-// before, staggered so no two rows line up.
+// before. A circle spans about 3 bar slots, so circles in adjacent rows sit at
+// least 4 slots apart and never overlap.
 const HERO_LAYOUTS: { name: string; bars: number; circles: number[][] }[] = [
-  { name: "wide", bars: 24, circles: [[4, 17], [8, 20], [2, 15]] },
-  { name: "mid", bars: 16, circles: [[3, 11], [7, 14], [1, 9]] },
-  { name: "narrow", bars: 8, circles: [[1], [5], [3]] },
+  { name: "wide", bars: 24, circles: [[4, 17], [8, 21], [2, 14]] },
+  { name: "mid", bars: 16, circles: [[3, 11], [7, 15], [2, 11]] },
+  { name: "narrow", bars: 8, circles: [[1], [6], [2]] },
 ];
 
 // Deterministic so server and client render the same drawing.
@@ -151,7 +152,7 @@ function HeroField() {
                 prevBar = v;
                 const [w, h] = BAR_SIZES[v];
                 items.push(
-                  <span key={`b${b}`} className="hero-bar" aria-hidden="true" style={wobble(seed, 6, 1.2)}>
+                  <span key={`b${b}`} className="hero-bar" aria-hidden="true" style={wobble(seed, 4, 1)}>
                     <img src={`/hero/bluelines_${v + 1}.png`} width={w} height={h} alt="" loading="lazy" decoding="async" />
                   </span>,
                 );

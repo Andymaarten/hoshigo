@@ -400,61 +400,67 @@ h1 {
 .hero-paper {
   display: none;
   flex-direction: column;
-  gap: clamp(18px, 3vw, 34px);
-  padding: clamp(22px, 4vw, 44px) clamp(14px, 3vw, 36px);
+  width: 100%;
+  margin: 0 auto;
+  padding: 18px;
+  container-type: inline-size;
   background-color: #e7dccb;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.28 0 0 0 0 0.18 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   border-radius: 2px;
 }
 
-.hero-narrow { display: flex; }
+/* --h is the circle diameter and bar height. Each bar slot is 0.36h (0.28h
+   stroke plus gap), each circle about 1.08h, so a row of B bars and C circles
+   is 0.36B + 1.08C heights wide. */
+.hero-narrow { display: flex; --slots: 3.96; }
+.hero-mid { --slots: 7.92; }
+.hero-wide { --slots: 10.8; }
 
 @media (min-width: 600px) {
   .hero-narrow { display: none; }
-  .hero-mid { display: flex; }
+  .hero-mid { display: flex; width: 88%; }
 }
 
 @media (min-width: 1000px) {
   .hero-mid { display: none; }
-  .hero-wide { display: flex; }
+  .hero-wide { display: flex; width: 79%; max-width: 1080px; }
 }
 
 .hero-row {
+  --h: calc(100cqi / var(--slots));
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  height: calc(var(--h) * 1.1);
+}
+
+.hero-row + .hero-row {
+  margin-top: calc(var(--h) * 0.13);
 }
 
 .hero-bar,
 .hero-circle {
   display: block;
-  min-width: 0;
+  flex: none;
   transform: translateY(var(--y)) rotate(var(--r));
 }
 
-.hero-bar {
-  flex: 1 1 0;
-}
-
 .hero-bar img {
-  width: 72%;
-  margin: 0 auto;
+  display: block;
+  width: calc(var(--h) * 0.28);
+  height: var(--h);
 }
 
 .hero-circle {
-  flex: 3.4 1 0;
   border-radius: 50%;
   cursor: pointer;
   transition: transform 0.25s ease;
 }
 
-.hero-bar img,
 .hero-circle img {
   display: block;
+  width: var(--h);
   height: auto;
-}
-
-.hero-circle img {
-  width: 100%;
 }
 
 .hero-circle:hover {
