@@ -7,7 +7,7 @@ function escapeHtml(s: string) {
 // Email addresses are only ever read here, server side, with the service role key; nothing a
 // logged in user can call returns another person's address.
 export async function notifyFriendRequest({ toId, fromName, fromHandle }: { toId: string; fromName: string; fromHandle: string }) {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const apiKey = process.env.RESEND_API_KEY?.replace(/\s+/g, "");
   const admin = adminClient();
   if (!apiKey || !admin) {
     console.warn("friend request email skipped: RESEND_API_KEY or SUPABASE_SERVICE_ROLE_KEY missing");

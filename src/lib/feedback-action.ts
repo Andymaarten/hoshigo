@@ -10,7 +10,7 @@ function escapeHtml(s: string) {
 }
 
 async function emailOwner(message: string, page: string, who: string): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const apiKey = process.env.RESEND_API_KEY?.replace(/\s+/g, "");
   const to = process.env.SIGNUP_NOTIFY_EMAIL?.trim();
   if (!apiKey || !to) return false;
   try {
@@ -59,7 +59,7 @@ async function recentFeedback(userId: string): Promise<number[] | null> {
 
 // Fallback cooldown that works without the table: a signed cookie holding when this user last sent.
 function sign(value: string) {
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.RESEND_API_KEY?.trim() || "hoshigo";
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY?.replace(/\s+/g, "") || process.env.RESEND_API_KEY?.replace(/\s+/g, "") || "hoshigo";
   return createHmac("sha256", secret).update(value).digest("hex").slice(0, 32);
 }
 

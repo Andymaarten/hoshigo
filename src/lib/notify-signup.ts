@@ -3,7 +3,7 @@ function escapeHtml(s: string) {
 }
 
 export async function notifyNewSignup({ handle, displayName, email }: { handle: string; displayName: string; email: string | undefined }) {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const apiKey = process.env.RESEND_API_KEY?.replace(/\s+/g, "");
   const to = process.env.SIGNUP_NOTIFY_EMAIL?.trim();
   if (!apiKey || !to) {
     console.warn("signup notify skipped: RESEND_API_KEY or SIGNUP_NOTIFY_EMAIL missing");
