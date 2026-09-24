@@ -41,13 +41,24 @@ const MB_HEADERS = { "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)", Accept: "
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
 
 async function fetchJson(url: string, init?: RequestInit) {
-  let res = await fetch(url, { ...init, signal: AbortSignal.timeout(6000) });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, signal: AbortSignal.timeout(6000) });
+  } catch (e) {
+    // Timeouts and network errors: the callers turn this into "no match", so say why here.
+    console.error(`[works] provider ${new URL(url).hostname} unreachable (${e instanceof Error ? e.name : "error"}) for ${url.slice(0, 160)}`);
+    throw e;
+  }
   // MusicBrainz allows one request per second per IP and answers 503 above that.
   if (res.status === 503 && url.includes("musicbrainz.org")) {
     await new Promise((r) => setTimeout(r, 1200));
     res = await fetch(url, { ...init, signal: AbortSignal.timeout(6000) });
   }
-  if (!res.ok) return null;
+  if (!res.ok) {
+    // 404 is an ordinary "not in this catalog"; anything else means the provider failed.
+    if (res.status !== 404) console.error(`[works] provider ${new URL(url).hostname} answered ${res.status} for ${url.slice(0, 160)}`);
+    return null;
+  }
   return res.json();
 }
 

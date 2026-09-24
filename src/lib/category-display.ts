@@ -12,6 +12,24 @@ export const SHAPE: Record<string, "tall" | "photo" | undefined> = {
 // Categories with a catalog to search. Must match SEARCHABLE_CATEGORIES in resolve-work.ts.
 export const SEARCHABLE = new Set(["films", "tv", "albums", "songs", "books", "podcasts", "places", "games"]);
 
+// Which catalog sources a work in each category may come from. An item may only link to a
+// work whose source fits its category (a book can't be linked to a café from OSM).
+export const CATEGORY_SOURCES: Record<string, string[]> = {
+  films: ["tmdb"],
+  tv: ["tmdb_tv"],
+  albums: ["musicbrainz"],
+  songs: ["musicbrainz"],
+  books: ["openlibrary"],
+  podcasts: ["itunes"],
+  places: ["nominatim"],
+  games: ["wikidata", "bgg", "igdb"],
+  videos: ["youtube"],
+};
+
+export function sourceFitsCategory(source: string | null | undefined, slug: string | null | undefined): boolean {
+  return !!source && !!slug && (CATEGORY_SOURCES[slug] ?? []).includes(source);
+}
+
 // One definitive cover comes from the catalog here, so no photo picker once matched.
 export const COVER_FROM_CATALOG = new Set(["albums", "books", "songs", "podcasts"]);
 

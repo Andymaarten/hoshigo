@@ -1,4 +1,5 @@
-import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 import type { ResolvedWork, WorkSource } from "./resolve-work";
 import { readPhotos } from "./read-link";
 
@@ -12,17 +13,12 @@ export function isWorkSource(s: unknown): s is WorkSource {
 // insert policy for logged in users): shared rows must hold catalog data, never whatever a
 // visitor posts. The service role key bypasses RLS; without it we fall back to the user's
 // own client, which works until that migration runs.
-let admin: SupabaseClient | null | undefined;
 let warned = false;
 function worksWriter(fallback: SupabaseClient): SupabaseClient {
-  if (admin === undefined) {
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.replace(/\s+/g, "");
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    admin = key && url ? createSupabaseClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }) : null;
-  }
+  const admin = adminClient();
   if (!admin && !warned) {
     warned = true;
-    console.warn("SUPABASE_SERVICE_ROLE_KEY is not set: works are written with the user's session (fails once the works migration has run).");
+    console.error("[works] SUPABASE_SERVICE_ROLE_KEY is not set: works are written with the user's session, which fails once the works migration has run.");
   }
   return admin ?? fallback;
 }
@@ -50,7 +46,9 @@ export async function withWebsitePhoto(w: ResolvedWork): Promise<ResolvedWork> {
 // (a translated book) only changes what their own item shows, not the shared work.
 export async function upsertWork(userClient: SupabaseClient, categoryId: number, w: ResolvedWork) {
   const db = worksWriter(userClient);
+  const tag = `${w.source}:${w.source_id} "${w.title}"`;
   const existing = await db.from("works").select("*").eq("source", w.source).eq("source_id", w.source_id).maybeSingle();
+  if (existing.error) console.error(`[works] lookup failed for ${tag}: ${existing.error.message}`);
   let row = existing.data;
   if (!row) {
     const inserted = await db
@@ -67,9 +65,12 @@ export async function upsertWork(userClient: SupabaseClient, categoryId: number,
       })
       .select("*")
       .single();
-    // Before docs/migrations/2026-09-24-kaito.sql the "wikidata" source isn't allowed yet;
-    // the item then simply saves without a catalog link.
-    if (inserted.error) return null;
+    // e.g. a source not yet allowed by works_source_check, or a bad service key: the item
+    // then saves without a catalog link, so say so loudly.
+    if (inserted.error) {
+      console.error(`[works] insert failed for ${tag} (category ${categoryId}): ${inserted.error.message}`);
+      return null;
+    }
     row = inserted.data;
   }
   if (!row) return null;
@@ -83,16 +84,19 @@ export async function upsertWork(userClient: SupabaseClient, categoryId: number,
   if (!row.year && w.year) fill.year = w.year;
   if (Object.keys(fill).length) {
     const { error } = await db.from("works").update(fill).eq("id", row.id);
-    if (!error) row = { ...row, ...fill };
+    if (error) console.error(`[works] filling ${Object.keys(fill).join(",")} failed for ${tag}: ${error.message}`);
+    else row = { ...row, ...fill };
   }
   if (w.website && !row.website) {
     const { error } = await db.from("works").update({ website: w.website }).eq("id", row.id);
-    if (!error) row = { ...row, website: w.website };
+    if (error) console.error(`[works] saving website failed for ${tag}: ${error.message}`);
+    else row = { ...row, website: w.website };
   }
   if ((w.place_type || w.city || w.country) && !row.place_type && !row.city) {
     const fields = { place_type: w.place_type ?? null, city: w.city ?? null, country: w.country ?? null };
     const { error } = await db.from("works").update(fields).eq("id", row.id);
-    if (!error) row = { ...row, ...fields };
+    if (error) console.error(`[works] saving place fields failed for ${tag}: ${error.message}`);
+    else row = { ...row, ...fields };
   }
   return row;
 }
