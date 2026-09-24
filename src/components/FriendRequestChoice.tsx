@@ -37,7 +37,7 @@ export default function FriendRequestChoice({ initialAuto, initialEmail = true }
           : "You approve each request on your Friends page."}
       </p>
       {!auto && (
-        <label className="check-row">
+        <label className="check-row" id="friend-emails" style={{ scrollMarginTop: 24 }}>
           <input type="checkbox" checked={email} onChange={(e) => setEmail(e.target.checked)} />
           Email me when I get a friend request
         </label>

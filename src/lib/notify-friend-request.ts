@@ -1,8 +1,6 @@
 import { adminClient } from "@/lib/supabase/admin";
 
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
+import { renderEmail } from "@/lib/email-layout";
 
 // Email addresses are only ever read here, server side, with the service role key; nothing a
 // logged in user can call returns another person's address.
@@ -31,7 +29,17 @@ export async function notifyFriendRequest({ toId, fromName, fromHandle }: { toId
       return;
     }
 
-    const name = escapeHtml(fromName);
+    const { html, text } = renderEmail({
+      preheader: `${fromName} would like to be able to see all your hoshigos.`,
+      heading: `Hello! ${fromName} wants to be your friend.`,
+      paragraphs: [
+        [{ strong: fromName }, ` (@${fromHandle}) would like to be able to see all your hoshigos. Friends see everything on each other’s page, not just the latest five.`],
+        "No rush. The request will wait.",
+      ],
+      button: { label: "Say yes or no", href: `${site}/friends` },
+      footer: "You get this because you turned on friend request emails.",
+      footerLink: { label: "Turn them off in your settings", href: `${site}/settings#friend-emails` },
+    });
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -39,12 +47,8 @@ export async function notifyFriendRequest({ toId, fromName, fromHandle }: { toId
         from: process.env.FRIENDS_EMAIL_FROM?.trim() || "hoshigo <onboarding@resend.dev>",
         to: [email],
         subject: `${fromName} wants to be your friend`,
-        html: `<p>Hello! <strong>${name}</strong> (@${escapeHtml(fromHandle)}) wants to be your friend.</p>
-<p>${name} would like to be able to see all your hoshigos. Friends see everything on each other&rsquo;s page, not just the latest five.</p>
-<p><a href="${site}/friends">Say yes or no on your Friends page</a></p>
-<p>No rush. The request will wait.</p>
-<p>hoshigo</p>
-<p style="color:#888;font-size:12px">You get this because you turned on friend request emails. You can turn them off in your settings.</p>`,
+        html,
+        text,
       }),
       signal: AbortSignal.timeout(5000),
     });

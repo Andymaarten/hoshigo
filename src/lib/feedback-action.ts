@@ -3,16 +3,19 @@
 import { createHmac } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { renderEmail } from "@/lib/email-layout";
 import { adminClient } from "@/lib/supabase/admin";
-
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
 
 async function emailOwner(message: string, page: string, who: string): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY?.replace(/\s+/g, "");
   const to = process.env.SIGNUP_NOTIFY_EMAIL?.trim();
   if (!apiKey || !to) return false;
+  const { html, text } = renderEmail({
+    preheader: message.slice(0, 120),
+    heading: `A note from ${who}`,
+    paragraphs: [message, `From: ${who}\nWritten on: ${page}`],
+    footer: "Sent from the feedback tab on hoshigo.",
+  });
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -21,7 +24,8 @@ async function emailOwner(message: string, page: string, who: string): Promise<b
         from: process.env.SIGNUP_NOTIFY_FROM?.trim() || "hoshigo <onboarding@resend.dev>",
         to: [to],
         subject: `A note from ${who}`,
-        html: `<p style="white-space:pre-wrap">${escapeHtml(message)}</p><p>From: ${escapeHtml(who)}<br>Written on: ${escapeHtml(page)}</p>`,
+        html,
+        text,
       }),
       signal: AbortSignal.timeout(5000),
     });
