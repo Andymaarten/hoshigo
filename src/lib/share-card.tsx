@@ -12,7 +12,7 @@ const PLACEHOLDER = "#e3dac9";
 const RULE = "rgba(29, 28, 26, 0.22)";
 
 const fontDir = join(process.cwd(), "assets/fonts");
-const fontsPromise = Promise.all([
+export const fontsPromise = Promise.all([
   readFile(join(fontDir, "Newsreader-Regular.ttf")),
   readFile(join(fontDir, "Newsreader-Italic.ttf")),
   readFile(join(fontDir, "SchibstedGrotesk-Bold.ttf")),
@@ -97,7 +97,7 @@ function fit(cover: Cover, maxW: number, maxH: number) {
   return { width: Math.round(cover.width * scale), height: Math.round(cover.height * scale) };
 }
 
-function Wordmark({ size }: { size: number }) {
+export function Wordmark({ size }: { size: number }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-end", fontFamily: "Newsreader", fontSize: size, lineHeight: 1, color: INK }}>
       <span>hosh</span>

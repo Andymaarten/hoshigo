@@ -5,6 +5,16 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import RecoveryHashRedirect from "@/components/RecoveryHashRedirect";
 import Wordmark from "@/components/Wordmark";
+import type { Metadata } from "next";
+
+const description = "A small place to keep the handful of things you would give five stars.";
+
+// Set here, not in the layout, so profiles and listings never inherit the homepage's og:url.
+export const metadata: Metadata = {
+  description,
+  openGraph: { type: "website", siteName: "hoshigo", title: "hoshigo", description, url: "https://www.hoshigo.cc" },
+  twitter: { card: "summary_large_image", title: "hoshigo", description },
+};
 
 export default async function HomePage({
   searchParams,
