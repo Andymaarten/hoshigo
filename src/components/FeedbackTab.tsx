@@ -22,7 +22,7 @@ export default function FeedbackTab() {
     return () => data.subscription.unsubscribe();
   }, []);
 
-  if (process.env.NEXT_PUBLIC_FEEDBACK_TAB?.trim() === "off" || !loggedIn) return null;
+  if (process.env.NEXT_PUBLIC_FEEDBACK_TAB?.trim() === "off" || !loggedIn || pathname === "/") return null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +57,10 @@ export default function FeedbackTab() {
           <p className="note">Thank you. It went straight to the person who makes hoshigo.</p>
         ) : (
           <form className="stack" onSubmit={submit}>
-            <p className="meta">Something unclear, broken, or missing? A line is plenty.</p>
+            <p className="meta">
+              Something unclear? Not working? Missing? Broken? We would love to hear from you in order to get this
+              right. If you want to send a screenshot, please send it to <a href="mailto:hi@hoshigo.cc">hi@hoshigo.cc</a>.
+            </p>
             <textarea
               className="feedback-text"
               value={message}

@@ -31,9 +31,9 @@ export async function notifyFriendRequest({ toId, fromName, fromHandle }: { toId
       body: JSON.stringify({
         from: process.env.FRIENDS_EMAIL_FROM?.trim() || "hoshigo <onboarding@resend.dev>",
         to: [email],
-        subject: `${fromName} would like to be friends`,
-        html: `<p>Hello,</p>
-<p><strong>${name}</strong> (@${escapeHtml(fromHandle)}) would like to be your friend on hoshigo. Friends see everything on each other&rsquo;s page, not just the latest five.</p>
+        subject: `${fromName} wants to be your friend`,
+        html: `<p>Hello! <strong>${name}</strong> (@${escapeHtml(fromHandle)}) wants to be your friend.</p>
+<p>${name} would like to be able to see all your hoshigos. Friends see everything on each other&rsquo;s page, not just the latest five.</p>
 <p><a href="${site}/friends">Say yes or no on your Friends page</a></p>
 <p>No rush. The request will wait.</p>
 <p>hoshigo</p>

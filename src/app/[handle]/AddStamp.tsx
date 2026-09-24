@@ -681,7 +681,7 @@ export default function AddStamp({
           <div className="choice-list">
             <button type="button" className="choice" onClick={() => setScreen("link")}>
               <strong>Paste a link</strong>
-              <span>From Spotify, IMDb, Goodreads, a shop, anywhere. We fill in the rest.</span>
+              <span>From Spotify, IMDb, Goodreads, a shop, anywhere. We will try to fill in the rest.</span>
             </button>
             <button
               type="button"
