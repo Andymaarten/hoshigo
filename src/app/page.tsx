@@ -55,7 +55,6 @@ export default async function HomePage({
             </p>
           </div>
           <SiteNav />
-
         </div>
       </header>
 
@@ -97,12 +96,12 @@ const CIRCLE_SIZES: [number, number][] = [[300, 310], [300, 315], [300, 313], [3
 
 // Separate layouts per width instead of shrinking one: the drawing keeps its
 // stroke size and simply loses bars. Numbers are the bar index a circle sits
-// before. A circle spans about 3 bar slots, so circles in adjacent rows sit at
-// least 4 slots apart and never overlap.
+// before. A circle spans about 4 bar slots, so circles in adjacent rows sit at
+// least 5 slots apart and never overlap.
 const HERO_LAYOUTS: { name: string; bars: number; circles: number[][] }[] = [
-  { name: "wide", bars: 24, circles: [[4, 17], [8, 21], [2, 14]] },
-  { name: "mid", bars: 16, circles: [[3, 11], [7, 15], [2, 11]] },
-  { name: "narrow", bars: 8, circles: [[1], [6], [2]] },
+  { name: "wide", bars: 26, circles: [[4, 17], [10, 23], [2, 16]] },
+  { name: "mid", bars: 16, circles: [[2, 10], [8, 16], [1, 10]] },
+  { name: "narrow", bars: 10, circles: [[0], [7], [1]] },
 ];
 
 // Deterministic so server and client render the same drawing.

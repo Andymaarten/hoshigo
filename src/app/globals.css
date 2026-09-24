@@ -409,12 +409,12 @@ h1 {
   border-radius: 2px;
 }
 
-/* --h is the circle diameter and bar height. Each bar slot is 0.36h (0.28h
-   stroke plus gap), each circle about 1.08h, so a row of B bars and C circles
-   is 0.36B + 1.08C heights wide. */
-.hero-narrow { display: flex; --slots: 3.96; }
-.hero-mid { --slots: 7.92; }
-.hero-wide { --slots: 10.8; }
+/* --h is the circle diameter and bar height. Bars keep their painted shape
+   (about 0.14h wide) plus an equal gap, so a bar slot is 0.27h and a circle
+   with its margins 1.13h; a row of B bars and C circles is 0.27B + 1.13C. */
+.hero-narrow { display: flex; --slots: 3.83; }
+.hero-mid { --slots: 6.58; }
+.hero-wide { --slots: 9.28; }
 
 @media (min-width: 600px) {
   .hero-narrow { display: none; }
@@ -447,8 +447,8 @@ h1 {
 
 .hero-bar img {
   display: block;
-  width: calc(var(--h) * 0.28);
-  height: var(--h);
+  width: auto;
+  height: calc(var(--h) * 1.03);
 }
 
 .hero-circle {
