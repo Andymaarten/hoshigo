@@ -19,6 +19,7 @@ type Offset = { x: number; y: number };
 const pileOffsets = () => PILE.map((p) => ({ x: p.dx, y: p.dy }));
 
 export default function HumanCheck({ onDone, onCancel }: { onDone: (token: string) => void; onCancel: () => void }) {
+  const passToken = useRef<string | null>(null);
   const [start, setStart] = useState<string | null>(null);
   const [slotOf, setSlotOf] = useState<(number | null)[]>(() => Array(COUNT).fill(null));
   const [offsets, setOffsets] = useState<Offset[]>(pileOffsets);
@@ -105,9 +106,8 @@ export default function HumanCheck({ onDone, onCancel }: { onDone: (token: strin
         attempt,
       });
       if (result.token) {
+        passToken.current = result.token;
         setStatus("done");
-        const token = result.token;
-        window.setTimeout(() => onDone(token), 1600);
       } else {
         setStatus("retry");
       }
@@ -273,7 +273,9 @@ export default function HumanCheck({ onDone, onCancel }: { onDone: (token: strin
           ) : status === "checking" ? (
             "Checking…"
           ) : status === "done" ? (
-            "One moment…"
+            <button type="button" className="cta hc-continue" autoFocus onClick={() => passToken.current && onDone(passToken.current)}>
+              Continue to hoshigo
+            </button>
           ) : (
             `${placedCount} of 5 in place`
           )}

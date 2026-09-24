@@ -2344,3 +2344,8 @@ button.share-link:disabled {
   .hc-circle img,
   .hc-slot { transition: none; }
 }
+
+.hc-continue {
+  border: none;
+  margin-top: 4px;
+}
