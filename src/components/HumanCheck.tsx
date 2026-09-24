@@ -24,15 +24,18 @@ export default function HumanCheck({ onDone, onCancel }: { onDone: (token: strin
   const [offsets, setOffsets] = useState<Offset[]>(pileOffsets);
   const [dragging, setDragging] = useState<number | null>(null);
   const [landed, setLanded] = useState<number | null>(null);
-  const [status, setStatus] = useState<"playing" | "checking" | "done" | "retry">("playing");
+  const [status, setStatus] = useState<"playing" | "checking" | "done" | "retry" | "offline">("playing");
+  const [attempt, setAttempt] = useState(1);
 
   const slotRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const circleRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const drag = useRef<{ i: number; px: number; py: number; base: Offset; path: Offset[]; id: number } | null>(null);
-  const signals = useRef({ moves: 0, curved: 0, keyboard: false });
+  const signals = useRef({ moves: 0, curved: 0, keyboard: false, touch: false });
 
   useEffect(() => {
-    startHumanCheck().then(setStart);
+    startHumanCheck()
+      .then(setStart)
+      .catch(() => setStart(null));
     circleRefs.current[0]?.focus();
   }, []);
 
@@ -89,33 +92,48 @@ export default function HumanCheck({ onDone, onCancel }: { onDone: (token: strin
 
   const freeSlots = () => [...Array(COUNT).keys()].filter((s) => !slotOf.includes(s));
 
+  // Every outcome ends in a visible state; nothing here may leave the tray hanging.
   const complete = async () => {
-    if (!start) return;
     setStatus("checking");
-    const token = await finishHumanCheck(start, {
-      mode: signals.current.keyboard ? "keyboard" : "pointer",
-      placed: COUNT,
-      moves: signals.current.moves,
-      curved: signals.current.curved,
-    });
-    if (token) {
-      setStatus("done");
-      window.setTimeout(() => onDone(token), 1600);
-    } else {
-      setStatus("retry");
+    try {
+      const s = start ?? (await startHumanCheck());
+      const result = await finishHumanCheck(s, {
+        mode: signals.current.keyboard ? "keyboard" : signals.current.touch ? "touch" : "pointer",
+        placed: COUNT,
+        moves: signals.current.moves,
+        curved: signals.current.curved,
+        attempt,
+      });
+      if (result.token) {
+        setStatus("done");
+        const token = result.token;
+        window.setTimeout(() => onDone(token), 1600);
+      } else {
+        setStatus("retry");
+      }
+    } catch {
+      setStatus("offline");
     }
   };
 
   const reset = async () => {
-    signals.current = { moves: 0, curved: 0, keyboard: false };
+    signals.current = { moves: 0, curved: 0, keyboard: false, touch: false };
+    setAttempt((a) => a + 1);
     setSlotOf(Array(COUNT).fill(null));
     setOffsets(pileOffsets());
+    setDragging(null);
+    drag.current = null;
     setStatus("playing");
-    setStart(await startHumanCheck());
+    try {
+      setStart(await startHumanCheck());
+    } catch {
+      setStart(null);
+    }
   };
 
   const onPointerDown = (i: number) => (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (slotOf[i] !== null || status !== "playing") return;
+    if (slotOf[i] !== null || status !== "playing" || drag.current) return;
+    if (e.pointerType === "touch" || e.pointerType === "pen") signals.current.touch = true;
     e.preventDefault();
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -129,9 +147,21 @@ export default function HumanCheck({ onDone, onCancel }: { onDone: (token: strin
   const onPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
     const d = drag.current;
     if (!d || d.id !== e.pointerId) return;
-    signals.current.moves++;
+    // iOS batches touch moves; count the ones folded into this event too
+    signals.current.moves += e.nativeEvent.getCoalescedEvents?.().length || 1;
     d.path.push({ x: e.clientX, y: e.clientY });
     setOffsets((prev) => prev.map((o, j) => (j === d.i ? { x: d.base.x + e.clientX - d.px, y: d.base.y + e.clientY - d.py } : o)));
+  };
+
+  const release = (i: number) => setOffsets((prev) => prev.map((o, j) => (j === i ? pileOffsets()[j] : o)));
+
+  // Cancelled or lost drags float home instead of staying stuck mid air.
+  const onPointerCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    drag.current = null;
+    setDragging(null);
+    release(d.i);
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -156,7 +186,7 @@ export default function HumanCheck({ onDone, onCancel }: { onDone: (token: strin
       }
     }
     if (best !== null) place(d.i, best);
-    else setOffsets((prev) => prev.map((o, j) => (j === d.i ? pileOffsets()[j] : o)));
+    else release(d.i);
   };
 
   // Keyboard and screen reader route: Enter or Space drops it in the next free slot.
@@ -220,7 +250,8 @@ export default function HumanCheck({ onDone, onCancel }: { onDone: (token: strin
               onPointerDown={onPointerDown(i)}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
+              onPointerCancel={onPointerCancel}
+              onLostPointerCapture={onPointerCancel}
               onClick={onClick(i)}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -230,13 +261,17 @@ export default function HumanCheck({ onDone, onCancel }: { onDone: (token: strin
         </div>
 
         <p className="hc-foot" aria-live="polite">
-          {status === "retry" ? (
+          {status === "retry" || status === "offline" ? (
             <>
-              That went a little too fast for us.{" "}
+              {status === "offline"
+                ? "We couldn't reach hoshigo just now."
+                : "That went a little quick for us to be sure."}{" "}
               <button type="button" className="link-btn" onClick={reset}>
-                Try once more
+                Try again
               </button>
             </>
+          ) : status === "checking" ? (
+            "Checking…"
           ) : status === "done" ? (
             "One moment…"
           ) : (
