@@ -31,12 +31,13 @@ export async function notifyFriendRequest({ toId, fromName, fromHandle }: { toId
       body: JSON.stringify({
         from: process.env.FRIENDS_EMAIL_FROM?.trim() || "hoshigo <onboarding@resend.dev>",
         to: [email],
-        subject: `${fromName} wants to be friends on hoshigo`,
-        html: `<p>Hi,</p>
-<p><strong>${name}</strong> (@${escapeHtml(fromHandle)}) would like to be your friend on hoshigo. Friends can see everything on each other's page.</p>
+        subject: `${fromName} would like to be friends`,
+        html: `<p>Hello,</p>
+<p><strong>${name}</strong> (@${escapeHtml(fromHandle)}) would like to be your friend on hoshigo. Friends see everything on each other&rsquo;s page, not just the latest five.</p>
 <p><a href="${site}/friends">Say yes or no on your Friends page</a></p>
-<p>Warmly,<br>hoshigo</p>
-<p style="color:#888;font-size:12px">You get this because you asked for friend request emails. You can turn them off in your settings.</p>`,
+<p>No rush. The request will wait.</p>
+<p>hoshigo</p>
+<p style="color:#888;font-size:12px">You get this because you turned on friend request emails. You can turn them off in your settings.</p>`,
       }),
       signal: AbortSignal.timeout(5000),
     });

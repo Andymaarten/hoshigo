@@ -19,8 +19,8 @@ async function emailOwner(message: string, page: string, who: string): Promise<b
       body: JSON.stringify({
         from: process.env.SIGNUP_NOTIFY_FROM?.trim() || "hoshigo <onboarding@resend.dev>",
         to: [to],
-        subject: `hoshigo feedback from ${who}`,
-        html: `<p style="white-space:pre-wrap">${escapeHtml(message)}</p><p>From: ${escapeHtml(who)}<br>Page: ${escapeHtml(page)}</p>`,
+        subject: `A note from ${who}`,
+        html: `<p style="white-space:pre-wrap">${escapeHtml(message)}</p><p>From: ${escapeHtml(who)}<br>Written on: ${escapeHtml(page)}</p>`,
       }),
       signal: AbortSignal.timeout(5000),
     });
