@@ -391,98 +391,89 @@ h1 {
 }
 
 .hero-field {
-  position: relative;
-  width: 100%;
   margin-top: 18px;
   padding-bottom: 28px;
-  overflow: hidden;
-  --cell: clamp(40px, 5vw, 62px);
-  --gap: clamp(16px, 2.4vw, 28px);
-  --step: calc(var(--cell) + var(--gap));
 }
 
-.hero-grid {
-  display: flex;
+/* A sheet of painting paper laid on the page: a touch darker than the ground,
+   with a barely there grain. */
+.hero-paper {
+  display: none;
   flex-direction: column;
-  gap: var(--gap);
-  margin-left: calc(var(--step) * -0.42);
+  width: 100%;
+  margin: 0 auto;
+  padding: 18px;
+  container-type: inline-size;
+  background-color: #e7dccb;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.28 0 0 0 0 0.18 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  border-radius: 2px;
+}
+
+/* --h is the circle diameter and bar height. Bars keep their painted shape
+   (about 0.14h wide) plus an equal gap, so a bar slot is 0.27h and a circle
+   with its margins 1.13h; a row of B bars and C circles is 0.27B + 1.13C. */
+.hero-narrow { display: flex; --slots: 3.83; }
+.hero-mid { --slots: 6.58; }
+.hero-wide { --slots: 9.28; }
+
+@media (min-width: 600px) {
+  .hero-narrow { display: none; }
+  .hero-mid { display: flex; width: 88%; }
+}
+
+@media (min-width: 1000px) {
+  .hero-mid { display: none; }
+  .hero-wide { display: flex; width: 79%; max-width: 1080px; }
 }
 
 .hero-row {
+  --h: calc(100cqi / var(--slots));
   display: flex;
-  gap: var(--gap);
-  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: calc(var(--h) * 1.1);
 }
 
-.hero-row-offset {
-  margin-left: calc(var(--step) * 0.5);
+.hero-row + .hero-row {
+  margin-top: calc(var(--h) * 0.13);
 }
 
-.hero-dot {
-  position: relative;
+.hero-bar,
+.hero-circle {
   display: block;
   flex: none;
-  width: var(--cell);
-  height: var(--cell);
-  border-radius: 50%;
-  text-decoration: none;
-  transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1);
+  transform: translateY(var(--y)) rotate(var(--r));
 }
 
-.hero-disc {
-  position: relative;
+.hero-bar img {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: calc(var(--h) * 1.03);
+}
+
+.hero-circle {
   border-radius: 50%;
-  overflow: hidden;
-  background: var(--accent);
-  box-shadow: 0 2px 6px -2px rgba(29, 28, 26, 0.28);
-  transition: box-shadow 0.18s ease, background 0.18s ease;
+  cursor: pointer;
+  transition: transform 0.25s ease;
 }
 
-.hero-photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transform: scale(1.06);
-  transition: opacity 0.26s ease, transform 0.4s ease;
+.hero-circle img {
+  display: block;
+  width: var(--h);
+  height: auto;
 }
 
-/* Scoped to the <a> elements specifically — the grey noise dots are plain
-   <span>s, not links, and shouldn't react to hover/focus/click at all. */
-a.hero-dot:hover {
-  transform: scale(1.12);
-  z-index: 2;
+.hero-circle:hover {
+  transform: translateY(calc(var(--y) - 3px)) rotate(var(--r)) scale(1.03);
 }
 
-a.hero-dot:focus-visible {
-  z-index: 2;
+.hero-circle:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
 }
 
-a.hero-dot:hover .hero-disc,
-a.hero-dot:focus-visible .hero-disc {
-  box-shadow: 0 10px 22px -8px rgba(29, 28, 26, 0.45);
-}
-
-a.hero-dot:hover .hero-photo,
-a.hero-dot:focus-visible .hero-photo {
-  opacity: 1;
-  transform: scale(1);
-}
-
-a.hero-dot:active {
-  transform: scale(0.98);
-}
-
-/* The plain grey stamps aren't links — they're background noise the few real
-   (red, clickable) ones stand out against. */
-.hero-dot-noise {
-  background: var(--muted);
-  opacity: 0.22;
+@media (prefers-reduced-motion: reduce) {
+  .hero-circle { transition: none; }
 }
 
 /* The sheet itself never scrolls; .sheet-scroll inside it does. That keeps the close
