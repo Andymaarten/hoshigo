@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeUrl } from "@/lib/normalize-url";
+import { isWorkSource } from "@/lib/works";
 import { placeLine } from "@/lib/place-fields";
 
 async function requireUser() {
@@ -70,7 +71,10 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
     const { data: work } = await supabase.from("works").select("id").eq("id", workId).maybeSingle();
     linkedWork = !!work;
   }
-  if (!linkedWork && !rawUrl) return "Add a link so visitors can find it. Only things found in a catalog can go without one.";
+  // A pick from a catalog search counts too, even when saving it to our works table failed
+  // (e.g. a source the database doesn't accept yet): the dialog then shows the link as optional.
+  const pickedFromCatalog = isWorkSource(String(formData.get("catalog_pick") || ""));
+  if (!linkedWork && !pickedFromCatalog && !rawUrl) return "Add a link so visitors can find it. Only things found in a catalog can go without one.";
 
   // No link of their own, but the catalog knows the thing's website (a place from OSM):
   // use that. A link the person gave always wins. The website column only exists after
