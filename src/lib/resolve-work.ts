@@ -6,7 +6,7 @@
 
 import { claimIds, claimString, claimYear, commonsImage, getEntities, itemByStatement, label, searchItems, type WdEntity } from "./wikidata";
 
-export type WorkSource = "tmdb" | "tmdb_tv" | "musicbrainz" | "openlibrary" | "itunes" | "igdb" | "youtube" | "nominatim" | "wikidata";
+export type WorkSource = "tmdb" | "tmdb_tv" | "musicbrainz" | "openlibrary" | "itunes" | "igdb" | "youtube" | "nominatim" | "wikidata" | "bgg";
 
 export type ResolvedWork = {
   source: WorkSource;
@@ -33,6 +33,8 @@ export type ResolvedWork = {
   place_type?: string | null;
   city?: string | null;
   country?: string | null;
+  // Games: the BoardGameGeek id (from Wikidata P2339 or BGG itself), to merge the two lists.
+  bgg_id?: string | null;
 };
 
 const MB_HEADERS = { "User-Agent": "hoshigo/1.0 (https://hoshigo.cc)", Accept: "application/json" };
@@ -808,7 +810,86 @@ function gameToWork(e: WdEntity, classText: string, names: Record<string, string
     match_confidence: confidence,
     // "Board game" or the platforms, which is what tells same-named games apart.
     detail: board ? ["Board game", year ? String(year) : null].filter(Boolean).join(" · ") : platforms.length ? platforms.join(", ") : "Video game",
+    bgg_id: claimString(e, "P2339"),
   };
+}
+
+// ---------- BoardGameGeek (XML API2, needs BGG_TOKEN) ----------
+//
+// Since mid 2025 every XML API2 call needs "Authorization: Bearer <token>" from an
+// application registered on BGG (owner steps in docs/sources.md). Without BGG_TOKEN these
+// return nothing and games come from Wikidata only. BGG has the small board games
+// Wikidata lacks ("Monsters of Loch Lomond").
+
+async function bgg(path: string): Promise<string | null> {
+  const token = process.env.BGG_TOKEN?.trim();
+  if (!token) return null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch(`https://boardgamegeek.com/xmlapi2/${path}`, {
+      headers: { Authorization: `Bearer ${token}`, "User-Agent": MB_HEADERS["User-Agent"] },
+      signal: AbortSignal.timeout(7000),
+    });
+    // 202 = BGG queued the request; asking again shortly after gets the answer.
+    if (res.status === 202) {
+      await new Promise((r) => setTimeout(r, 1500));
+      continue;
+    }
+    return res.ok ? res.text() : null;
+  }
+  return null;
+}
+
+function xmlDecode(s: string) {
+  return s
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+// thing?id=…: one <item> per game with names, year, designers, publishers and images.
+export function bggThings(xml: string): ResolvedWork[] {
+  const out: ResolvedWork[] = [];
+  for (const m of xml.matchAll(/<item\b[^>]*\btype="(boardgame|boardgameexpansion)"[^>]*\bid="(\d+)"[^>]*>([\s\S]*?)<\/item>/g)) {
+    const [, type, id, body] = m;
+    const name = body.match(/<name[^>]*type="primary"[^>]*value="([^"]*)"/)?.[1];
+    if (!name) continue;
+    const year = Number(body.match(/<yearpublished[^>]*value="(\d{3,4})"/)?.[1]) || null;
+    const people = (kind: string) => [...body.matchAll(new RegExp(`<link[^>]*type="${kind}"[^>]*value="([^"]*)"`, "g"))].map((x) => xmlDecode(x[1]));
+    const designer = people("boardgamedesigner").filter((n) => n !== "(Uncredited)")[0];
+    const publisher = people("boardgamepublisher").filter((n) => !/^\(/.test(n))[0];
+    const image = body.match(/<image>\s*([^<\s]+)\s*<\/image>/)?.[1] ?? body.match(/<thumbnail>\s*([^<\s]+)\s*<\/thumbnail>/)?.[1] ?? null;
+    out.push({
+      source: "bgg",
+      source_id: id,
+      title: xmlDecode(name),
+      by: designer ?? publisher ?? null,
+      year,
+      image_url: image ? xmlDecode(image) : null,
+      match_confidence: "low",
+      detail: [type === "boardgameexpansion" ? "Board game expansion" : "Board game", year ? String(year) : null, "BoardGameGeek"].filter(Boolean).join(" · "),
+      bgg_id: id,
+    });
+  }
+  return out;
+}
+
+async function bggThingsById(ids: string[]): Promise<ResolvedWork[]> {
+  if (!ids.length) return [];
+  const xml = await bgg(`thing?id=${ids.slice(0, 20).join(",")}&stats=1`);
+  if (!xml) return [];
+  const byId = new Map(bggThings(xml).map((w) => [w.source_id, w]));
+  return ids.map((id) => byId.get(id)).filter((w): w is ResolvedWork => !!w);
+}
+
+async function searchBgg(query: string): Promise<ResolvedWork[]> {
+  const xml = await bgg(`search?type=boardgame&query=${encodeURIComponent(query)}`);
+  if (!xml) return [];
+  const ids = [...xml.matchAll(/<item\b[^>]*\bid="(\d+)"/g)].map((m) => m[1]);
+  return bggThingsById([...new Set(ids)].slice(0, 12));
 }
 
 async function gamesFromIds(ids: string[], confidence: "high" | "low"): Promise<ResolvedWork[]> {
@@ -824,9 +905,22 @@ async function gamesFromIds(ids: string[], confidence: "high" | "low"): Promise<
   return games.map(({ e, classText }) => gameToWork(e, classText, names, confidence));
 }
 
+// Wikidata (video and board games) plus BoardGameGeek when a token is set. A BGG hit that
+// Wikidata already has (its item carries the same BGG id, P2339) is dropped; the rest is
+// ordered by how close the title is to the query, so a small BGG-only game still surfaces.
 export async function searchGames(query: string): Promise<ResolvedWork[]> {
-  const ids = await searchItems(query, ["en", "nl", "de", "fr"], 15);
-  return (await gamesFromIds(ids.slice(0, 25), "low")).slice(0, 10);
+  const [wd, bggHits] = await Promise.all([
+    searchItems(query, ["en", "nl", "de", "fr"], 15).then((ids) => gamesFromIds(ids.slice(0, 25), "low")).catch(() => []),
+    searchBgg(query).catch(() => []),
+  ]);
+  const known = new Set(wd.map((w) => w.bgg_id).filter(Boolean));
+  const merged = [...wd, ...bggHits.filter((b) => !known.has(b.source_id))];
+  const score = (w: ResolvedWork) => similarity(query, w.title);
+  return merged
+    .map((w, i) => ({ w, i, s: score(w) }))
+    .sort((a, b) => (b.s >= 0.9) !== (a.s >= 0.9) ? (b.s >= 0.9 ? 1 : -1) : a.i - b.i)
+    .map((x) => x.w)
+    .slice(0, 12);
 }
 
 // Store and catalog titles carry platform noise: "ASTRO BOT - PS5 Games", "Portal 2 on Steam".
@@ -848,6 +942,11 @@ export async function resolveGame(title: string, sourceUrl?: string | null): Pro
     if (exactId) {
       const [exact] = await gamesFromIds([exactId], "high");
       if (exact) return exact;
+    }
+    // Not on Wikidata (smaller board games): BoardGameGeek itself, when a token is set.
+    if (bgg) {
+      const [thing] = await bggThingsById([bgg]);
+      if (thing) return { ...thing, match_confidence: "high" };
     }
     if (!title) return null;
     const clean = cleanGameTitle(title);
@@ -1045,6 +1144,11 @@ export async function verifyWork(source: WorkSource, sourceId: string): Promise<
           headers: { "User-Agent": MB_HEADERS["User-Agent"] },
         });
         return found?.[0] ? placeToWork(found[0], "high") : null;
+      }
+      case "bgg": {
+        if (!/^\d+$/.test(id)) return null;
+        const [thing] = await bggThingsById([id]);
+        return thing ? { ...thing, match_confidence: "high" } : null;
       }
       case "wikidata": {
         if (!/^Q\d+$/.test(id)) return null;

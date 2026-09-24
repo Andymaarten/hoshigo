@@ -50,6 +50,7 @@ export const SOURCE_NAME: Record<string, string> = {
   youtube: "YouTube",
   nominatim: "OpenStreetMap",
   wikidata: "Wikidata",
+  bgg: "BoardGameGeek",
 };
 
 // Grouped by how you spend time with them: reading, watching, listening, then the rest.
