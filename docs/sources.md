@@ -686,6 +686,19 @@ regel. De gecombineerde `by` wordt ook nog geschreven, zodat delen, "Add to my h
 de app vóór de migratie blijven werken. Stad: Londense boroughs → "London", Tokiose wijken
 (JP-13) → "Tokyo".
 
+### Ronde 8 (2026-09-24): alleen de server schrijft `works`
+
+`works` is gedeeld: de eerste rij voor een (source, source_id) wordt door iedereen
+hergebruikt. Daarom schrijft alleen de server die rijen, met de service role key
+(`worksWriter()` in `src/lib/works.ts`), en de insert-policy voor ingelogde gebruikers
+verdwijnt (`docs/migrations/2026-09-24-kaito-works.sql`). Een keuze uit de zoeklijst
+neemt van de browser alleen source + id over; `verifyWork()` zoekt dat id opnieuw op bij
+de catalogus zelf (TMDB, Open Library, MusicBrainz, iTunes, OSM lookup, Wikidata,
+YouTube), en alleen dat antwoord komt in `works`. Lege velden van een bestaande rij
+(foto, maker, jaar, website, type/stad) worden aangevuld; bestaande waarden worden nooit
+overschreven. Zonder service key valt de server terug op de sessie van de gebruiker
+(met een waarschuwing in de log); dat werkt tot de migratie draait.
+
 ## Uitbreiden
 
 Nieuwe bron toevoegen aan de categorie-herkenning: `DOMAIN_RULES` / `ruleFromUrl()` in

@@ -964,3 +964,98 @@ export async function resolveWork(
       return null;
   }
 }
+
+// ---------- verify a picked result ----------
+
+type MbArtistCredit = { name: string }[];
+
+// The search list is sent to the browser and the pick comes back from it, so nothing in that
+// candidate can be trusted for the shared `works` row. This looks the id up again in the
+// catalog itself and builds the row from that answer only. Returns null when the id doesn't
+// exist (or the catalog is unreachable): the item then saves without a catalog link.
+export async function verifyWork(source: WorkSource, sourceId: string): Promise<ResolvedWork | null> {
+  const id = sourceId.trim();
+  try {
+    switch (source) {
+      case "tmdb": {
+        if (!/^\d+$/.test(id)) return null;
+        const m: TmdbMovie | null = await tmdb(`/movie/${id}`);
+        return m?.id ? movieToWork(m, await tmdbDirector(m.id), "high") : null;
+      }
+      case "tmdb_tv": {
+        if (!/^\d+$/.test(id)) return null;
+        const s: TmdbShow | null = await tmdb(`/tv/${id}`);
+        return s?.id ? showToWork(s, await tmdbCreator(s.id), "high") : null;
+      }
+      case "openlibrary": {
+        if (!/^\/works\/OL\d+W$/.test(id)) return null;
+        const w = await fetchJson(`https://openlibrary.org${id}.json`);
+        if (!w?.title) return null;
+        const authorKey: string | undefined = w.authors?.[0]?.author?.key;
+        const author = authorKey && /^\/authors\/OL\d+A$/.test(authorKey) ? (await fetchJson(`https://openlibrary.org${authorKey}.json`))?.name : null;
+        const cover = (w.covers as number[] | undefined)?.find((c) => c > 0);
+        return {
+          source: "openlibrary",
+          source_id: id,
+          title: w.title,
+          by: author ?? null,
+          year: Number(String(w.first_publish_date ?? "").match(/\d{4}/)?.[0]) || null,
+          image_url: cover ? olCover(cover) : null,
+          match_confidence: "high",
+        };
+      }
+      case "musicbrainz": {
+        if (!/^[0-9a-f-]{36}$/.test(id)) return null;
+        const rg = await fetchJson(`https://musicbrainz.org/ws/2/release-group/${id}?inc=artist-credits&fmt=json`, { headers: MB_HEADERS });
+        if (rg?.id) {
+          return {
+            source: "musicbrainz",
+            source_id: id,
+            title: rg.title,
+            by: (rg["artist-credit"] as MbArtistCredit | undefined)?.[0]?.name ?? null,
+            year: yearOf(rg["first-release-date"]),
+            image_url: (await caaExists(id)) ? caaThumb(id) : null,
+            match_confidence: "high",
+          };
+        }
+        const rec = await fetchJson(`https://musicbrainz.org/ws/2/recording/${id}?inc=artist-credits+releases+release-groups&fmt=json`, { headers: MB_HEADERS });
+        if (!rec?.id) return null;
+        const rgId: string | undefined = rec.releases?.[0]?.["release-group"]?.id;
+        return {
+          source: "musicbrainz",
+          source_id: id,
+          title: rec.title,
+          by: (rec["artist-credit"] as MbArtistCredit | undefined)?.[0]?.name ?? null,
+          year: yearOf(rec["first-release-date"]),
+          image_url: rgId && (await caaExists(rgId)) ? caaThumb(rgId) : null,
+          match_confidence: "high",
+        };
+      }
+      case "itunes": {
+        if (!/^\d+$/.test(id)) return null;
+        const d = await fetchJson(`https://itunes.apple.com/lookup?id=${id}`);
+        const p: ItunesPodcast | undefined = d?.results?.find((r: { collectionId?: number }) => String(r.collectionId) === id);
+        return p ? podcastToWork(p, "high") : null;
+      }
+      case "nominatim": {
+        // Only the stable OSM ids (N/W/R + number) can be looked up again.
+        if (!/^[NWR]\d+$/.test(id)) return null;
+        const params = new URLSearchParams({ osm_ids: id, format: "jsonv2", addressdetails: "1", extratags: "1", namedetails: "1", "accept-language": "en" });
+        const found: NominatimResult[] | null = await fetchJson(`https://nominatim.openstreetmap.org/lookup?${params}`, {
+          headers: { "User-Agent": MB_HEADERS["User-Agent"] },
+        });
+        return found?.[0] ? placeToWork(found[0], "high") : null;
+      }
+      case "wikidata": {
+        if (!/^Q\d+$/.test(id)) return null;
+        return (await gamesFromIds([id], "high"))[0] ?? null;
+      }
+      case "youtube":
+        return /^[A-Za-z0-9_-]{6,20}$/.test(id) ? resolveVideo(`https://www.youtube.com/watch?v=${id}`) : null;
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}

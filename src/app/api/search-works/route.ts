@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { resolveSong, searchWorks, type ResolvedWork } from "@/lib/resolve-work";
+import { resolveSong, searchWorks, verifyWork, type ResolvedWork } from "@/lib/resolve-work";
 import { isWorkSource, upsertWork, withWebsitePhoto } from "@/lib/works";
 
 // GET: a list of catalog candidates for one category, for the "choose it yourself" search.
@@ -33,29 +33,15 @@ export async function POST(request: NextRequest) {
     const work = rec ? await upsertWork(supabase, categoryId, rec) : null;
     return NextResponse.json({ work_id: work?.id ?? null });
   }
-  if (!categoryId || !c || !isWorkSource(c.source) || !c.source_id || !c.title) {
+  if (!categoryId || !c || !isWorkSource(c.source) || !c.source_id) {
     return NextResponse.json({ error: "Bad candidate" }, { status: 400 });
   }
-  const str = (v: unknown, max = 500) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
-  const httpUrl = (v: unknown) => (typeof v === "string" && /^https:\/\//.test(v) ? v.slice(0, 1000) : null);
-  const anyHttpUrl = (v: unknown) => (typeof v === "string" && /^https?:\/\//.test(v) ? v.slice(0, 1000) : null);
-  const picked = await withWebsitePhoto({
-    source: c.source,
-    source_id: String(c.source_id).slice(0, 200),
-    title: str(c.title)!,
-    by: str(c.by),
-    year: Number.isInteger(c.year) ? (c.year as number) : null,
-    image_url: httpUrl(c.image_url),
-    work_title: str(c.work_title) ?? undefined,
-    work_image_url: c.work_image_url === undefined ? undefined : httpUrl(c.work_image_url),
-    website: c.source === "nominatim" ? anyHttpUrl(c.website) : null,
-    place_type: c.source === "nominatim" ? str(c.place_type, 60) : null,
-    city: c.source === "nominatim" ? str(c.city, 120) : null,
-    country: c.source === "nominatim" ? str(c.country, 80) : null,
-    // A person looked at the list and chose this exact entry.
-    match_confidence: "high",
-  });
+  // Only the source and id are taken from the browser; everything stored on the shared work
+  // comes from looking that id up in the catalog again (verifyWork).
+  const verified = await verifyWork(c.source, String(c.source_id).slice(0, 200));
+  if (!verified) return NextResponse.json({ work_id: null });
+  const picked = await withWebsitePhoto(verified);
   const work = await upsertWork(supabase, categoryId, picked);
-  // image_url: a photo found on the place's own website, for the dialog to show.
-  return NextResponse.json({ work_id: work?.id ?? null, image_url: picked.image_url, website: picked.website ?? null });
+  // image_url: the catalog cover, or a photo from the place's own website, for the dialog.
+  return NextResponse.json({ work_id: work?.id ?? null, image_url: picked.image_url, website: work?.website ?? picked.website ?? null });
 }
