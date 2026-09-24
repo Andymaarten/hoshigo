@@ -9,6 +9,7 @@ import Sheet from "@/components/Sheet";
 import CoverImage from "@/components/CoverImage";
 import PhotoFromPage from "@/components/PhotoFromPage";
 import { displayUrl, extractUrl, stripTracking } from "@/lib/link-input";
+import { linkHelp } from "@/lib/link-help";
 import { ADD_PREFILL_EVENT, type AddPrefill, type PinMap } from "@/lib/item-order";
 import { placeLine, splitPlaceLine } from "@/lib/place-fields";
 import { BY_LABEL, COVER_FROM_CATALOG, SEARCHABLE, SEARCH_HINT, SHAPE, SOURCE_NAME } from "@/lib/category-display";
@@ -117,6 +118,8 @@ export default function AddStamp({
   const [pin, setPin] = useState(false);
   // a matched place's own website: the link when the person gives none of their own
   const [catalogSite, setCatalogSite] = useState("");
+  // the catalog entry the person picked, even when saving it to our catalog failed
+  const [catalogPick, setCatalogPick] = useState("");
   const [lastFound, setLastFound] = useState<string[]>([]);
   const [landed, setLanded] = useState<{ label: string; slug: string } | null>(null);
   const submittedCategory = useRef<{ label: string; slug: string } | null>(null);
@@ -244,6 +247,7 @@ export default function AddStamp({
     setWorkId("");
     setMatchedSource(null);
     setCatalogSite("");
+    setCatalogPick("");
   }
 
   // Tries to tie what we read from a link to a catalog entry. Never touches the link.
@@ -465,6 +469,7 @@ export default function AddStamp({
     setWorkId(id);
     setMatchedSource(id ? r.source : null);
     setCatalogSite(id ? site : "");
+    setCatalogPick(r.source);
     const photo = r.image_url || sitePhoto;
     setDraft((d) => ({
       ...d,
@@ -501,10 +506,11 @@ export default function AddStamp({
   const visiblePhotos = photos.filter((p) => !brokenPhotos.includes(p));
   const coverLocked = !!workId && COVER_FROM_CATALOG.has(slug);
   const ownLinkClean = ownLink.trim() ? extractUrl(ownLink) : null;
-  // Owner rule: only a catalog match may go without a link.
-  const linkRequired = !workId;
+  // Owner rule: only a catalog match (or pick) may go without a link.
+  const fromCatalog = !!workId || !!catalogPick;
+  const linkRequired = !fromCatalog;
   // Hand-added items (no catalog match) start with the link; the rest is read from it.
-  const handFirst = path === "choose" && !workId;
+  const handFirst = path === "choose" && !fromCatalog;
   const gate = handFirst && !handLinkRead;
 
   // Same pipeline as a pasted link, but the person already chose the category, so detection
@@ -562,8 +568,21 @@ export default function AddStamp({
             ? `Visitors will go to ${displayUrl(finalUrl, 60)}`
             : linkRequired
               ? "Needed so visitors can find it. We'll fill in the rest from the page."
-              : "Without a link, your listing doesn't open anything."}
+              : "Add a link so your friends can easily visit it. You can also save without one."}
         </span>
+        {!ownLinkClean && linkHelp(slug, draft.title || query).length > 0 && (
+          <div className="link-help">
+            <span className="hint">Find it on</span>
+            <div className="sheet-row">
+              {linkHelp(slug, draft.title || query).map((l) => (
+                <a key={l.name} href={l.href} target="_blank" rel="noopener noreferrer" className="btn btn-small">
+                  {l.name}
+                </a>
+              ))}
+            </div>
+            <span className="hint">Try a page that has pictures, so we can pick one for you.</span>
+          </div>
+        )}
         {ownLink.trim() && !ownLinkClean && <span className="error">That doesn&apos;t look like a link yet.</span>}
         {ownLink && (
           <button type="button" className="text-btn" style={{ alignSelf: "flex-start" }} onClick={() => setOwnLink("")}>
@@ -850,6 +869,7 @@ export default function AddStamp({
             <input type="hidden" name="url" value={finalUrl} />
             <input type="hidden" name="source_label" value={finalUrl ? finalSourceLabel : ""} />
             <input type="hidden" name="work_id" value={workId} />
+            <input type="hidden" name="catalog_pick" value={catalogPick} />
             <input type="hidden" name="year" value={workId ? draft.year : ""} />
             <input type="hidden" name="image_url" value={draft.image} />
             <input type="hidden" name="add_path" value={path} />
@@ -1069,7 +1089,7 @@ export default function AddStamp({
                 </button>
               ) : (
                 <button type="submit" className="cta" disabled={pending || !draft.title.trim() || looking || (linkRequired && !finalUrl)}>
-                  {pending ? "Adding…" : "Add"}
+                  {pending ? "Adding…" : !finalUrl && !linkRequired ? "Save without link" : "Add"}
                 </button>
               )}
             </div>

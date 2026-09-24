@@ -1629,6 +1629,13 @@ footer .cta {
   text-underline-offset: 2px;
 }
 
+.link-help {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
 .input-clear {
   flex-shrink: 0;
 }
