@@ -208,3 +208,26 @@ Newest at the bottom. Each entry: date, what was said, what changed.
 - Paste path: "We fill in the rest" became "We will try to fill in the rest." Lesson: never overpromise what the machine does.
 - Friend request email, owner's direction: "Hello! Roelant wants to be your friend. Roelant would like to be able to see your hoshigos."
 - Homepage prompt: "Press one of the red hoshigos below to get inspired."
+
+## Launch message
+
+For Andreas and Saar to share with friends and family, mostly on WhatsApp
+(2026-09-25). A sign off with "&" is fine here; it's a chat message, not UI.
+
+**WhatsApp, friends and family**
+
+> Saar and I have spent the last few days on a small idea: hoshigo. A quiet place to keep the handful of things you'd give five stars, and to see what your friends would. Films, books, albums, essays, games, a café. Not a log of everything you ever watched or read, only the very best: a little portrait of you, readable in thirty seconds. No ads, no AI, no algorithm. Person to person.
+>
+> Would you help us? Have a look around, make your own page, and tell us honestly: does this have potential, or not? The "feedback?" tab on the site is the easiest way to reply.
+>
+> https://hoshigo.cc
+>
+> Andreas & Saar
+
+**Group chat**
+
+> Saar and I made something: hoshigo, a small place to keep only the things you'd give five stars. Not everything you watched, just the best. No ads, no AI, no algorithm. Could you look around, make a page, and tell us honestly if it has potential? The "feedback?" tab is easiest. https://hoshigo.cc
+
+**One line**
+
+> hoshigo: keep only what you'd give five stars, and see what your friends would. No ads, no AI, no algorithm. https://hoshigo.cc
