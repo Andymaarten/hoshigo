@@ -515,3 +515,14 @@ create policy "people add their own feedback" on public.feedback
 -- Safe to run more than once.
 alter table public.profiles add column if not exists homepage_order smallint
   check (homepage_order between 1 and 10);
+
+-- Owner review of catalog suggestions: rejected suggestions (docs/migrations/2026-09-25-backfill-rejections.sql).
+-- Server only (service role): RLS on, no user policies.
+create table if not exists public.backfill_rejections (
+  item_id uuid not null references public.items (id) on delete cascade,
+  work_source text not null,
+  work_source_id text not null,
+  created_at timestamptz not null default now(),
+  primary key (item_id, work_source, work_source_id)
+);
+alter table public.backfill_rejections enable row level security;

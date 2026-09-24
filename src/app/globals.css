@@ -2169,16 +2169,60 @@ button.share-link:disabled {
   width: 100%;
 
 /* Owner-only /admin/backfill */
-.backfill-table {
-  width: 100%;
-  border-collapse: collapse;
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
+  gap: 16px;
+  align-items: start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
   font-size: 14px;
 }
 
-.backfill-table th,
-.backfill-table td {
-  text-align: left;
-  vertical-align: top;
-  padding: 8px 6px;
-  border-bottom: 1px solid var(--rule);
+.review-row.done {
+  background: rgba(29, 28, 26, 0.04);
+}
+
+.review-row.dim {
+  opacity: 0.5;
+}
+
+.review-item,
+.review-match .txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.review-match {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.review-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 110px;
+}
+
+.kind.unsure {
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .review-row {
+    grid-template-columns: 1fr;
+  }
 }
