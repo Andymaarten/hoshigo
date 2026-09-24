@@ -184,7 +184,9 @@ export async function updateItem(handle: string, _prev: string | null, formData:
 
   if (error) return error.message;
 
-  await savePlaceFields(supabase, itemId, place);
+  // Only the places form sends these fields. Without them the item is (now) in another
+  // category, so the old type and location must go.
+  await savePlaceFields(supabase, itemId, place ?? { place_type: null, city: null, country: null });
 
   if (formData.get("pin_choice") === "1") {
     await supabase.rpc("pin_item", { p_item: itemId, p_pin: formData.get("pin") === "on" });

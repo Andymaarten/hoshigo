@@ -157,9 +157,9 @@ alter table public.works enable row level security;
 drop policy if exists "works are publicly readable" on public.works;
 create policy "works are publicly readable" on public.works
   for select using (true);
+-- Only the server writes works, with the service role key (src/lib/works.ts); no insert or
+-- update policy for users. See docs/migrations/2026-09-24-kaito-works.sql.
 drop policy if exists "any logged-in user can register a work" on public.works;
-create policy "any logged-in user can register a work" on public.works
-  for insert with check (auth.uid() is not null);
 
 drop policy if exists "profiles are publicly readable" on public.profiles;
 create policy "profiles are publicly readable" on public.profiles
