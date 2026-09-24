@@ -44,7 +44,7 @@ export default async function HomePage({
   }
 
   return (
-    <div className="page">
+    <div className="page page-home">
       <RecoveryHashRedirect />
       <header className="hero">
         <div className="masthead">

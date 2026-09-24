@@ -2157,3 +2157,14 @@ button.share-link:disabled {
 .sheet-in .kind {
   margin-bottom: -8px;
 }
+
+/* Homepage only: header, painting and footer share one width so their edges line up.
+   910px is the painting's own desktop width (79% of the regular 1152px content column). */
+.page.page-home {
+  max-width: calc(910px + 48px);
+}
+
+.page-home .hero-mid,
+.page-home .hero-wide {
+  width: 100%;
+}
