@@ -206,7 +206,7 @@ export default function HumanCheck({ onDone, onCancel }: { onDone: (token: strin
       <div className="hc" role="dialog" aria-modal="true" aria-labelledby="hc-title" aria-describedby="hc-help">
         <p id="hc-title" className="hc-title">
           {status === "done"
-            ? "You've just proven you're human, not a bot. Welcome!"
+            ? "Great! You're probably not an AI bot. Welcome to hoshigo :)"
             : "Your hoshigo holds only what you'd give five stars. Put the five in their place."}
         </p>
         <p id="hc-help" className="sr-only">
