@@ -1,6 +1,4 @@
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
+import { renderEmail } from "@/lib/email-layout";
 
 export async function notifyNewSignup({ handle, displayName, email }: { handle: string; displayName: string; email: string | undefined }) {
   const apiKey = process.env.RESEND_API_KEY?.replace(/\s+/g, "");
@@ -12,6 +10,13 @@ export async function notifyNewSignup({ handle, displayName, email }: { handle: 
 
   const site = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.hoshigo.cc";
   const name = displayName || handle;
+  const { html, text } = renderEmail({
+    preheader: `${name} just made a hoshigo page.`,
+    heading: "Someone new.",
+    paragraphs: [[{ strong: name }, " just made a hoshigo page."], `Page: ${site}/${handle}\nEmail: ${email ?? "unknown"}`],
+    button: { label: "Open their page", href: `${site}/${encodeURIComponent(handle)}` },
+    footer: "Sent to you because you make hoshigo.",
+  });
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -20,8 +25,8 @@ export async function notifyNewSignup({ handle, displayName, email }: { handle: 
         from: process.env.SIGNUP_NOTIFY_FROM?.trim() || "hoshigo <onboarding@resend.dev>",
         to: [to],
         subject: `Someone new: ${name} (@${handle})`,
-        html: `<p><strong>${escapeHtml(name)}</strong> just made a hoshigo page.</p>
-<p>Page: <a href="${site}/${encodeURIComponent(handle)}">${site}/${escapeHtml(handle)}</a><br>Email: ${escapeHtml(email ?? "unknown")}</p>`,
+        html,
+        text,
       }),
       signal: AbortSignal.timeout(5000),
     });
