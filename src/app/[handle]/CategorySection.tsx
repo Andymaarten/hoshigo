@@ -316,7 +316,7 @@ function LockTile({
   if (lock.kind === "login") {
     return (
       <Link href={`/login?next=${encodeURIComponent(`/${handle}`)}`} className="item nav-tile locked">
-        {inner("See more", "log in and add friend")}
+        {inner("See more", "log in to add as friend")}
       </Link>
     );
   }

@@ -18,7 +18,7 @@ const serif = Newsreader({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://hoshigo.cc"),
   title: "hoshigo",
-  description: "Five five stars per list.",
+  description: "A personal place for the handful of things you would give five stars.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

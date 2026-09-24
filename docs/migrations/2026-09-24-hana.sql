@@ -38,13 +38,17 @@ create or replace function public.item_in_public_window(p_id uuid)
 returns boolean
 language sql stable security definer set search_path = public
 as $$
-  select count(*) < 5 from public.items t join public.items i
-    on i.profile_id = t.profile_id and i.category_id = t.category_id
-   and (
-     (i.pinned and not t.pinned)
-     or (i.pinned = t.pinned and (i.created_at, i.id) > (t.created_at, t.id))
-   )
-  where t.id = p_id;
+  -- A private profile has no public window at all, so this can't be used to probe it.
+  select coalesce((select not p.is_private from public.items t join public.profiles p on p.id = t.profile_id where t.id = p_id), false)
+    and (
+      select count(*) < 5 from public.items t join public.items i
+        on i.profile_id = t.profile_id and i.category_id = t.category_id
+       and (
+         (i.pinned and not t.pinned)
+         or (i.pinned = t.pinned and (i.created_at, i.id) > (t.created_at, t.id))
+       )
+      where t.id = p_id
+    );
 $$;
 
 -- Verification (run after the migration):
