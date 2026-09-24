@@ -202,3 +202,9 @@ Newest at the bottom. Each entry: date, what was said, what changed.
 - Changed: added "The heart: a small notebook" and principle 0 (keep, don't
   post); British spelling rule; Hoshi section; "keep" applied across the add
   dialog, stamp, listing sheet and empty states; "catalogue"; pricing joke.
+
+### 2026-09-25
+- Feedback tab intro, owner's words: "Something unclear? Not working? Missing? Broken? We would love to hear from you in order to get this right. If you want to send a screenshot, please send it to hi@hoshigo.cc". Lesson: warmth and honesty over brevity when asking for help.
+- Paste path: "We fill in the rest" became "We will try to fill in the rest." Lesson: never overpromise what the machine does.
+- Friend request email, owner's direction: "Hello! Roelant wants to be your friend. Roelant would like to be able to see your hoshigos."
+- Homepage prompt: "Press one of the red hoshigos below to get inspired."
