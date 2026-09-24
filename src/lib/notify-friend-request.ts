@@ -1,3 +1,5 @@
+import { adminClient } from "@/lib/supabase/admin";
+
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
@@ -6,26 +8,31 @@ function escapeHtml(s: string) {
 // logged in user can call returns another person's address.
 export async function notifyFriendRequest({ toId, fromName, fromHandle }: { toId: string; fromName: string; fromHandle: string }) {
   const apiKey = process.env.RESEND_API_KEY?.trim();
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!apiKey || !serviceKey || !base) return;
+  const admin = adminClient();
+  if (!apiKey || !admin) {
+    console.warn("friend request email skipped: RESEND_API_KEY or SUPABASE_SERVICE_ROLE_KEY missing");
+    return;
+  }
 
-  const admin = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
   const site = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.hoshigo.cc";
   try {
-    const prefRes = await fetch(`${base}/rest/v1/profiles?select=email_friend_requests,auto_accept_friends&id=eq.${toId}`, {
-      headers: admin,
-      signal: AbortSignal.timeout(4000),
-    });
-    const [pref] = prefRes.ok ? await prefRes.json() : [];
+    const { data: pref, error: prefError } = await admin
+      .from("profiles")
+      .select("email_friend_requests, auto_accept_friends")
+      .eq("id", toId)
+      .maybeSingle();
+    if (prefError) console.error("friend request email: reading preferences failed", prefError.message);
     if (!pref?.email_friend_requests || pref.auto_accept_friends) return;
 
-    const userRes = await fetch(`${base}/auth/v1/admin/users/${toId}`, { headers: admin, signal: AbortSignal.timeout(4000) });
-    const email = userRes.ok ? ((await userRes.json()).email as string | undefined) : undefined;
-    if (!email) return;
+    const { data: userData, error: userError } = await admin.auth.admin.getUserById(toId);
+    const email = userData?.user?.email;
+    if (!email) {
+      console.error("friend request email: no address for recipient", userError?.message);
+      return;
+    }
 
     const name = escapeHtml(fromName);
-    await fetch("https://api.resend.com/emails", {
+    const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -41,7 +48,9 @@ export async function notifyFriendRequest({ toId, fromName, fromHandle }: { toId
       }),
       signal: AbortSignal.timeout(5000),
     });
-  } catch {
+    if (!res.ok) console.error("friend request email failed", res.status, await res.text());
+  } catch (err) {
     // an email that fails must never undo or block the request itself
+    console.error("friend request email failed", err);
   }
 }

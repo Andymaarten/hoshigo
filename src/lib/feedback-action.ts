@@ -3,6 +3,7 @@
 import { createHmac } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { adminClient } from "@/lib/supabase/admin";
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -42,20 +43,18 @@ const LIMITED = "Thank you, we have your notes. Give it a little while before se
 // The user's feedback timestamps from the last hour, read with the service role key because
 // the table has no select policy. Null when that isn't possible (no key, or no table yet).
 async function recentFeedback(userId: string): Promise<number[] | null> {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!key || !base) return null;
+  const admin = adminClient();
+  if (!admin) return null;
   const since = new Date(Date.now() - 3_600_000).toISOString();
-  try {
-    const res = await fetch(
-      `${base}/rest/v1/feedback?select=created_at&user_id=eq.${userId}&created_at=gte.${encodeURIComponent(since)}&order=created_at.desc&limit=${PER_HOUR}`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(4000), cache: "no-store" }
-    );
-    if (!res.ok) return null;
-    return ((await res.json()) as { created_at: string }[]).map((r) => Date.parse(r.created_at));
-  } catch {
-    return null;
-  }
+  const { data, error } = await admin
+    .from("feedback")
+    .select("created_at")
+    .eq("user_id", userId)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(PER_HOUR);
+  if (error || !data) return null;
+  return (data as { created_at: string }[]).map((r) => Date.parse(r.created_at));
 }
 
 // Fallback cooldown that works without the table: a signed cookie holding when this user last sent.
