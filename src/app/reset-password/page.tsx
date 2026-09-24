@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import Wordmark from "@/components/Wordmark";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -33,9 +34,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="page">
       <header className="hero">
-        <div className="word" aria-label="hoshigo">
-          hosh<span className="tittle">ı</span>go
-        </div>
+        <Wordmark />
         <div className="kicker">
           <span className="dot" aria-hidden="true" />
           password

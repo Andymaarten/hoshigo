@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import OnboardingForm from "./form";
 import type { Profile } from "@/lib/supabase/types";
 import { pendingAddPath, pendingInvitePath } from "@/lib/post-login";
+import Wordmark from "@/components/Wordmark";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -29,9 +30,7 @@ export default async function OnboardingPage() {
   return (
     <div className="page">
       <header className="hero">
-        <div className="word" aria-label="hoshigo">
-          hosh<span className="tittle">ı</span>go
-        </div>
+        <Wordmark />
         <div className="kicker">
           <span className="dot" aria-hidden="true" />
           welcome

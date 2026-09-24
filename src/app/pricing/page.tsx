@@ -1,8 +1,8 @@
-import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import HeaderStamp from "@/components/HeaderStamp";
 import { createClient } from "@/lib/supabase/server";
+import Wordmark from "@/components/Wordmark";
 
 // Not linked from SiteNav or anywhere in global navigation on purpose — this page
 // is only reachable from a locked "see more" tile on someone else's profile.
@@ -18,9 +18,7 @@ export default async function PricingPage() {
     <div className="page">
       <header className="hero">
         <div className="masthead">
-          <Link href="/" className="word" aria-label="hoshigo">
-            hosh<span className="tittle">ı</span>go
-          </Link>
+          <Wordmark handle={myHandle} />
           <SiteNav loggedIn={!!user} handle={myHandle} />
         </div>
         <HeaderStamp />

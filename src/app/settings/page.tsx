@@ -5,6 +5,7 @@ import SiteNav from "@/components/SiteNav";
 import HeaderStamp from "@/components/HeaderStamp";
 import SiteFooter from "@/components/SiteFooter";
 import SettingsForm from "./form";
+import Wordmark from "@/components/Wordmark";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -27,9 +28,7 @@ export default async function SettingsPage() {
     <div className="page">
       <header className="hero">
         <div className="masthead">
-          <div className="word" aria-label="hoshigo">
-            hosh<span className="tittle">ı</span>go
-          </div>
+          <Wordmark handle={profile.handle} />
           <SiteNav loggedIn handle={profile.handle} />
         </div>
         <HeaderStamp />

@@ -19,6 +19,7 @@ import { sortCategories } from "@/lib/category-display";
 import { compareForProfile } from "@/lib/item-order";
 import { myPins } from "@/lib/add-context";
 import HeaderStamp from "@/components/HeaderStamp";
+import Wordmark from "@/components/Wordmark";
 
 export default async function ProfilePage({
   params,
@@ -120,9 +121,7 @@ export default async function ProfilePage({
       <header className="hero">
         <div className="masthead">
           <div className="entry">
-            <div className="word" aria-label="hoshigo">
-              hosh<span className="tittle">ı</span>go
-            </div>
+            <Wordmark handle={myHandle} />
             <div className="gloss">
               <span className="ja" lang="ja">
                 星五

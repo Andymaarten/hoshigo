@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import Wordmark from "@/components/Wordmark";
 
 export default function AuthConfirmPage() {
   return (
@@ -68,9 +69,7 @@ function AuthConfirmInner() {
   return (
     <div className="page">
       <header className="hero">
-        <div className="word" aria-label="hoshigo">
-          hosh<span className="tittle">ı</span>go
-        </div>
+        <Wordmark />
         {error ? (
           <>
             <p className="lede">{error}</p>
