@@ -183,9 +183,9 @@ export default async function FriendsPage({
         <section aria-labelledby="h-latest" className="friends-block">
           <h2 id="h-latest">latest from your friends</h2>
           {friends.length === 0 ? (
-            <p className="bio">Once you have friends, what they add shows up here, newest first.</p>
+            <p className="bio">When your friends keep something, it appears here, newest first. That&apos;s all.</p>
           ) : (
-            <Suspense fallback={<p className="bio">Loading what your friends added…</p>}>
+            <Suspense fallback={<p className="bio">Gathering what your friends kept…</p>}>
               <FeedSection supabase={supabase} friendIds={rel.friendIds} categories={categories} friends={feedFriends} initialSlug={catSlug} />
             </Suspense>
           )}

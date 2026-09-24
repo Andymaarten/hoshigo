@@ -1,118 +1,119 @@
-# Copy review, 2026-09-24
+# Copy review
 
-Proposals only. Nothing here is applied yet except the one outright error
-noted at the end. Grouped by page, most impactful first. Mark each row
-yes / no / rewrite, and the answers go into the feedback log in
-`docs/voice.md`.
+Round 1 on 2026-09-24, revised the same day for the notebook direction
+(keep, choose, your own small world). Status per row:
 
-## 1. Login and signup (`src/app/login/`)
+- **applied**: changed in round 2 (branch yuki-voice-2)
+- **needs ok**: still a proposal, waiting for the owner
+- **keep**: current text stays
 
-First words most people read after the homepage.
+Grouped by page, most impactful first. Mark "needs ok" rows yes / no /
+rewrite; answers go into the feedback log in `docs/voice.md`.
 
-| Current | Proposed | Why |
+## 1. Keeping a hoshigo (stamp, add dialog, listing sheet)
+
+| Current | Now / proposed | Status |
 | --- | --- | --- |
-| Check your email for the link. (magic link sent) | Check your inbox. The magic link is on its way. | Echoes the email subject; tells them what to look for. |
-| Check your email for a reset link. | Check your inbox for a link to choose a new password. | Names what the link does. |
-| Fill in both fields. | Both boxes need something in them. | Softer, still plain. Optional. |
-| Enter your email. | Which email should we send it to? | A question, like the owner's examples. |
-| Password needs at least 8 characters. | Your password needs at least 8 characters. | Addresses the person. |
-| `…` (pending label on Log in / Create account) | Opening the door… / Making your page… | The one place a tiny image fits during a wait. |
-| Forgot password? | Forgot your password? | Small, warmer. |
-| Back to login | Back to log in | "login" is a noun; the action is "log in". |
-| Tab: Magic link | Tab: Magic link (keep) | Already good. |
+| press here to add a hoshigo (stamp ring) | press here to keep a hoshigo | applied |
+| Add a hoshigo (dialog title) | Keep a hoshigo | applied |
+| What are you adding? | What are you keeping? | applied |
+| Check and add | Check and keep | applied |
+| Add / Adding… | Keep / Keeping… | applied |
+| Save without link | Keep without a link | applied |
+| Added to your films. | Kept in your films. | applied |
+| Adding to **films** | Keeping in **films** | applied |
+| Add to my hoshigo (someone else's listing) | Keep in my hoshigo | applied |
+| Add a link so your friends can easily visit it. You can also save without one. | A link lets your friends find it. You can also keep it without one. | applied |
+| Search isn't answering right now. Try again, or add it by hand. | … Try again, or write it in by hand. | applied |
+| not found in the catalog | not found in the catalogue | applied |
+| Opening the add screen… (/add) | Opening your notebook… | applied |
+| From Spotify, IMDb, Goodreads, a shop, anywhere. We fill in the rest. | From Spotify, IMDb, a shop, anywhere. We fill in the rest. | needs ok |
+| Pick a category and search for the film, album, book or place. | Pick a category and look it up. | needs ok |
+| That site doesn't let us read its pages, so fill in the title yourself. | That site keeps its pages to itself. Write the title in below. | needs ok |
+| That link doesn't look right. Fix it or leave it empty. | That link doesn't look quite right. Fix it, or leave it empty. | needs ok |
+| Note (field label) | Why it's worth keeping (optional) | needs ok. The notebook heart of a listing. |
+| Placeholder "No note yet." | A line for future you. | needs ok |
+| Add a photo | Add a photo | keep. A photo is added, a hoshigo is kept. |
 
 ## 2. Empty states
 
-| Where | Current | Proposed | Why |
+| Where | Current | Now / proposed | Status |
 | --- | --- | --- | --- |
-| Own page, no items (`[handle]/page.tsx`) | Nothing yet — press the red stamp above to add your first hoshigo. | Nothing here yet. Press the red stamp to keep your first five star thing. | "keep" is our word; "above" is not always true on mobile. |
-| Friends, none yet | No friends yet. Find people below, or send them your invite link. | No friends here yet. Search below, or send your invite link to someone you'd trust with your taste. | One light touch, same instruction. |
-| Friends feed, none yet | Once you have friends, what they add shows up here, newest first. | When your friends add something, it appears here, newest first. That's all. No algorithm. | Reinforces the manifesto at the moment it matters. |
-| Friends, not enabled | Friends are almost here. Check back soon. | Friends are almost here. | "Check back soon" is a nudge to return; we don't do those. |
-| Friend search, no results | Nobody found for "q". | Nobody called "q" here yet. | Warmer; "yet" hints they could invite them. |
-| Loading feed | Loading what your friends added… | Gathering what your friends added… | Optional; small warmth during a wait. |
+| Own page, nothing kept | Nothing yet — press the red stamp above to add your first hoshigo. | Nothing kept yet. Press the red stamp to keep your first hoshigo. | applied |
+| Friends feed, no friends | Once you have friends, what they add shows up here, newest first. | When your friends keep something, it appears here, newest first. That's all. | applied |
+| Friends feed loading | Loading what your friends added… | Gathering what your friends kept… | applied |
+| Friends, none yet | No friends yet. Find people below, or send them your invite link. | No friends here yet. Look someone up below, or send your invite link to someone whose taste you trust. | needs ok |
+| Friends, not enabled | Friends are almost here. Check back soon. | Friends are almost here. | needs ok. No nudges to return. |
+| Friend search, no results | Nobody found for "q". | Nobody called "q" here yet. | needs ok |
 
-## 3. 404 (`not-found.tsx`)
+## 3. Homepage, about, pricing
 
-| Current | Proposed | Why |
+| Current | Now / proposed | Status |
 | --- | --- | --- |
-| nothing here. | nothing here. (keep) | Already perfect. |
-| This page doesn't exist, or the link has changed. | This page doesn't exist, or it has moved. Hoshi looked everywhere. | One quiet Hoshi moment in a place with no stakes. |
-| Go to hoshigo | Back to hoshigo | "Back" feels like returning home. |
+| Press one of the hoshigo's below to get inspired. | Press one of the hoshigos below to get inspired. | applied |
+| Pricing: This page is a placeholder for what's coming. | Hoshi is still polishing it, and refuses to be rushed. | applied |
+| About: We like you to be gone within a few minutes. | Actually, we would like you to be gone within minutes. | needs ok (canonical wording confirmed; the about page is manifesto copy, so it waits for a nod) |
+| Homepage manifesto lead: …things you'd actually give five stars. Films, books, essays, albums. | …things you'd actually give five stars. Films, books, essays, albums. Kept by hand, like a small notebook. | needs ok. One line of the notebook idea where it's introduced. |
+| Homepage coda: No AI, no bots. Only verified profiles of real people with real taste | No AI, no bots. A small, human corner in an ocean of generated things. Every page here belongs to someone. | needs ok. The ocean line said once, without preaching. |
+| Get inspired (homepage prompt) | Press one of the hoshigos below and look inside someone's notebook. | needs ok |
 
-## 4. Add dialog (`[handle]/AddStamp.tsx`)
+## 4. 404
 
-| Current | Proposed | Why |
+| Current | Now / proposed | Status |
 | --- | --- | --- |
-| Add a hoshigo | Add a hoshigo (keep) | Good. |
-| From Spotify, IMDb, Goodreads, a shop, anywhere. We fill in the rest. | From Spotify, IMDb, a shop, anywhere. We fill in the rest. | Four examples read as a list; three plus "anywhere" is enough. |
-| Pick a category and search for the film, album, book or place. | Pick a category and search for it. | Shorter; the categories are on the next screen. |
-| That site doesn't let us read its pages, so fill in the title yourself. | That site keeps its pages to itself. Fill in the title below. | Small touch, same instruction. |
-| We couldn't read that page, so we guessed the title from the link. Check it below. | We couldn't read that page, so we guessed the title from the link. Check it below. (keep) | Clear and honest. |
-| That link doesn't look right. Fix it or leave it empty. | That link doesn't look quite right. Fix it, or leave it empty. | Softer. |
-| Save without link | Save without a link | Grammar. |
-| See it on your page | See it on your page (keep) | Good. |
-| Adding… | Keeping… | Optional; "keep" is our verb. Ask the owner. |
+| nothing here. | nothing here. | keep |
+| This page doesn't exist, or the link has changed. | This page doesn't exist, or it has moved. Hoshi looked everywhere. | needs ok |
+| Go to hoshigo | Back to hoshigo | needs ok |
 
-## 5. Share panel (`SharePanel.tsx`, `InviteLink.tsx`)
+## 5. Login and signup
 
-| Current | Proposed | Why |
+| Current | Proposed | Status |
 | --- | --- | --- |
-| Share message: "One of my five stars: Title, By url" | (keep) | Already the voice. |
-| Invite message: "Be my friend on hoshigo: url" | "I keep my five star things on hoshigo. Come and be my friend: url" | Tells the recipient what hoshigo is. |
-| Whoever opens it becomes your friend right away, so share it only with people you know. | Whoever opens this becomes your friend right away, so give it only to people you know. | "give" sounds like handing a key. |
-| More | More ways to share | Clearer next to WhatsApp. |
+| Check your email for the link. | Check your inbox. The magic link is on its way. | needs ok |
+| Check your email for a reset link. | Check your inbox for a link to choose a new password. | needs ok |
+| Enter your email. | Which email should we send it to? | needs ok |
+| Password needs at least 8 characters. | Your password needs at least 8 characters. | needs ok |
+| `…` while logging in / creating | Opening the door… / Making your page… | needs ok |
+| Back to login | Back to log in | needs ok (grammar) |
+| Nav "Login", footer "Sign up / Login" | Log in / Sign up or log in | needs ok (grammar) |
 
-## 6. Feedback tab (`FeedbackTab.tsx`, `feedback-action.ts`)
+## 6. Share and invite
 
-| Current | Proposed | Why |
+| Current | Proposed | Status |
 | --- | --- | --- |
-| feedback? | feedback? (keep) | Lovely as is. |
-| Something unclear, broken, or missing? A line is plenty. | Something unclear, broken or missing? A line is plenty. | Drop the serial comma; also a borderline rule of three, but earned here. |
-| Thank you. It went straight to the person who makes hoshigo. | Thank you. It went straight to the person who makes hoshigo, who reads every one. | Only if true. |
-| Thank you, we have your notes. Give it a little while before sending more. | Thank you, we have your notes. Give it an hour before sending more. | Concrete beats vague. |
-| Write a few words first. | (keep) | Good. |
-| That didn't go through. Please try again in a moment. | (keep) | The model error message. |
+| One of my five stars: Title, By url | (same) | keep |
+| Be my friend on hoshigo: url | I keep my five star things on hoshigo. Come and look: url | needs ok |
+| …so share it only with people you know. | …so give it only to people you know. | needs ok |
+| More | More ways to share | needs ok |
 
-## 7. Onboarding (`onboarding/`)
+## 7. Onboarding
 
-| Current | Proposed | Why |
+| Current | Proposed | Status |
 | --- | --- | --- |
-| One last thing — pick your page address. | One last thing: where should your page live? | A question, and a place. |
-| Lowercase letters, numbers, _ and the minus sign. You can share this address with anyone. | Lowercase letters, numbers, _ and the minus sign. | Second sentence is implied. |
-| That page address is already taken. Try another one. | Someone already lives at that address. Try another. | One light touch in an error, still says what to do. |
-| Start your hoshigo | Start your hoshigo (keep) | Good. |
-| Placeholder: A line about you | (keep) | Good. |
+| One last thing — pick your page address. | One last thing: where should your notebook live? | needs ok |
+| Start your hoshigo | Start your hoshigo | keep |
+| That page address is already taken. Try another one. | Someone already lives at that address. Try another. | needs ok |
+| A line about you (bio placeholder) | A line about you | keep |
 
-## 8. Profile and friends (`[handle]/`, `FriendButton.tsx`, `VisibilityChoice.tsx`)
+## 8. Feedback tab
 
-| Current | Proposed | Why |
+| Current | Proposed | Status |
 | --- | --- | --- |
-| Log in to add friend | Log in to add as a friend | Grammar. |
-| Tile: log in to add as friend | log in to add as a friend | Grammar. |
-| Remove friend → Keep | Remove friend → Keep them | Clearer what "Keep" keeps. |
-| Everyone sees your latest five per category. Friends see everything. | (keep) | Clear. |
-| Others see only your name and bio, and can ask to be your friend. Friends see everything. | (keep) | Clear. |
+| feedback? | feedback? | keep |
+| Thank you, we have your notes. Give it a little while before sending more. | Thank you, we have your notes. Give it an hour before sending more. | needs ok |
+| Thank you. It went straight to the person who makes hoshigo. | (same) | keep |
 
-## 9. Settings, nav, footer
+## 9. Profile and friends
 
-| Current | Proposed | Why |
+| Current | Proposed | Status |
 | --- | --- | --- |
-| Nav: Login | Log in | "Log in" is the action; matches the login page. |
-| Footer: Sign up / Login | Sign up or log in | No slash, matches above. |
-| Footer: Keep your own five star page. | (keep) | The best line on the site. |
-| edit profile (h1) | your page. | Matches "your friends."; we say "page". Optional. |
-| You need to be logged in. | Log in first, then try again. | Says what to do. |
+| Log in to add friend / log in to add as friend | Log in to add as a friend | needs ok (grammar) |
+| Remove friend → Keep | Remove friend → Keep them | needs ok |
+| edit profile (h1) | your page. | needs ok |
+| You need to be logged in. | Log in first, then try again. | needs ok |
 
-## 10. About and homepage
+## Emails
 
-| Current | Proposed | Why |
-| --- | --- | --- |
-| About: We like you to be gone within a few minutes. | Actually, we would like you to be gone within minutes. | Match the homepage wording; the "Actually" is the joke. |
-| Pricing: This page is a placeholder for what's coming. | Not here yet. Hoshi is still polishing it. | Optional; placeholder language is internal speak. |
-
-## Fixed directly (outright errors)
-
-- Homepage: "Press one of the hoshigo's below" → "hoshigos" (stray
-  apostrophe in a plural).
-- No literal hyphens were found in user visible UI copy.
+All six auth emails were rechecked for the notebook direction and British
+spelling; no American spellings, and the invite already speaks of keeping.
+No changes needed this round.

@@ -74,7 +74,7 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
   // A pick from a catalog search counts too, even when saving it to our works table failed
   // (e.g. a source the database doesn't accept yet): the dialog then shows the link as optional.
   const pickedFromCatalog = isWorkSource(String(formData.get("catalog_pick") || ""));
-  if (!linkedWork && !pickedFromCatalog && !rawUrl) return "Add a link so visitors can find it. Only things found in a catalog can go without one.";
+  if (!linkedWork && !pickedFromCatalog && !rawUrl) return "Add a link so visitors can find it. Only things found in a catalogue can go without one.";
 
   // No link of their own, but the catalog knows the thing's website (a place from OSM):
   // use that. A link the person gave always wins. The website column only exists after

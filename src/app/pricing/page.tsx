@@ -35,7 +35,7 @@ export default async function PricingPage() {
           hoshigo+ gives you more: a way to find people whose taste matches yours, and see what else they loved.
           Once you find them, their whole profile opens up too, not just the first five items in each list.
         </p>
-        <p>We&apos;re not live with hoshigo+ yet. This page is a placeholder for what&apos;s coming.</p>
+        <p>We&apos;re not live with hoshigo+ yet. Hoshi is still polishing it, and refuses to be rushed.</p>
       </section>
 
       <SiteFooter loggedIn={!!user} />
