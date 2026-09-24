@@ -2249,3 +2249,169 @@ button.share-link:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* Human check: five red hoshigos into a five star tray, before signup. */
+.hc-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(29, 28, 26, 0.35);
+  animation: hc-fade 0.3s ease both;
+}
+
+.hc {
+  --slot: clamp(44px, 12vw, 68px);
+  width: min(100%, 520px);
+  padding: 28px 22px 20px;
+  background: var(--ground);
+  border-radius: 4px;
+  text-align: center;
+  font-family: var(--serif);
+  animation: hc-rise 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.hc-title {
+  margin: 0 auto 26px;
+  max-width: 30ch;
+  min-height: 2.8em;
+  font-size: 19px;
+  line-height: 1.4;
+  text-wrap: balance;
+}
+
+.hc-tray {
+  display: flex;
+  justify-content: center;
+  gap: clamp(8px, 2.4vw, 14px);
+  width: fit-content;
+  margin: 0 auto;
+  padding: 14px 12px;
+  background: #e7dccb;
+  border-radius: 999px;
+}
+
+/* Casings: dark and slightly uneven, as if cut by hand. */
+.hc-slot {
+  width: var(--slot);
+  height: var(--slot);
+  background: radial-gradient(circle at 50% 38%, #3a342e, var(--block) 70%);
+  border-radius: 49% 51% 52% 48% / 51% 48% 52% 49%;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.45), 0 0 0 2px var(--ink);
+  transform: rotate(var(--tilt));
+  transition: box-shadow 0.5s ease;
+}
+
+.hc-slot-warm,
+.hc-tray-done .hc-slot {
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.45), 0 0 0 2px var(--ink), 0 0 0 7px rgba(216, 50, 31, 0.22);
+}
+
+.hc-pile {
+  display: flex;
+  justify-content: center;
+  gap: clamp(8px, 2.4vw, 14px);
+  margin: 40px auto 24px;
+}
+
+.hc-circle {
+  all: unset;
+  position: relative;
+  z-index: 1;
+  width: calc(var(--slot) * 0.94);
+  height: calc(var(--slot) * 0.94);
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transform: translate(var(--x), var(--y)) rotate(var(--rot));
+  transition: transform 0.5s cubic-bezier(0.34, 1.45, 0.5, 1);
+}
+
+.hc-circle img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.hc-circle:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+
+.hc-dragging {
+  z-index: 3;
+  cursor: grabbing;
+  transition: none;
+}
+
+.hc-dragging img {
+  transform: scale(1.1);
+  filter: drop-shadow(0 8px 10px rgba(29, 28, 26, 0.25));
+}
+
+.hc-placed {
+  z-index: 2;
+  cursor: default;
+}
+
+.hc-landed img {
+  animation: hc-settle 0.55s cubic-bezier(0.3, 1.6, 0.5, 1) 0.35s;
+}
+
+.hc-foot {
+  min-height: 1.5em;
+  margin: 22px 0 0;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.hc-cancel {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+/* Honeypot: off screen for people, still in the form for bots that fill everything. */
+.hp-field {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+@keyframes hc-settle {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+@keyframes hc-fade {
+  from { opacity: 0; }
+}
+
+@keyframes hc-rise {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-backdrop,
+  .hc,
+  .hc-landed img { animation: none; }
+  .hc-circle,
+  .hc-circle img,
+  .hc-slot { transition: none; }
+}
+
+.hc-continue {
+  border: none;
+  margin-top: 4px;
+}
