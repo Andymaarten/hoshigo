@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { linkFromAddHref } from "@/lib/add-link";
 import { startAdd } from "./actions";
+import Wordmark from "@/components/Wordmark";
 
 // hoshigo.cc/add?url=<anything>. Runs in the browser because only the browser sees the
 // full address including a #fragment; the server gets the query without it.
@@ -23,9 +24,7 @@ export default function AddPage() {
   return (
     <div className="page">
       <header className="hero">
-        <div className="word" aria-label="hoshigo">
-          hosh<span className="tittle">ı</span>go
-        </div>
+        <Wordmark />
         <p className="lede">Opening the add screen…</p>
       </header>
     </div>

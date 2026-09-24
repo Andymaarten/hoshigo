@@ -13,6 +13,7 @@ import { feedRows, shareableIds, withShareable, type FeedPage } from "@/lib/frie
 import { myFriendships, myInviteToken } from "@/lib/friends";
 import type { Category, Profile } from "@/lib/supabase/types";
 import { sortCategories } from "@/lib/category-display";
+import Wordmark from "@/components/Wordmark";
 
 type Person = Pick<Profile, "id" | "handle" | "display_name" | "is_private">;
 
@@ -47,9 +48,7 @@ export default async function FriendsPage({
   const header = (
     <header className="hero">
       <div className="masthead">
-        <div className="word" aria-label="hoshigo">
-          hosh<span className="tittle">ı</span>go
-        </div>
+        <Wordmark handle={myHandle} />
         <SiteNav loggedIn handle={myHandle} />
       </div>
       <HeaderStamp />

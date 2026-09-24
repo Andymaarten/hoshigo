@@ -1,10 +1,10 @@
 "use client";
 
 import { Suspense, useActionState, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signInWithPassword, signUpWithPassword, sendMagicLink, sendPasswordReset } from "./actions";
 import SiteNav from "@/components/SiteNav";
+import Wordmark from "@/components/Wordmark";
 
 const MODES = [
   { key: "login" as const, label: "Log in" },
@@ -36,9 +36,7 @@ function LoginPageInner() {
     <div className="page">
       <header className="hero">
         <div className="masthead">
-          <Link href="/" className="word" aria-label="hoshigo">
-            hosh<span className="tittle">ı</span>go
-          </Link>
+          <Wordmark />
           <SiteNav />
         </div>
         <p className="lede">{mode === "signup" ? "Start your hoshigo." : "Welcome back."}</p>

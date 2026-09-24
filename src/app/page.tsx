@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import RecoveryHashRedirect from "@/components/RecoveryHashRedirect";
+import Wordmark from "@/components/Wordmark";
 
 export default async function HomePage({
   searchParams,
@@ -40,9 +41,7 @@ export default async function HomePage({
       <header className="hero">
         <div className="masthead">
           <div className="entry">
-            <div className="word" aria-label="hoshigo">
-              hosh<span className="tittle">ı</span>go
-            </div>
+            <Wordmark />
             <div className="gloss">
               <span className="ja" lang="ja">
                 星五

@@ -9,6 +9,7 @@ import SharePanel from "@/components/SharePanel";
 import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import HeaderStamp from "@/components/HeaderStamp";
+import Wordmark from "@/components/Wordmark";
 
 type Params = { params: Promise<{ handle: string; item: string }> };
 
@@ -52,9 +53,7 @@ export default async function ListingPage({ params }: Params) {
   const header = (
     <header className="hero">
       <div className="masthead">
-        <Link href="/" className="word" aria-label="hoshigo">
-          hosh<span className="tittle">ı</span>go
-        </Link>
+        <Wordmark handle={myHandle} />
         <SiteNav loggedIn={loggedIn} handle={myHandle} />
       </div>
       <HeaderStamp />

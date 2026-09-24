@@ -1,14 +1,13 @@
 import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
+import Wordmark from "@/components/Wordmark";
 
 export default function NotFound() {
   return (
     <div className="page">
       <header className="hero">
         <div className="masthead">
-          <Link href="/" className="word" aria-label="hoshigo">
-            hosh<span className="tittle">ı</span>go
-          </Link>
+          <Wordmark />
         </div>
         <div className="kicker">
           <span className="dot" aria-hidden="true" />

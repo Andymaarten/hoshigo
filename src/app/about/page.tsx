@@ -1,8 +1,8 @@
-import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import HeaderStamp from "@/components/HeaderStamp";
 import { createClient } from "@/lib/supabase/server";
+import Wordmark from "@/components/Wordmark";
 
 export default async function AboutPage() {
   const supabase = await createClient();
@@ -16,9 +16,7 @@ export default async function AboutPage() {
     <div className="page">
       <header className="hero">
         <div className="masthead">
-          <Link href="/" className="word" aria-label="hoshigo">
-            hosh<span className="tittle">ı</span>go
-          </Link>
+          <Wordmark handle={myHandle} />
           <SiteNav loggedIn={!!user} handle={myHandle} />
         </div>
         <HeaderStamp />

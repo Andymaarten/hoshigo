@@ -6,6 +6,7 @@ import HeaderStamp from "@/components/HeaderStamp";
 import SiteFooter from "@/components/SiteFooter";
 import MatchSection from "@/components/MatchSection";
 import { sortCategories } from "@/lib/category-display";
+import Wordmark from "@/components/Wordmark";
 
 const FAKE_PEOPLE = [
   { handle: "user2", displayName: "Mei Sato", bio: "Letterboxd completionist. I will talk about Bong Joon Ho unprompted." },
@@ -42,9 +43,7 @@ export default async function ExplorePage() {
     <div className="page">
       <header className="hero">
         <div className="masthead">
-          <div className="word" aria-label="hoshigo">
-            hosh<span className="tittle">ı</span>go
-          </div>
+          <Wordmark handle={myHandle} />
           <SiteNav loggedIn handle={myHandle} />
         </div>
         <HeaderStamp />
