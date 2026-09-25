@@ -19,6 +19,23 @@ function decodeNonAsciiRuns(s: string): string {
 }
 
 /**
+ * Where an /add visit came from, for stats: an explicit via= before url= (the iPhone
+ * Shortcut sends via=shortcut), otherwise "share" for Android share sheet visits (they
+ * carry title or text) and "direct" for everything else. Only letters, digits and _ are kept.
+ */
+export function viaFromAddHref(href: string): string {
+  const q = href.indexOf("?");
+  if (q < 0) return "direct";
+  let query = href.slice(q + 1).split("#")[0];
+  const u = query.search(/(^|&)url=/);
+  if (u >= 0) query = query.slice(0, u);
+  const params = new URLSearchParams(query);
+  const via = (params.get("via") ?? "").replace(/[^a-z0-9_]/gi, "").slice(0, 32);
+  if (via) return via;
+  return params.has("title") || params.has("text") ? "share" : "direct";
+}
+
+/**
  * Owner rule: everything after the first "url=" is the link, verbatim, including later
  * "?", "&" and "#". Read from the raw address, never from parsed search params.
  * - A link encoded as a whole (url=https%3A%2F%2F…) is decoded exactly once. That's

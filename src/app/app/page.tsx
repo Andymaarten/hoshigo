@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import Wordmark from "@/components/Wordmark";
-import InstallButton from "@/components/InstallButton";
-import ShareIcon from "@/components/ShareIcon";
+import InstallHintText from "@/components/InstallHintText";
+import AndroidHint from "./AndroidHint";
 import Bookmarklet from "./Bookmarklet";
 import { createClient } from "@/lib/supabase/server";
 
@@ -42,27 +42,14 @@ export default async function AppPage() {
       <main className="app-guide">
         <section>
           <h2>iPhone and iPad</h2>
-          <ol>
-            <li>Open hoshigo.cc in Safari.</li>
-            <li>
-              Tap <ShareIcon /> at the bottom of the screen.
-            </li>
-            <li>
-              Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.
-            </li>
-          </ol>
+          <InstallHintText platform="ios" />
+          <p className="app-note">In Safari, the share icon is at the bottom of the screen; scroll the list down a little to find it, then tap Add.</p>
           <p className="app-note">Opened hoshigo from Instagram or WhatsApp? Open it in Safari first; in those apps the option is missing.</p>
         </section>
 
         <section>
           <h2>Android</h2>
-          <ol>
-            <li>Open hoshigo.cc in Chrome.</li>
-            <li>
-              Tap the menu <b>⋮</b>, then <b>Install app</b> or <b>Add to Home screen</b>.
-            </li>
-          </ol>
-          <InstallButton />
+          <AndroidHint />
         </section>
 
         <section>
@@ -99,7 +86,7 @@ export default async function AppPage() {
                 <b>Text</b>.
               </li>
               <li>
-                Add the action <b>Open URLs</b> and type <code>https://hoshigo.cc/add?url=</code>, then insert the{" "}
+                Add the action <b>Open URLs</b> and type <code>https://hoshigo.cc/add?via=shortcut&amp;url=</code>, then insert the{" "}
                 <b>Shortcut Input</b> variable right after it.
               </li>
               <li>Name it <b>Add to hoshigo</b> and tap <b>Done</b>.</li>

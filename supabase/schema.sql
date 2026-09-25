@@ -791,3 +791,25 @@ create policy "public changelog" on public.changelog_entries
 alter table public.someday_items add column if not exists note text;
 alter table public.someday_items drop constraint if exists someday_items_note_length;
 alter table public.someday_items add constraint someday_items_note_length check (note is null or char_length(note) <= 500);
+
+-- App usage (see docs/migrations/2026-09-27-app-usage.sql)
+
+create table if not exists public.app_usage (
+  profile_id uuid primary key references public.profiles (id) on delete cascade,
+  app_first_opened_at timestamptz not null default now(),
+  app_last_opened_at timestamptz not null default now()
+);
+
+alter table public.app_usage enable row level security;
+
+drop policy if exists "own app usage is readable" on public.app_usage;
+create policy "own app usage is readable" on public.app_usage
+  for select using (auth.uid() = profile_id);
+
+drop policy if exists "own app usage can be added" on public.app_usage;
+create policy "own app usage can be added" on public.app_usage
+  for insert with check (auth.uid() = profile_id);
+
+drop policy if exists "own app usage can be updated" on public.app_usage;
+create policy "own app usage can be updated" on public.app_usage
+  for update using (auth.uid() = profile_id) with check (auth.uid() = profile_id);

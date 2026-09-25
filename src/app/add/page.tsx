@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { linkFromAddHref } from "@/lib/add-link";
+import { track } from "@vercel/analytics";
+import { linkFromAddHref, viaFromAddHref } from "@/lib/add-link";
 import { startAdd } from "./actions";
 import Wordmark from "@/components/Wordmark";
 
@@ -16,6 +17,7 @@ export default function AddPage() {
     if (started.current) return;
     started.current = true;
     const link = linkFromAddHref(window.location.href);
+    track("add_link_opened", { via: viaFromAddHref(window.location.href) });
     startAdd(link)
       .then((path) => router.replace(path.startsWith("/") && !path.startsWith("//") ? path : "/"))
       .catch(() => router.replace("/"));
