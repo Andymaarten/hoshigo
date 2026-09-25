@@ -176,22 +176,44 @@ export async function updateItem(handle: string, _prev: string | null, formData:
   if (!itemId) return "Missing item.";
   if (!title || !categoryId) return "Title and category are required.";
   if (imageUrl && !safeHttpUrl(imageUrl)) return "That image URL doesn't look like a valid web address.";
+  // Older open dialogs don't send the link; leave it alone then.
+  const linkSent = formData.get("link_sent") === "1";
+  const rawUrl = String(formData.get("url") || "").trim();
+  if (rawUrl && !safeHttpUrl(rawUrl)) return "That link doesn't look like a valid web address.";
+  const newWorkId = String(formData.get("work_id") || "").trim();
 
   // Moving an item to another category: drop its catalog link when the work belongs to a
   // different catalog (a book moved to places can't keep its Open Library work).
-  const [{ data: current }, { data: cat }] = await Promise.all([
-    supabase.from("items").select("work_id, works(source)").eq("id", itemId).maybeSingle(),
+  const [{ data: current }, { data: cat }, { data: newWork }] = await Promise.all([
+    supabase.from("items").select("work_id, url, works(source)").eq("id", itemId).maybeSingle(),
     supabase.from("categories").select("slug").eq("id", categoryId).maybeSingle(),
+    newWorkId ? supabase.from("works").select("id, source").eq("id", newWorkId).maybeSingle() : Promise.resolve({ data: null }),
   ]);
   const currentSource = (current?.works as { source?: string } | { source?: string }[] | null | undefined);
   const source = Array.isArray(currentSource) ? currentSource[0]?.source : currentSource?.source;
   const unlink = !!current?.work_id && !sourceFitsCategory(source, cat?.slug);
+  // A match found from a new link, only for items without one, and only from this category's catalogue.
+  const link = !current?.work_id && !!newWork && sourceFitsCategory(newWork.source, cat?.slug);
+  if (newWork && !link && !current?.work_id)
+    console.error(`[works] refused to link ${newWork.source} work ${newWorkId} to edited ${cat?.slug ?? categoryId} item ${itemId}`);
+  const hasWork = link || (!!current?.work_id && !unlink);
+  if (linkSent && !rawUrl && current?.url && !hasWork)
+    return "Add a link so visitors can find it. Only things found in a catalogue can go without one.";
+  const linkFields = linkSent
+    ? {
+        url: rawUrl || null,
+        normalized_url: rawUrl ? normalizeUrl(rawUrl) : null,
+        source_label: rawUrl ? new URL(rawUrl).hostname.replace(/^www\./, "") : null,
+      }
+    : {};
 
   const { error } = await supabase
     .from("items")
     .update({
       category_id: categoryId,
       ...(unlink ? { work_id: null } : {}),
+      ...(link ? { work_id: newWorkId } : {}),
+      ...linkFields,
       title,
       by: by || null,
       year: yearRaw ? Number(yearRaw) : null,

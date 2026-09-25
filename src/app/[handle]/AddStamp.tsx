@@ -816,7 +816,7 @@ export default function AddStamp({
                   Clear
                 </button>
               )}
-              <span className="hint">Share text from an app works too.</span>
+              <span className="hint">Tip: you can also paste what an app&apos;s Share button gives you.</span>
             </div>
             {linkNotice && (
               <div className="notice" role="status">
