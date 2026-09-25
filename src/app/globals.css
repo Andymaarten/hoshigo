@@ -1913,7 +1913,33 @@ footer .footer-nav form {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
+}
+
+.btn.btn-quiet {
+  border-color: var(--rule);
+  color: var(--muted);
+}
+
+.btn.btn-quiet:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.someday-add {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.someday-add .btn {
+  max-width: 360px;
+  justify-content: center;
+  text-align: center;
+}
+
+.someday-main {
+  padding-bottom: 56px;
 }
 
 @media (max-width: 640px) {
@@ -1922,9 +1948,11 @@ footer .footer-nav form {
     align-items: flex-start;
   }
 
+  /* one row under the text, starting where the text starts (cover 52 + gap 14) */
   .someday-actions {
     flex-basis: 100%;
     padding-left: 66px;
+    flex-wrap: wrap;
   }
 }
 

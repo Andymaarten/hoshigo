@@ -118,20 +118,21 @@ export default async function SomedayPage({ searchParams }: { searchParams: Prom
           <Wordmark handle={myHandle} />
           <SiteNav loggedIn={!!user} handle={myHandle} />
         </div>
-        {user && <HeaderStamp />}
-        <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>{mine ? SOMEDAY.heading : SOMEDAY.othersHeading(owner.name)}</h1>
+        {/* no red stamp here, only its dialog for "Loved it" */}
+        {user && <HeaderStamp hideStamp />}
+        {!mine && <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>{SOMEDAY.othersHeading(owner.name)}</h1>}
         {mine && !error && (
           <>
             <p className="bio">{SOMEDAY.intro}</p>
             {myHandle && (
-              <div style={{ marginTop: 16 }}>
+              <div className="someday-add">
                 <AddStamp handle={myHandle} categories={categories} destination="someday" />
               </div>
             )}
           </>
         )}
       </header>
-      <main className="friends-main">
+      <main className="friends-main someday-main">
         {error ? (
           <p className="bio">This list is almost here. Check back soon.</p>
         ) : (

@@ -149,7 +149,7 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
                       <>
                         <button
                           type="button"
-                          className="text-btn danger"
+                          className="btn btn-small btn-danger"
                           disabled={pending}
                           onClick={() =>
                             start(async () => {
@@ -160,16 +160,16 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
                         >
                           {SOMEDAY.confirmRemove}
                         </button>
-                        <button type="button" className="text-btn" onClick={() => setConfirming(null)}>
+                        <button type="button" className="btn btn-small btn-quiet" onClick={() => setConfirming(null)}>
                           {SOMEDAY.keep}
                         </button>
                       </>
                     ) : (
                       <>
-                        <button type="button" className="btn btn-small" onClick={() => lovedIt(r)}>
+                        <button type="button" className="btn btn-small btn-on" onClick={() => lovedIt(r)}>
                           {SOMEDAY.lovedIt}
                         </button>
-                        <button type="button" className="text-btn" onClick={() => setConfirming(r.id)}>
+                        <button type="button" className="btn btn-small btn-quiet" onClick={() => setConfirming(r.id)}>
                           {SOMEDAY.notOne}
                         </button>
                       </>
