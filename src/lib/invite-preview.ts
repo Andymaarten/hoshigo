@@ -23,7 +23,7 @@ export async function invitePreviewResponse(token: string, requestUrl: string): 
 
   let title = "You are invited to hoshigo";
   let description = "Keep the handful of things you would give five stars. No ads, no algorithm.";
-  let image = `${site}/app-icon`;
+  let image = `${site}/icons/icon-512.png`;
   if (card) {
     const meta = profileMetadata(card, "invite");
     title = String(meta.title);

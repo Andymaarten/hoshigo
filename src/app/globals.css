@@ -2731,3 +2731,164 @@ button.share-link:disabled {
 .about-text p + p {
   margin-top: 14px;
 }
+
+/* Installed app: keep content clear of the notch, the home bar and rounded corners.
+   viewport-fit=cover (layout.tsx) makes these insets non zero on iPhones. */
+.page {
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-left: max(24px, env(safe-area-inset-left));
+  padding-right: max(24px, env(safe-area-inset-right));
+}
+
+footer {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+.stamp.pinned {
+  top: max(14px, calc(env(safe-area-inset-top) + 8px));
+  right: calc(max(0px, (100vw - 1200px) / 2) + max(24px, env(safe-area-inset-right)));
+}
+
+.feedback-tab {
+  right: env(safe-area-inset-right);
+}
+
+.add-toast {
+  bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+/* Standalone apps have no browser back button. */
+.app-back {
+  all: unset;
+  position: fixed;
+  left: max(10px, env(safe-area-inset-left));
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  z-index: 55;
+  padding: 8px 14px;
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.app-back:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.install-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 58;
+  width: min(420px, calc(100vw - 32px));
+  padding: 14px 16px 12px;
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.45;
+  animation: hc-fade 0.4s ease both;
+}
+
+.install-hint p {
+  margin: 0;
+}
+
+.install-hint-actions {
+  display: flex;
+  gap: 18px;
+  justify-content: flex-end;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.share-icon {
+  display: inline-block;
+  vertical-align: -3px;
+  margin: 0 2px;
+  color: #1a73e8;
+}
+
+.app-guide {
+  max-width: 560px;
+  font-family: var(--serif);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.app-guide section {
+  margin: 28px 0;
+  padding: 0;
+}
+
+.app-guide h2 {
+  margin: 0 0 10px;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
+.app-guide h3 {
+  margin: 22px 0 6px;
+  font-family: var(--display);
+  font-size: 16px;
+}
+
+.app-guide ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.app-guide li {
+  margin: 4px 0;
+}
+
+.app-guide p {
+  margin: 0 0 12px;
+}
+
+.app-note {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.app-details {
+  margin: 14px 0 6px;
+  font-size: 16px;
+}
+
+.app-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.app-guide code {
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.bookmarklet {
+  cursor: grab;
+}
+
+.settings-app {
+  margin-top: 40px;
+}
+
+.settings-app h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .install-hint { animation: none; }
+}
