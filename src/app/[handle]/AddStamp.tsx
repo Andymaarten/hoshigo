@@ -96,6 +96,13 @@ export default function AddStamp({
   const [notALinkQuery, setNotALinkQuery] = useState("");
   const [reading, setReading] = useState(false);
   const [readNotice, setReadNotice] = useState("");
+  // a link to a page that can't be added (an IMDb person or list), said on the link screen
+  const [linkNotice, setLinkNotice] = useState("");
+  // one gentle "no note?" question per add; the ref lets "Add without a note" submit at once
+  const [noteNudge, setNoteNudge] = useState(false);
+  const noteAsked = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
   const [link, setLink] = useState("");
   const [target, setTarget] = useState("");
   const [sourceLabel, setSourceLabel] = useState("");
@@ -150,6 +157,9 @@ export default function AddStamp({
     setNotALinkQuery("");
     setReading(false);
     setReadNotice("");
+    setLinkNotice("");
+    setNoteNudge(false);
+    noteAsked.current = false;
     setLink("");
     setTarget("");
     setSourceLabel("");
@@ -255,8 +265,15 @@ export default function AddStamp({
     setWorkId("");
     setMatchedSource(null);
     setCatalogSite("");
+    // the website we put in the link field belonged to the match that is going away
+    if (catalogSite) setOwnLink((o) => (o === catalogSite ? "" : o));
     setCatalogPick("");
     setLinkFailed("");
+  }
+
+  function showPlaceSite(site: string) {
+    setCatalogSite(site);
+    if (site) setOwnLink((o) => (o.trim() ? o : site));
   }
 
   // Tries to tie what we read from a link to a catalog entry. Never touches the link.
@@ -291,6 +308,7 @@ export default function AddStamp({
       if (w && (sure || cat.slug !== "places")) {
         setWorkId(w.id);
         setMatchedSource(w.source);
+        if (cat.slug === "places" && typeof w.website === "string" && /^https?:\/\//.test(w.website)) showPlaceSite(w.website);
         setDraft((d) => ({
           ...d,
           // Only a near exact match may replace the title the person's own link gave us.
@@ -322,6 +340,7 @@ export default function AddStamp({
       return;
     }
     setNotALinkQuery("");
+    setLinkNotice("");
     setReading(true);
     setReadNotice("");
     const cleaned = stripTracking(url);
@@ -334,6 +353,11 @@ export default function AddStamp({
     if (data.status === "not_a_link") {
       setReading(false);
       setNotALinkQuery(typeof data.query === "string" && data.query ? data.query : input.trim());
+      return;
+    }
+    if (data.status === "unsupported") {
+      setReading(false);
+      setLinkNotice(typeof data.notice === "string" ? data.notice : "We can't add that page. Paste the link of the thing itself.");
       return;
     }
     const finalLink = typeof data.link === "string" ? data.link : cleaned;
@@ -485,7 +509,7 @@ export default function AddStamp({
     }
     setWorkId(id);
     setMatchedSource(id ? r.source : null);
-    setCatalogSite(id ? site : "");
+    showPlaceSite(id ? site : "");
     setCatalogPick(r.source);
     setLinkFailed(id ? "" : r.source);
     const photo = r.image_url || sitePhoto;
@@ -569,6 +593,8 @@ export default function AddStamp({
           type="text"
           inputMode="url"
           autoCapitalize="off"
+          autoCorrect="off"
+          autoComplete="off"
           spellCheck={false}
           required={linkRequired}
           autoFocus={first}
@@ -587,7 +613,7 @@ export default function AddStamp({
             ? `Visitors will go to ${displayUrl(finalUrl, 60)}`
             : linkRequired
               ? "Needed so visitors can find it. We'll fill in the rest from the page."
-              : "A link lets your friends find it. You can also keep it without one."}
+              : "A link lets your friends find it. You can also add it without one."}
         </span>
         {!ownLinkClean && linkHelp(slug, draft.title || query).length > 0 && (
           <div className="link-help">
@@ -611,10 +637,13 @@ export default function AddStamp({
       </div>
     );
   }
-  // Honest link rule: a pasted link, then the person's own link, then the place's own website.
-  const finalUrl = path === "paste" ? link : ownLinkClean ? stripTracking(ownLinkClean) : catalogSite;
+  // Honest link rule: what the link field shows is what visitors open. A found place's website
+  // is put into that field (editable); for a pasted map link, clearing it goes back to the map.
+  const placeSiteField = path === "paste" && slug === "places" && !!catalogSite;
+  const finalUrl =
+    path === "paste" ? (placeSiteField && ownLinkClean ? stripTracking(ownLinkClean) : link) : ownLinkClean ? stripTracking(ownLinkClean) : "";
   const finalSourceLabel =
-    path === "paste" ? sourceLabel : finalUrl ? new URL(finalUrl).hostname.replace(/^www\./, "") : "";
+    path === "paste" && finalUrl === link ? sourceLabel : finalUrl ? new URL(finalUrl).hostname.replace(/^www\./, "") : "";
 
   function renderPreview() {
     const shape = SHAPE[slug];
@@ -659,11 +688,11 @@ export default function AddStamp({
   }
 
   const title = {
-    start: "Keep a hoshigo",
+    start: "Add a hoshigo",
     link: "Paste a link",
-    category: path === "paste" ? "What is this?" : "What are you keeping?",
+    category: path === "paste" ? "What is this?" : "What are you adding?",
     search: `Find ${category?.label ?? "it"}`,
-    details: gate ? "Add its link" : "Check and keep",
+    details: gate ? "Add its link" : "Check and add",
   }[screen];
 
   return (
@@ -673,7 +702,7 @@ export default function AddStamp({
           type="button"
           className={`stamp${pinned ? " pinned" : ""}`}
           aria-haspopup="dialog"
-          aria-label="Press here to keep a hoshigo"
+          aria-label="Press here to add a hoshigo"
           onClick={() => {
             reset();
             setOpen(true);
@@ -686,7 +715,7 @@ export default function AddStamp({
             <circle cx="58" cy="58" r="30" />
             <text>
               <textPath href="#ring" textLength="292">
-                press here to keep a hoshigo · press here to keep a hoshigo ·{" "}
+                press here to add a hoshigo · press here to add a hoshigo ·{" "}
               </textPath>
             </text>
           </svg>
@@ -735,9 +764,12 @@ export default function AddStamp({
                 spellCheck={false}
                 placeholder="Paste it here"
                 value={linkInput}
+                autoCorrect="off"
+                enterKeyHint="go"
                 onChange={(e) => {
                   setLinkInput(e.target.value);
                   setNotALinkQuery("");
+                  setLinkNotice("");
                 }}
                 autoFocus
               />
@@ -756,6 +788,11 @@ export default function AddStamp({
               )}
               <span className="hint">Share text from an app works too.</span>
             </div>
+            {linkNotice && (
+              <div className="notice" role="status">
+                <p>{linkNotice}</p>
+              </div>
+            )}
             {notALinkQuery && (
               <div className="notice">
                 <p>That doesn&apos;t look like a link.</p>
@@ -896,10 +933,17 @@ export default function AddStamp({
                 return;
               }
               setFormError("");
+              if (!draft.note.trim() && !noteAsked.current) {
+                noteAsked.current = true;
+                setNoteNudge(true);
+                return;
+              }
+              setNoteNudge(false);
               submittedCategory.current = category ? { label: category.label, slug: category.slug } : null;
               action(fd);
             }}
             className="stack"
+            ref={formRef}
           >
             <input type="hidden" name="category_id" value={categoryId} />
             <input type="hidden" name="url" value={finalUrl} />
@@ -918,7 +962,7 @@ export default function AddStamp({
 
             {gate && (
               <p className="cat-line">
-                Keeping in <strong>{category?.label}</strong>
+                Adding to <strong>{category?.label}</strong>
                 {query.trim() && SEARCHABLE.has(slug) && <span> · not found in the catalogue</span>}
               </p>
             )}
@@ -944,7 +988,7 @@ export default function AddStamp({
               {!looking && !matchedSource && linkFailed && (
                 <span className="error">
                   {" "}
-                  · couldn&apos;t link it to {SOURCE_NAME[linkFailed] ?? linkFailed} right now, so it will be kept without that link. Try picking it again in a moment.
+                  · couldn&apos;t link it to {SOURCE_NAME[linkFailed] ?? linkFailed} right now, so it will be added without that link. Try picking it again in a moment.
                 </span>
               )}
               {" · "}
@@ -1102,12 +1146,33 @@ export default function AddStamp({
               <label htmlFor="add-note">
                 Why five stars? <span className="optional">optional</span>
               </label>
-              <textarea id="add-note" name="note" value={draft.note} onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))} />
+              <textarea
+                ref={noteRef}
+                id="add-note"
+                name="note"
+                value={draft.note}
+                onChange={(e) => {
+                  setDraft((d) => ({ ...d, note: e.target.value }));
+                  setNoteNudge(false);
+                }}
+              />
             </div>
               </>
             )}
 
-            {path === "paste" ? (
+            {placeSiteField ? (
+              <>
+                {renderOwnLink(false)}
+                {finalUrl !== link && (
+                  <p className="hint">
+                    Found the place&apos;s own website.{" "}
+                    <button type="button" className="linkish" style={{ padding: 0 }} onClick={() => setOwnLink("")}>
+                      Use the map link you pasted instead
+                    </button>
+                  </p>
+                )}
+              </>
+            ) : path === "paste" ? (
               <div className="link-box">
                 <span className="field-label">Visitors will go to</span>
                 <a href={link} target="_blank" rel="noopener" className="link-dest-big">
@@ -1123,6 +1188,35 @@ export default function AddStamp({
             )}
 
             {(formError || error) && <p className="error">{formError || error}</p>}
+            {noteNudge && !gate && (
+              <div className="notice" role="status">
+                <p>Are you sure you want to add this without a note? Notes make them more personal.</p>
+                <div className="sheet-row">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setNoteNudge(false);
+                      noteRef.current?.focus();
+                      noteRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+                    }}
+                  >
+                    Add a note
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={pending}
+                    onClick={() => {
+                      setNoteNudge(false);
+                      formRef.current?.requestSubmit();
+                    }}
+                  >
+                    Add without a note
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="actions">
               {renderBack(path === "paste" ? "link" : SEARCHABLE.has(slug) ? "search" : "category")}
               {gate ? (
@@ -1131,7 +1225,7 @@ export default function AddStamp({
                 </button>
               ) : (
                 <button type="submit" className="cta" disabled={pending || !draft.title.trim() || looking || (linkRequired && !finalUrl)}>
-                  {pending ? "Keeping…" : !finalUrl && !linkRequired ? "Keep without a link" : "Keep"}
+                  {pending ? "Adding…" : !finalUrl && !linkRequired ? "Add without a link" : "Add"}
                 </button>
               )}
             </div>
@@ -1142,7 +1236,7 @@ export default function AddStamp({
       {landed && (
         <div className="add-toast" role="status">
           <span>
-            Kept in your {landed.label}.{" "}
+            Added to your {landed.label}.{" "}
             <Link href={`/${handle}#h-${landed.slug}`} onClick={() => setLanded(null)}>
               See it on your page
             </Link>
