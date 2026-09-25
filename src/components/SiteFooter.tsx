@@ -1,15 +1,48 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { signOut } from "@/app/[handle]/actions";
 
-export default function SiteFooter({ loggedIn = false }: { loggedIn?: boolean }) {
+// Links repeated from the top, so the bottom of every page reads as a proper footer.
+// "Inspiration" gets its place here once that page exists.
+export default async function SiteFooter({ loggedIn = false, handle }: { loggedIn?: boolean; handle?: string }) {
+  let myHandle = handle;
+  if (loggedIn && !myHandle) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase.from("profiles").select("handle").eq("id", user.id).maybeSingle();
+      myHandle = (data?.handle as string | undefined) ?? undefined;
+    }
+  }
+  const realHandle = myHandle && !myHandle.startsWith("user-") ? myHandle : undefined;
+
   return (
     <footer>
       <div className="inner">
         <div className="footer-tag" lang="ja">
           星五
         </div>
-        {!loggedIn && (
+        {loggedIn ? (
+          <nav className="footer-nav" aria-label="Footer">
+            <Link href="/about">About hoshigo</Link>
+            {realHandle && <Link href={`/${realHandle}`}>My hoshigo</Link>}
+            <Link href="/settings">Edit profile</Link>
+            <Link href="/friends">Friends</Link>
+            <Link href="/explore">Explore</Link>
+            <form action={signOut}>
+              <button type="submit" className="footer-link">
+                Log out
+              </button>
+            </form>
+          </nav>
+        ) : (
           <div className="footer-msg">
             <p>Keep your own five star page.</p>
+            <Link href="/about" className="footer-about">
+              About hoshigo
+            </Link>
             <Link href="/login" className="cta">
               Sign up / Login
             </Link>

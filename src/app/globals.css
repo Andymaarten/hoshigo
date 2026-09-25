@@ -354,7 +354,7 @@ h1 {
 .stamp text {
   fill: var(--ink);
   font-family: var(--display);
-  font-size: 10.5px;
+  font-size: 11.3px;
   font-weight: 700;
   letter-spacing: 1.5px;
 }
@@ -847,6 +847,37 @@ footer p {
 
 footer .cta {
   flex: none;
+}
+
+footer .footer-nav {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding: 20px 28px;
+}
+
+footer .footer-nav a,
+footer .footer-link,
+footer .footer-about {
+  all: unset;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+footer .footer-nav a:hover,
+footer .footer-link:hover,
+footer .footer-about:hover {
+  color: var(--accent);
+}
+
+footer .footer-nav form {
+  display: contents;
 }
 
 .auth-main {
@@ -1756,6 +1787,33 @@ footer .cta {
   margin: 0;
   padding: 0;
   max-width: 62ch;
+}
+
+.feedback-message {
+  white-space: pre-wrap;
+}
+
+.feedback-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.feedback-controls select,
+.feedback-controls input {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1.5px solid var(--ink);
+  background: var(--ground);
+  font: inherit;
+  font-size: 14px;
+}
+
+.feedback-controls input {
+  flex: 1;
+  min-width: 160px;
 }
 
 .stats-feedback li {

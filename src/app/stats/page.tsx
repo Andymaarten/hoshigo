@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
@@ -260,6 +261,9 @@ export default async function StatsPage() {
 
         <section>
           <h2>latest feedback</h2>
+          <p className="bio" style={{ marginTop: 0, marginBottom: 12 }}>
+            <Link href="/admin/feedback">Handle all feedback</Link>
+          </p>
           {!fb ? (
             <Missing what="feedback" />
           ) : fb.length === 0 ? (
