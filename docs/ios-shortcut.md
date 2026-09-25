@@ -18,10 +18,11 @@ set `NEXT_PUBLIC_IOS_SHORTCUT_URL` in Vercel and redeploy.
 5. In the same block, tap **Continue** after *If there's no input* and choose **Stop and
    Respond** (so running it without anything shared does nothing).
 6. Tap **Search Actions** at the bottom, type **Open URLs**, and tap it to add it.
-7. Tap the **URL** placeholder in *Open URL*, type `https://hoshigo.cc/add?url=`, then, with
-   the cursor right after the `=`, tap **Shortcut Input** in the variable bar above the
-   keyboard. The field should read `https://hoshigo.cc/add?url=` followed by a blue
-   *Shortcut Input* token, with no space between them.
+7. Tap the **URL** placeholder in *Open URL*, type `https://hoshigo.cc/add?via=shortcut&url=`,
+   then, with the cursor right after the last `=`, tap **Shortcut Input** in the variable bar
+   above the keyboard. The field should read `https://hoshigo.cc/add?via=shortcut&url=`
+   followed by a blue *Shortcut Input* token, with no space between them. (`via=shortcut`
+   only tells our stats the add came from the Shortcut; it must come before `url=`.)
 8. Tap **Done**.
 
 No encoding step is needed: /add reads everything after the first `url=` as the link
@@ -41,3 +42,11 @@ iOS asks whether the shortcut may open hoshigo.cc: choose **Always Allow**.
 3. That link is what the /app page uses. Anyone opening it on an iPhone gets **Add Shortcut**.
 
 If the shortcut changes, share it again: iCloud links point at a copy, not a live version.
+
+## Updating the existing shortcut
+
+Open **Add to hoshigo** in the Shortcuts app, tap the address in *Open URL*, and change
+`https://hoshigo.cc/add?url=` to `https://hoshigo.cc/add?via=shortcut&url=` (keep the
+Shortcut Input token right after it). Then share it again as above and send the new iCloud
+link to Lucas, or set it as `NEXT_PUBLIC_IOS_SHORTCUT_URL`. Old copies keep working; they
+just count as "direct" in the stats.

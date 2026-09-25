@@ -2892,3 +2892,13 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   .install-hint { animation: none; }
 }
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.install-now {
+  min-height: 34px;
+  margin-left: 6px;
+  padding: 0 14px;
+}
