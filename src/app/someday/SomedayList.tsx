@@ -25,7 +25,9 @@ export type SomedayRow = {
 };
 
 function formatDate(s: string) {
-  return new Date(s).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const d = new Date(s);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString("en-GB", sameYear ? { day: "numeric", month: "long" } : { day: "numeric", month: "long", year: "numeric" });
 }
 
 function safeUrl(u: string | null) {
@@ -80,7 +82,7 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
   }
 
   return (
-    <>
+    <div>
       {chips.length > 1 && (
         <div className="chip-row" role="group" aria-label="Filter by category" style={{ marginBottom: 18 }}>
           {[{ slug: "all", label: "all" }, ...chips].map((c) => (
@@ -95,21 +97,30 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
           const cat = catById.get(r.category_id);
           const shape = cat ? SHAPE[cat.slug] : undefined;
           return (
-            <li key={r.id} className="feed-row">
+            <li key={r.id} className="feed-row someday-row">
               <div className={`thumb${shape === "tall" ? " tall" : ""}`} aria-hidden="true">
                 <CoverImage src={r.image_url} small />
               </div>
               <div className="feed-txt">
                 <span className="title">{r.title}</span>
                 {r.by && <span className="by">{r.by}</span>}
-                <span className="feed-meta">
-                  {cat && <span>{cat.label}</span>}
-                  {r.from && (
-                    <span>
-                      from <Link href={r.from.href} className="feed-friend">{r.from.name}</Link>
-                    </span>
-                  )}
-                  <time dateTime={r.created_at}>saved {formatDate(r.created_at)}</time>
+                <span className="someday-meta">
+                  {[
+                    cat ? <span key="c">{cat.label}</span> : null,
+                    r.from ? (
+                      <span key="f">
+                        {SOMEDAY.fromWord} <Link href={r.from.href} className="feed-friend">{r.from.name}</Link>
+                      </span>
+                    ) : null,
+                    <time key="d" dateTime={r.created_at}>{SOMEDAY.savedOn(formatDate(r.created_at))}</time>,
+                  ]
+                    .filter(Boolean)
+                    .map((el, i) => (
+                      <Fragment key={i}>
+                        {i > 0 && <span aria-hidden="true"> · </span>}
+                        {el}
+                      </Fragment>
+                    ))}
                 </span>
                 {r.alsoFor.length > 0 && (
                   <span className="feed-meta">
@@ -124,8 +135,9 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
                     </span>
                   </span>
                 )}
+              </div>
                 {mine && (
-                  <div className="sheet-row" style={{ marginTop: 8 }}>
+                  <div className="someday-actions">
                     {confirming === r.id ? (
                       <>
                         <button
@@ -157,11 +169,10 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
                     )}
                   </div>
                 )}
-              </div>
             </li>
           );
         })}
       </ul>
-    </>
+    </div>
   );
 }

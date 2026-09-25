@@ -96,7 +96,8 @@ export default async function SomedayPage({ searchParams }: { searchParams: Prom
             href: r.source_item_id && existing.has(r.source_item_id) ? `/${from.handle}/${r.source_item_id}` : `/${from.handle}`,
           }
         : null,
-      alsoFor: alsoFor.get(r.id) ?? [],
+      // the person you saved it from is already named; only others here
+      alsoFor: (alsoFor.get(r.id) ?? []).filter((f) => f.handle !== from?.handle),
     };
   });
 

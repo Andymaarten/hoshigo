@@ -11,6 +11,8 @@ export const SOMEDAY = {
   keep: "Keep it",
   empty: "Nothing saved yet. When a friend's hoshigo looks like something for you, save it for someday and it waits here.",
   alsoFor: "Also a hoshigo for",
+  fromWord: "from",
+  savedOn: (date: string) => `saved ${date}`,
   settingsLabel: "Who can see your someday list?",
   onlyMe: "Only me",
   onPage: "Visible on my page",
