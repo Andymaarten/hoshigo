@@ -2,7 +2,9 @@
 
 import { Fragment, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import type { Category } from "@/lib/supabase/types";
+import type { Category, Item } from "@/lib/supabase/types";
+import Sheet from "@/components/Sheet";
+import ListingSheetBody from "@/components/ListingSheet";
 import { SHAPE } from "@/lib/category-display";
 import CoverImage from "@/components/CoverImage";
 import { ADDED_EVENT, ADD_PREFILL_EVENT, type AddPrefill } from "@/lib/item-order";
@@ -20,7 +22,9 @@ export type SomedayRow = {
   image_url: string | null;
   url: string | null;
   created_at: string;
-  from: { name: string; href: string } | null;
+  from: { name: string; handle: string; href: string } | null;
+  /** the original listing while it exists and you may see it */
+  source: Item | null;
   alsoFor: { handle: string; name: string }[];
 };
 
@@ -44,6 +48,7 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
   const [rows, setRows] = useState(initial);
   const [slug, setSlug] = useState("all");
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [open, setOpen] = useState<SomedayRow | null>(null);
   const [pending, start] = useTransition();
   const catById = new Map(categories.map((c) => [c.id, c]));
 
@@ -98,11 +103,13 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
           const shape = cat ? SHAPE[cat.slug] : undefined;
           return (
             <li key={r.id} className="feed-row someday-row">
-              <div className={`thumb${shape === "tall" ? " tall" : ""}`} aria-hidden="true">
+              <button type="button" className={`feed-cover thumb${shape === "tall" ? " tall" : ""}`} onClick={() => setOpen(r)} aria-label={`Open ${r.title}`}>
                 <CoverImage src={r.image_url} small />
-              </div>
+              </button>
               <div className="feed-txt">
-                <span className="title">{r.title}</span>
+                <button type="button" className="title feed-title" onClick={() => setOpen(r)}>
+                  {r.title}
+                </button>
                 {r.by && <span className="by">{r.by}</span>}
                 <span className="someday-meta">
                   {[
@@ -173,6 +180,47 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
           );
         })}
       </ul>
+
+      <Sheet open={!!open} onClose={() => setOpen(null)} labelledBy="someday-sheet-title">
+        {open && (
+          <>
+            {open.from && (
+              <p className="meta">
+                {SOMEDAY.fromWord} <Link href={`/${open.from.handle}`}>{open.from.name}</Link>
+              </p>
+            )}
+            <ListingSheetBody
+              item={open.source ?? snapshotItem(open)}
+              shape={SHAPE[catById.get(open.category_id)?.slug ?? ""]}
+              titleId="someday-sheet-title"
+              handle={open.from?.handle ?? ""}
+              mine={false}
+              shareable={false}
+              friendsOnly={false}
+            />
+          </>
+        )}
+      </Sheet>
     </div>
   );
+}
+
+// The original is gone or hidden: show what was saved.
+function snapshotItem(r: SomedayRow): Item {
+  return {
+    id: r.id,
+    profile_id: "",
+    category_id: r.category_id,
+    work_id: r.work_id,
+    title: r.title,
+    by: r.by,
+    year: r.year,
+    url: r.url,
+    image_url: r.image_url,
+    note: null,
+    featured: false,
+    source_label: null,
+    position: 0,
+    created_at: r.created_at,
+  };
 }

@@ -42,9 +42,7 @@ export async function saveForSomeday(itemId: string): Promise<boolean> {
   // Read with the visitor's own rights: you can only save what you're allowed to see.
   const { data: item } = await supabase.from("items").select("*").eq("id", itemId).returns<Item[]>().maybeSingle();
   if (!item || item.profile_id === user.id) return false;
-  const state = await somedayState(itemId);
-  if (!state) return false;
-  if (state.saved) return true;
+  // Saving twice is caught by the unique indexes (23505), so no lookup first.
   const { error } = await supabase.from("someday_items").insert({
     profile_id: user.id,
     from_profile_id: item.profile_id,
@@ -67,4 +65,42 @@ export async function removeSomeday(id: string): Promise<boolean> {
   const { error } = await supabase.from("someday_items").delete().eq("id", id).eq("profile_id", user.id);
   revalidatePath("/someday");
   return !error;
+}
+
+function httpUrl(raw: string): string | null {
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    return u.protocol === "http:" || u.protocol === "https:" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The add dialog in "someday" mode: the same review step, saved here instead of your page. */
+export async function addToSomeday(_prev: string | null, formData: FormData): Promise<string | null> {
+  const { supabase, user } = await session();
+  if (!user) return "You need to be logged in.";
+  const categoryId = Number(formData.get("category_id"));
+  const title = String(formData.get("title") || "").trim();
+  const url = String(formData.get("url") || "").trim();
+  const image = String(formData.get("image_url") || "").trim();
+  const workId = String(formData.get("work_id") || "").trim();
+  const yearRaw = String(formData.get("year") || "").trim();
+  if (!title || !categoryId) return "Title and category are required.";
+  if (url && !httpUrl(url)) return "That link doesn't look like a valid web address.";
+  if (image && !httpUrl(image)) return "That image link doesn't look like a valid web address.";
+  const { error } = await supabase.from("someday_items").insert({
+    profile_id: user.id,
+    category_id: categoryId,
+    work_id: UUID_RE.test(workId) ? workId : null,
+    title,
+    by: String(formData.get("by") || "").trim() || null,
+    year: /^\d{3,4}$/.test(yearRaw) ? Number(yearRaw) : null,
+    url: url || null,
+    image_url: image || null,
+  });
+  if (error && error.code !== "23505") return error.message;
+  revalidatePath("/someday");
+  return null;
 }
