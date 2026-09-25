@@ -48,6 +48,21 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
   const [rows, setRows] = useState(initial);
   const [slug, setSlug] = useState("all");
   const [confirming, setConfirming] = useState<string | null>(null);
+  // the row whose actions are unfolded by its small mark
+  const [unfolded, setUnfolded] = useState<string | null>(null);
+
+  // a tap anywhere outside that row folds them away again
+  useEffect(() => {
+    if (!unfolded) return;
+    function onDown(e: PointerEvent) {
+      if (!(e.target as Element)?.closest?.(`[data-row="${unfolded}"]`)) {
+        setUnfolded(null);
+        setConfirming(null);
+      }
+    }
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [unfolded]);
   const [open, setOpen] = useState<SomedayRow | null>(null);
   const [pending, start] = useTransition();
   const catById = new Map(categories.map((c) => [c.id, c]));
@@ -102,7 +117,21 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
           const cat = catById.get(r.category_id);
           const shape = cat ? SHAPE[cat.slug] : undefined;
           return (
-            <li key={r.id} className="feed-row someday-row">
+            <li key={r.id} className="feed-row someday-row" data-row={r.id}>
+              {mine && (
+                <button
+                  type="button"
+                  className="someday-mark"
+                  aria-label={SOMEDAY.doneWith}
+                  aria-expanded={unfolded === r.id}
+                  onClick={() => {
+                    setConfirming(null);
+                    setUnfolded((u) => (u === r.id ? null : r.id));
+                  }}
+                >
+                  ×
+                </button>
+              )}
               <button type="button" className={`feed-cover thumb${shape === "tall" ? " tall" : ""}`} onClick={() => setOpen(r)} aria-label={`Open ${r.title}`}>
                 <CoverImage src={r.image_url} small />
               </button>
@@ -143,7 +172,7 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
                   </span>
                 )}
               </div>
-                {mine && (
+                {mine && unfolded === r.id && (
                   <div className="someday-actions">
                     {confirming === r.id ? (
                       <>

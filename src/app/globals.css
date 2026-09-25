@@ -1916,6 +1916,43 @@ footer .footer-nav form {
   gap: 8px;
 }
 
+.someday-row {
+  position: relative;
+  padding-right: 32px;
+}
+
+.someday-mark {
+  all: unset;
+  position: absolute;
+  top: 10px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.someday-mark:hover,
+.someday-mark:focus-visible,
+.someday-mark[aria-expanded="true"] {
+  opacity: 1;
+  color: var(--ink);
+}
+
+.someday-add .btn.btn-small {
+  display: inline-flex;
+  vertical-align: middle;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
 .btn.btn-quiet {
   border-color: var(--rule);
   color: var(--muted);
@@ -1927,15 +1964,7 @@ footer .footer-nav form {
 }
 
 .someday-add {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-}
-
-.someday-add .btn {
-  max-width: 360px;
-  justify-content: center;
-  text-align: center;
+  margin-top: 12px;
 }
 
 .someday-main {

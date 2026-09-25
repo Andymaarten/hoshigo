@@ -125,7 +125,8 @@ export default async function SomedayPage({ searchParams }: { searchParams: Prom
           <>
             <p className="bio">{SOMEDAY.intro}</p>
             {myHandle && (
-              <div className="someday-add">
+              <div className="bio someday-add">
+                {SOMEDAY.addLead}
                 <AddStamp handle={myHandle} categories={categories} destination="someday" />
               </div>
             )}

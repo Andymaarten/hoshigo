@@ -6,13 +6,18 @@ import { SOMEDAY } from "@/lib/someday";
 
 /** "Save for someday" on someone else's listing. Flips at once; the save runs behind it. */
 export default function SaveSomeday({ itemId }: { itemId: string }) {
-  const [state, setState] = useState<{ saved: boolean } | null>(null);
+  // Shown at once as "not saved yet"; the check only corrects it (or hides it) afterwards.
+  const [state, setState] = useState<{ saved: boolean } | null>({ saved: false });
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let live = true;
     somedayState(itemId)
-      .then((s) => live && setState(s))
+      .then((s) => {
+        if (!live) return;
+        // a tap already flipped it: keep that
+        setState((cur) => (cur?.saved ? cur : s));
+      })
       .catch(() => {});
     return () => {
       live = false;
