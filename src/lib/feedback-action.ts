@@ -5,6 +5,7 @@ import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { renderEmail } from "@/lib/email-layout";
 import { adminClient } from "@/lib/supabase/admin";
+import { ownerHandles } from "@/lib/owner";
 
 async function emailOwner(message: string, page: string, who: string): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY?.replace(/\s+/g, "");
@@ -92,15 +93,19 @@ export async function sendFeedback(message: string, page: string): Promise<Feedb
   const { data } = await supabase.auth.getUser();
   if (!data.user) return { ok: false, error: "Log in to send feedback." };
 
-  const recent = await recentFeedback(data.user.id);
-  if (recent && (recent.length >= PER_HOUR || (recent[0] && Date.now() - recent[0] < COOLDOWN_MS))) {
-    return { ok: false, error: LIMITED };
+  const { data: profile } = await supabase.from("profiles").select("handle").eq("id", data.user.id).maybeSingle();
+  // The owner collects notes here freely; the limit only protects the inbox from everyone else.
+  const isOwner = !!profile?.handle && ownerHandles().includes(String(profile.handle).toLowerCase());
+  if (!isOwner) {
+    const recent = await recentFeedback(data.user.id);
+    if (recent && (recent.length >= PER_HOUR || (recent[0] && Date.now() - recent[0] < COOLDOWN_MS))) {
+      return { ok: false, error: LIMITED };
+    }
+    if (await cookieCooldownActive(data.user.id)) return { ok: false, error: LIMITED };
   }
-  if (await cookieCooldownActive(data.user.id)) return { ok: false, error: LIMITED };
 
   const pagePath = page.slice(0, 500);
   const userAgent = (await headers()).get("user-agent")?.slice(0, 500) ?? null;
-  const { data: profile } = await supabase.from("profiles").select("handle").eq("id", data.user.id).maybeSingle();
   const who = profile?.handle ? `@${profile.handle}` : (data.user.email ?? data.user.id);
 
   // Stored and emailed independently: if the table isn't there yet, the email still arrives.
