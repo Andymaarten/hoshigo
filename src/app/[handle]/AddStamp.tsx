@@ -64,6 +64,7 @@ export default function AddStamp({
   pins = null,
   onOwnPage = true,
   destination = "items",
+  hideStamp = false,
 }: {
   handle: string;
   categories: Category[];
@@ -75,6 +76,8 @@ export default function AddStamp({
   onOwnPage?: boolean;
   /** "someday": the same dialog saves into your someday list (no note, no pin), opened by a plain button */
   destination?: "items" | "someday";
+  /** only the dialog, for prefilled adds (e.g. "Loved it"), without the red stamp */
+  hideStamp?: boolean;
 }) {
   const someday = destination === "someday";
   const [pinned, setPinned] = useState(false);
@@ -710,7 +713,7 @@ export default function AddStamp({
 
   return (
     <>
-      {someday ? (
+      {hideStamp ? null : someday ? (
         <button
           type="button"
           className="btn"
