@@ -21,6 +21,8 @@ export interface Profile {
   email_friend_requests?: boolean;
   /** undefined until the someday migration has run */
   someday_public?: boolean;
+  /** undefined until the changelog migration has run */
+  email_updates?: boolean;
   created_at: string;
 }
 
