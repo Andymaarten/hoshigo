@@ -1893,6 +1893,41 @@ footer .footer-nav form {
   vertical-align: baseline;
 }
 
+/* ---------- someday ---------- */
+
+.someday-row {
+  align-items: center;
+}
+
+.someday-row .feed-txt {
+  flex: 1;
+}
+
+.someday-meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.someday-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .someday-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .someday-actions {
+    flex-basis: 100%;
+    padding-left: 66px;
+  }
+}
+
 .link-help {
   display: flex;
   flex-direction: column;

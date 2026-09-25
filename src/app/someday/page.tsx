@@ -7,8 +7,9 @@ import Wordmark from "@/components/Wordmark";
 import { sortCategories } from "@/lib/category-display";
 import { myFriendships } from "@/lib/friends";
 import { SOMEDAY } from "@/lib/someday";
-import type { Category } from "@/lib/supabase/types";
+import type { Category, Item } from "@/lib/supabase/types";
 import SomedayList, { type SomedayRow } from "./SomedayList";
+import AddStamp from "@/app/[handle]/AddStamp";
 
 type Raw = {
   id: string;
@@ -61,11 +62,12 @@ export default async function SomedayPage({ searchParams }: { searchParams: Prom
   const sourceIds = [...new Set(list.map((r) => r.source_item_id).filter(Boolean) as string[])];
   const [{ data: fromPeople }, { data: stillThere }, rel] = await Promise.all([
     fromIds.length ? supabase.from("profiles").select("id, handle, display_name").in("id", fromIds) : Promise.resolve({ data: [] }),
-    sourceIds.length ? supabase.from("items").select("id").in("id", sourceIds) : Promise.resolve({ data: [] }),
+    // full rows: the card opens the original listing (with its note) while you may still see it
+    sourceIds.length ? supabase.from("items").select("*").in("id", sourceIds).returns<Item[]>() : Promise.resolve({ data: [] as Item[] }),
     mine && user ? myFriendships(supabase, user.id) : Promise.resolve(null),
   ]);
   const personById = new Map((fromPeople ?? []).map((p) => [p.id as string, p]));
-  const existing = new Set((stillThere ?? []).map((i) => i.id as string));
+  const sourceById = new Map((stillThere ?? []).map((i) => [i.id, i]));
 
   // "Also a hoshigo for": your friends who keep the same thing (by catalog work, else by title)
   const alsoFor = new Map<string, { handle: string; name: string }[]>();
@@ -93,10 +95,13 @@ export default async function SomedayPage({ searchParams }: { searchParams: Prom
       from: from
         ? {
             name: (from.display_name as string) || (from.handle as string),
-            href: r.source_item_id && existing.has(r.source_item_id) ? `/${from.handle}/${r.source_item_id}` : `/${from.handle}`,
+            handle: from.handle as string,
+            href: r.source_item_id && sourceById.has(r.source_item_id) ? `/${from.handle}/${r.source_item_id}` : `/${from.handle}`,
           }
         : null,
-      alsoFor: alsoFor.get(r.id) ?? [],
+      // the person you saved it from is already named; only others here
+      source: (r.source_item_id && sourceById.get(r.source_item_id)) || null,
+      alsoFor: (alsoFor.get(r.id) ?? []).filter((f) => f.handle !== from?.handle),
     };
   });
 
@@ -109,12 +114,23 @@ export default async function SomedayPage({ searchParams }: { searchParams: Prom
         </div>
         {user && <HeaderStamp />}
         <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>{mine ? SOMEDAY.heading : SOMEDAY.othersHeading(owner.name)}</h1>
+        {mine && !error && (
+          <>
+            <p className="bio">{SOMEDAY.intro}</p>
+            {myHandle && (
+              <div style={{ marginTop: 16 }}>
+                <AddStamp handle={myHandle} categories={categories} destination="someday" />
+              </div>
+            )}
+          </>
+        )}
       </header>
       <main className="friends-main">
         {error ? (
           <p className="bio">This list is almost here. Check back soon.</p>
         ) : (
-          <SomedayList rows={items} categories={categories} mine={mine} />
+          // remounts when the server sends a new list (after saving through the dialog)
+          <SomedayList key={items.map((i) => i.id).join()} rows={items} categories={categories} mine={mine} />
         )}
       </main>
       <SiteFooter loggedIn={!!user} handle={myHandle} />
