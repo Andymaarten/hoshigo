@@ -48,6 +48,7 @@ export default async function SettingsPage() {
           initialAutoAccept={profile.auto_accept_friends ?? false}
           initialEmail={profile.email_friend_requests ?? true}
           friendsEnabled={profile.auto_accept_friends !== undefined}
+          initialSomedayPublic={profile.someday_public}
         />
       </section>
 

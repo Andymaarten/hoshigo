@@ -19,6 +19,8 @@ export interface Profile {
   auto_accept_friends?: boolean;
   /** undefined until the friend request email migration has run */
   email_friend_requests?: boolean;
+  /** undefined until the someday migration has run */
+  someday_public?: boolean;
   created_at: string;
 }
 

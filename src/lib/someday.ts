@@ -1,0 +1,21 @@
+// Every user visible name for the "Someday" list lives here, so a rename is one edit.
+export const SOMEDAY = {
+  name: "Someday",
+  page: "/someday",
+  heading: "someday.",
+  save: "Save for someday",
+  saved: "Saved for someday",
+  lovedIt: "Loved it",
+  notOne: "Not a hoshigo",
+  confirmRemove: "Yes, remove it",
+  keep: "Keep it",
+  empty: "Nothing saved yet. When a friend's hoshigo looks like something for you, save it for someday and it waits here.",
+  alsoFor: "Also a hoshigo for",
+  settingsLabel: "Who can see your someday list?",
+  onlyMe: "Only me",
+  onPage: "Visible on my page",
+  onPageHint: "People who can see your page can see what you saved for someday.",
+  onlyMeHint: "Only you see what you saved for someday.",
+  profileLink: (name: string) => `${name}’s someday list`,
+  othersHeading: (name: string) => `${name}’s someday.`,
+} as const;
