@@ -12,6 +12,7 @@ import ProfileSocialLinks from "@/components/ProfileSocialLinks";
 import FriendButton from "@/components/FriendButton";
 import FollowButton from "@/components/FollowButton";
 import PeopleLine from "@/components/PeopleLine";
+import FollowersLine from "@/components/FollowersLine";
 import { followStateWith, friendsPage, myFollowers, type FollowState } from "@/lib/follows";
 import {
   friendStateWith,
@@ -192,7 +193,7 @@ export default async function ProfilePage({
             </div>
           )}
           {friendList && <PeopleLine label="Friends" people={friendList.people} total={friendList.total} profileId={profile.id} />}
-          {followers && <PeopleLine label="People who follow you" people={followers} total={followers.length} />}
+          {followers && <FollowersLine people={followers} />}
         </div>
         <ProfileSocialLinks links={profile.social_links ?? []} />
       </header>

@@ -22,7 +22,14 @@ export async function myFolloweeIds(supabase: Supabase, me: string): Promise<str
 export async function myFollowers(supabase: Supabase, me: string): Promise<PersonName[] | null> {
   const { data, error } = await supabase.from("follows").select("follower").eq("followee", me);
   if (error) return null;
-  const ids = (data ?? []).map((r) => r.follower as string);
+  // Friends are never listed as followers, even if an old follow row is still there.
+  const { data: fr } = await supabase
+    .from("friendships")
+    .select("requester, addressee")
+    .eq("status", "accepted")
+    .or(`requester.eq.${me},addressee.eq.${me}`);
+  const friendIds = new Set((fr ?? []).map((f) => (f.requester === me ? f.addressee : f.requester) as string));
+  const ids = (data ?? []).map((r) => r.follower as string).filter((id) => !friendIds.has(id));
   if (!ids.length) return [];
   const { data: people } = await supabase.from("profiles").select("handle, display_name").in("id", ids);
   return ((people ?? []) as PersonName[]).sort((a, b) => (a.display_name || a.handle).localeCompare(b.display_name || b.handle));
