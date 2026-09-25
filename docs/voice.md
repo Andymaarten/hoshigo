@@ -231,3 +231,7 @@ For Andreas and Saar to share with friends and family, mostly on WhatsApp
 **One line**
 
 > hoshigo: keep only what you'd give five stars, and see what your friends would. No ads, no AI, no algorithm. https://hoshigo.cc
+
+### 2026-09-25 (later)
+- Add vs keep, owner's rule: "Add is only for new things. You add a new hoshigo, but you keep the ones you cherish. So you keep your list." Actions and buttons say add (Add a hoshigo, Add, Added to your films); descriptions of the collection say keep (the hoshigos you keep, keep your own five star page).
+- Red stamp ring: "press here to add a hoshigo" (owner found "keep" odd for the act of adding).
