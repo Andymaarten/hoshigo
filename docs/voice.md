@@ -235,3 +235,8 @@ For Andreas and Saar to share with friends and family, mostly on WhatsApp
 ### 2026-09-25 (later)
 - Add vs keep, owner's rule: "Add is only for new things. You add a new hoshigo, but you keep the ones you cherish. So you keep your list." Actions and buttons say add (Add a hoshigo, Add, Added to your films); descriptions of the collection say keep (the hoshigos you keep, keep your own five star page).
 - Red stamp ring: "press here to add a hoshigo" (owner found "keep" odd for the act of adding).
+
+### 2026-09-26
+- About page: the "manifesto" kicker label looked too vibecoded; removed. Owner's closing lines: "So the next time somebody asks: do you have any podcast tips? / Yes, have a look at my hoshigo." About says "within a few minutes" (bold "a few minutes"), and "No fake profiles, no bots".
+- Someday intro, owner's words: "Here, you can curate all the hoshigos that you would like to enjoy someday too. A list for your future self."
+- Note nudge buttons: "Write a note" / "Continue without a note".

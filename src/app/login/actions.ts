@@ -32,10 +32,15 @@ export async function signInWithPassword(_prev: string | null, formData: FormDat
   if (!email || !password) return "Fill in both fields.";
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: signedIn, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return error.message;
 
-  redirect((await pendingInvitePath()) ?? safeNextPath(formData.get("next")) ?? "/");
+  const next = (await pendingInvitePath()) ?? safeNextPath(formData.get("next"));
+  if (next) redirect(next);
+  // Straight to your own page after logging in; people without a page yet finish onboarding first.
+  const { data: profile } = await supabase.from("profiles").select("handle").eq("id", signedIn.user.id).maybeSingle();
+  const handle = profile?.handle as string | undefined;
+  redirect(handle && !handle.startsWith("user-") ? `/${handle}` : "/onboarding");
 }
 
 export async function signUpWithPassword(_prev: string | null, formData: FormData) {

@@ -4,13 +4,15 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Category } from "@/lib/supabase/types";
 import { addItem } from "./actions";
+import { addToSomeday } from "../someday/actions";
+import { SOMEDAY } from "@/lib/someday";
 import { clearPendingAdd } from "../add/actions";
 import Sheet from "@/components/Sheet";
 import CoverImage from "@/components/CoverImage";
 import PhotoFromPage from "@/components/PhotoFromPage";
 import { displayUrl, extractUrl, stripTracking } from "@/lib/link-input";
 import { linkHelp } from "@/lib/link-help";
-import { ADD_PREFILL_EVENT, type AddPrefill, type PinMap } from "@/lib/item-order";
+import { ADDED_EVENT, ADD_PREFILL_EVENT, type AddPrefill, type PinMap } from "@/lib/item-order";
 import { placeLine, splitPlaceLine } from "@/lib/place-fields";
 import { BY_LABEL, COVER_FROM_CATALOG, SEARCHABLE, SEARCH_HINT, SHAPE, SOURCE_NAME } from "@/lib/category-display";
 
@@ -61,6 +63,8 @@ export default function AddStamp({
   initialAddLink,
   pins = null,
   onOwnPage = true,
+  destination = "items",
+  hideStamp = false,
 }: {
   handle: string;
   categories: Category[];
@@ -70,12 +74,17 @@ export default function AddStamp({
   pins?: PinMap | null;
   /** false on every other page: after adding, say where it landed */
   onOwnPage?: boolean;
+  /** "someday": the same dialog saves into your someday list (no note, no pin), opened by a plain button */
+  destination?: "items" | "someday";
+  /** only the dialog, for prefilled adds (e.g. "Loved it"), without the red stamp */
+  hideStamp?: boolean;
 }) {
+  const someday = destination === "someday";
   const [pinned, setPinned] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const boundAdd = addItem.bind(null, handle);
-  const [error, action, pending] = useActionState(boundAdd, null);
+  const [error, action, pending] = useActionState(someday ? addToSomeday : boundAdd, null);
   const wasPending = useRef(false);
 
   const [screen, setScreen] = useState<Screen>("start");
@@ -135,11 +144,13 @@ export default function AddStamp({
   const [lastFound, setLastFound] = useState<string[]>([]);
   const [landed, setLanded] = useState<{ label: string; slug: string } | null>(null);
   const submittedCategory = useRef<{ label: string; slug: string } | null>(null);
+  const fromSomeday = useRef<string | null>(null);
 
   const category = categories.find((c) => String(c.id) === categoryId);
   const slug = category?.slug ?? "";
 
   function reset() {
+    fromSomeday.current = null;
     setScreen("start");
     setPath("paste");
     setCategoryId("");
@@ -193,9 +204,11 @@ export default function AddStamp({
 
   useEffect(() => {
     if (wasPending.current && !pending && !error) {
+      const somedayId = fromSomeday.current;
       setOpen(false);
       reset();
       if (!onOwnPage && submittedCategory.current) setLanded(submittedCategory.current);
+      if (somedayId) window.dispatchEvent(new CustomEvent(ADDED_EVENT, { detail: { somedayId } }));
     }
     wasPending.current = pending;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,6 +242,7 @@ export default function AddStamp({
       const cat = categories.find((c) => c.id === p?.categoryId);
       if (!cat) return;
       reset();
+      fromSomeday.current = p.somedayId ?? null;
       setLanded(null);
       setCategoryId(String(cat.id));
       setWorkId(p.workId ?? "");
@@ -255,6 +269,8 @@ export default function AddStamp({
       setScreen("details");
       setOpen(true);
     }
+    // prefills ("Add to my hoshigo", "Loved it") are for your page, never the someday dialog
+    if (someday) return;
     window.addEventListener(ADD_PREFILL_EVENT, onPrefill);
     return () => window.removeEventListener(ADD_PREFILL_EVENT, onPrefill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -688,7 +704,7 @@ export default function AddStamp({
   }
 
   const title = {
-    start: "Add a hoshigo",
+    start: someday ? SOMEDAY.dialogTitle : "Add a hoshigo",
     link: "Paste a link",
     category: path === "paste" ? "What is this?" : "What are you adding?",
     search: `Find ${category?.label ?? "it"}`,
@@ -697,30 +713,44 @@ export default function AddStamp({
 
   return (
     <>
-      <div ref={slotRef} className="stamp-slot">
+      {hideStamp ? null : someday ? (
         <button
           type="button"
-          className={`stamp${pinned ? " pinned" : ""}`}
+          className="btn btn-small"
           aria-haspopup="dialog"
-          aria-label="Press here to add a hoshigo"
           onClick={() => {
             reset();
             setOpen(true);
           }}
         >
-          <svg viewBox="0 0 116 116" aria-hidden="true" focusable="false">
-            <defs>
-              <path id="ring" d="M58,58 m-47,0 a47,47 0 1,1 94,0 a47,47 0 1,1 -94,0" />
-            </defs>
-            <circle cx="58" cy="58" r="30" />
-            <text>
-              <textPath href="#ring" textLength="292">
-                press here to add a hoshigo · press here to add a hoshigo ·{" "}
-              </textPath>
-            </text>
-          </svg>
+          {SOMEDAY.addPress}
         </button>
-      </div>
+      ) : (
+        <div ref={slotRef} className="stamp-slot">
+          <button
+            type="button"
+            className={`stamp${pinned ? " pinned" : ""}`}
+            aria-haspopup="dialog"
+            aria-label="Press here to add a hoshigo"
+            onClick={() => {
+              reset();
+              setOpen(true);
+            }}
+          >
+            <svg viewBox="0 0 116 116" aria-hidden="true" focusable="false">
+              <defs>
+                <path id="ring" d="M58,58 m-47,0 a47,47 0 1,1 94,0 a47,47 0 1,1 -94,0" />
+              </defs>
+              <circle cx="58" cy="58" r="30" />
+              <text>
+                <textPath href="#ring" textLength="292">
+                  press here to add a hoshigo · press here to add a hoshigo ·{" "}
+                </textPath>
+              </text>
+            </svg>
+          </button>
+        </div>
+      )}
 
       <Sheet open={open} onClose={() => setOpen(false)} labelledBy="add-title">
         <h3 id="add-title">{title}</h3>
@@ -933,7 +963,7 @@ export default function AddStamp({
                 return;
               }
               setFormError("");
-              if (!draft.note.trim() && !noteAsked.current) {
+              if (!someday && !draft.note.trim() && !noteAsked.current) {
                 noteAsked.current = true;
                 setNoteNudge(true);
                 return;
@@ -1130,7 +1160,7 @@ export default function AddStamp({
               </div>
             )}
 
-            {pins && category && (
+            {!someday && pins && category && (
               <div className="field">
                 <label className="check-row">
                   <input type="checkbox" name="pin" checked={pin} onChange={(e) => setPin(e.target.checked)} />
@@ -1142,6 +1172,7 @@ export default function AddStamp({
               </div>
             )}
 
+            {!someday && (
             <div className="field">
               <label htmlFor="add-note">
                 Why five stars? <span className="optional">optional</span>
@@ -1157,6 +1188,7 @@ export default function AddStamp({
                 }}
               />
             </div>
+            )}
               </>
             )}
 
@@ -1201,7 +1233,7 @@ export default function AddStamp({
                       noteRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
                     }}
                   >
-                    Add a note
+                    Write a note
                   </button>
                   <button
                     type="button"
@@ -1212,7 +1244,7 @@ export default function AddStamp({
                       formRef.current?.requestSubmit();
                     }}
                   >
-                    Add without a note
+                    Continue without a note
                   </button>
                 </div>
               </div>
@@ -1225,7 +1257,7 @@ export default function AddStamp({
                 </button>
               ) : (
                 <button type="submit" className="cta" disabled={pending || !draft.title.trim() || looking || (linkRequired && !finalUrl)}>
-                  {pending ? "Adding…" : !finalUrl && !linkRequired ? "Add without a link" : "Add"}
+                  {someday ? (pending ? SOMEDAY.saving : SOMEDAY.dialogTitle) : pending ? "Adding…" : !finalUrl && !linkRequired ? "Add without a link" : "Add"}
                 </button>
               )}
             </div>

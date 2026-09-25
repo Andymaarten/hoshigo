@@ -4,7 +4,7 @@ import { Fragment, useState } from "react";
 import Link from "next/link";
 import type { PersonName } from "@/lib/follows";
 
-const STEP = 20;
+const STEP = 10;
 
 /** Only on your own page: "You have 3 followers (only visible to you)." The number opens the names. */
 export default function FollowersLine({ people }: { people: PersonName[] }) {

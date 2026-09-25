@@ -26,6 +26,8 @@ export default async function OnboardingPage() {
   // Magic link logins land here; an existing account with a link waiting goes on to add it.
   const addPath = await pendingAddPath();
   if (addPath && hasHandle) redirect(addPath);
+  // Everyone who already has a page (magic link logins land here) goes straight to it.
+  if (hasHandle) redirect(`/${profile!.handle}`);
 
   return (
     <div className="page">

@@ -30,7 +30,7 @@ Source: the `feedback` table (20 messages, 24 to 25 September 2026). Each item l
 | F1 | **Wishlist / save for later**: on someone else's listing, "Save for later" (instead of or next to "Add to my hoshigo"). A list of everything you want to watch, read, do, with filters, showing who it came from (link to their listing) and which other friends have it as a hoshigo | 25 Sep 08:40 |
 | F2 | **Inspiration**: curated public profiles people can stumble upon (an owner set "featured" flag), a page in the nav | 24 Sep 16:32, 25 Sep 08:50 |
 | F3 | **Enrichment**: add platform links in the background when people give none (books to Goodreads, films to Letterboxd, music to Spotify); a preference per person for their platforms (Apple Music vs Spotify, IMDb vs Letterboxd) so links open where they live | 25 Sep 08:37 |
-| F4 | **Weekly email**: your friends' newest hoshigos, first few shown, "log in for more", plus a nudge to add your own | 24 Sep 18:00 |
+| F4 | **Weekly email**: your friends' newest hoshigos, first few shown, "log in for more", plus a nudge to add your own. Also tell people when others saved their hoshigos to someday: "You are inspirational! Your hoshigos have been added to people's lists." (owner note, 26 Sep) | 24 Sep 18:00, 26 Sep |
 | F5 | **Changelog**: keep a dated record of what changes on the site, to send "new on hoshigo" emails to the community | 25 Sep 08:44 |
 | F6 | Better Qobuz support | 24 Sep 16:07 |
 | F7 | Gamify adding? (open question; conflicts with the anti engagement stance, discuss first) | 24 Sep 18:00 |

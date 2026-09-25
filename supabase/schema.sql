@@ -674,3 +674,77 @@ as $$
 $$;
 
 revoke execute on function public.search_people(text) from anon;
+
+-- Someday list (see docs/migrations/2026-09-26-someday.sql)
+
+alter table public.profiles add column if not exists someday_public boolean not null default false;
+
+create table if not exists public.someday_items (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null default auth.uid() references public.profiles (id) on delete cascade,
+  from_profile_id uuid references public.profiles (id) on delete set null,
+  source_item_id uuid references public.items (id) on delete set null,
+  work_id uuid references public.works (id) on delete set null,
+  category_id int not null references public.categories (id),
+  title text not null,
+  by text,
+  year int,
+  image_url text,
+  url text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists someday_items_profile_idx on public.someday_items (profile_id, created_at desc);
+-- saving twice doesn't make a second row: by catalog work, else by the source listing
+create unique index if not exists someday_items_one_per_work
+  on public.someday_items (profile_id, work_id) where work_id is not null;
+create unique index if not exists someday_items_one_per_source
+  on public.someday_items (profile_id, source_item_id) where work_id is null and source_item_id is not null;
+
+alter table public.someday_items enable row level security;
+
+drop policy if exists "owners manage their someday" on public.someday_items;
+create policy "owners manage their someday" on public.someday_items
+  for all to authenticated using (profile_id = auth.uid()) with check (profile_id = auth.uid());
+
+-- others: only when the owner made the list visible, and only if they can see the profile
+drop policy if exists "visible someday lists" on public.someday_items;
+create policy "visible someday lists" on public.someday_items
+  for select using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = someday_items.profile_id
+        and p.someday_public
+        and (not p.is_private or public.is_friend_of_viewer(p.id))
+    )
+  );
+
+-- Someday history (see docs/migrations/2026-09-26-someday-history.sql)
+
+alter table public.someday_items add column if not exists status text not null default 'saved';
+alter table public.someday_items drop constraint if exists someday_items_status_check;
+alter table public.someday_items add constraint someday_items_status_check
+  check (status in ('saved', 'loved', 'not_for_me'));
+alter table public.someday_items add column if not exists resolved_at timestamptz;
+alter table public.someday_items add column if not exists loved_item_id uuid references public.items (id) on delete set null;
+
+-- no duplicates among what's still saved; saving the same thing again later is fine
+drop index if exists public.someday_items_one_per_work;
+drop index if exists public.someday_items_one_per_source;
+create unique index if not exists someday_items_saved_per_work
+  on public.someday_items (profile_id, work_id) where status = 'saved' and work_id is not null;
+create unique index if not exists someday_items_saved_per_source
+  on public.someday_items (profile_id, source_item_id) where status = 'saved' and work_id is null and source_item_id is not null;
+
+-- others only ever see what's still saved
+drop policy if exists "visible someday lists" on public.someday_items;
+create policy "visible someday lists" on public.someday_items
+  for select using (
+    status = 'saved'
+    and exists (
+      select 1 from public.profiles p
+      where p.id = someday_items.profile_id
+        and p.someday_public
+        and (not p.is_private or public.is_friend_of_viewer(p.id))
+    )
+  );

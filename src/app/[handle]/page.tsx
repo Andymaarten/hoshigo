@@ -12,6 +12,7 @@ import ProfileSocialLinks from "@/components/ProfileSocialLinks";
 import FriendButton from "@/components/FriendButton";
 import FollowButton from "@/components/FollowButton";
 import PeopleLine from "@/components/PeopleLine";
+import { SOMEDAY } from "@/lib/someday";
 import FollowersLine from "@/components/FollowersLine";
 import { followStateWith, friendsPage, myFollowers, type FollowState } from "@/lib/follows";
 import {
@@ -195,6 +196,11 @@ export default async function ProfilePage({
           {friendList && <PeopleLine label="Friends" people={friendList.people} total={friendList.total} profileId={profile.id} />}
           {followers && <FollowersLine people={followers} />}
         </div>
+        {!isOwner && !hideAll && profile.someday_public && (
+          <p className="people-line">
+            <Link href={`${SOMEDAY.page}?of=${encodeURIComponent(profile.handle)}`}>{SOMEDAY.profileLink(displayName)}</Link>
+          </p>
+        )}
         <ProfileSocialLinks links={profile.social_links ?? []} />
       </header>
 

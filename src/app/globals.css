@@ -1893,6 +1893,98 @@ footer .footer-nav form {
   vertical-align: baseline;
 }
 
+/* ---------- someday ---------- */
+
+.someday-row {
+  align-items: center;
+}
+
+.someday-row .feed-txt {
+  flex: 1;
+}
+
+.someday-meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.someday-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.someday-row {
+  position: relative;
+  padding-right: 32px;
+}
+
+.someday-mark {
+  all: unset;
+  position: absolute;
+  top: 10px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.someday-mark:hover,
+.someday-mark:focus-visible,
+.someday-mark[aria-expanded="true"] {
+  opacity: 1;
+  color: var(--ink);
+}
+
+.someday-add .btn.btn-small {
+  display: inline-flex;
+  vertical-align: middle;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.btn.btn-quiet {
+  border-color: var(--rule);
+  color: var(--muted);
+}
+
+.btn.btn-quiet:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.someday-add {
+  margin-top: 12px;
+}
+
+.someday-main {
+  padding-bottom: 56px;
+}
+
+@media (max-width: 640px) {
+  .someday-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  /* one row under the text, starting where the text starts (cover 52 + gap 14) */
+  .someday-actions {
+    flex-basis: 100%;
+    padding-left: 66px;
+    flex-wrap: wrap;
+  }
+}
+
 .link-help {
   display: flex;
   flex-direction: column;
@@ -2536,4 +2628,8 @@ button.share-link:disabled {
 .hc-continue {
   border: none;
   margin-top: 4px;
+}
+
+.about-text p + p {
+  margin-top: 14px;
 }

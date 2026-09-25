@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/[handle]/actions";
+import { SOMEDAY } from "@/lib/someday";
 
 // Links repeated from the top, so the bottom of every page reads as a proper footer.
 // "Inspiration" gets its place here once that page exists.
 export default async function SiteFooter({ loggedIn = false, handle }: { loggedIn?: boolean; handle?: string }) {
   let myHandle = handle;
+  let someday = false;
+  if (loggedIn) {
+    const supabase = await createClient();
+    someday = !(await supabase.from("someday_items").select("id", { head: true, count: "exact" }).limit(1)).error;
+  }
   if (loggedIn && !myHandle) {
     const supabase = await createClient();
     const {
@@ -28,6 +34,7 @@ export default async function SiteFooter({ loggedIn = false, handle }: { loggedI
           <nav className="footer-nav" aria-label="Footer">
             <Link href="/about">About hoshigo</Link>
             {realHandle && <Link href={`/${realHandle}`}>My hoshigo</Link>}
+            {someday && <Link href={SOMEDAY.page}>{SOMEDAY.name}</Link>}
             <Link href="/settings">Edit profile</Link>
             <Link href="/friends">Friends</Link>
             <Link href="/explore">Explore</Link>

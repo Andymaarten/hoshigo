@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "@/app/[handle]/actions";
 import { pendingRequestCount } from "@/app/friends/actions";
+import { SOMEDAY } from "@/lib/someday";
 
 export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boolean; handle?: string }) {
   const pathname = usePathname();
@@ -31,6 +32,11 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
       {loggedIn && handle && (
         <Link href={`/${handle}`} aria-current={current === `/${handle}` ? "page" : undefined} onClick={go(`/${handle}`)}>
           <span>My hoshigo</span>
+        </Link>
+      )}
+      {loggedIn && (
+        <Link href={SOMEDAY.page} aria-current={current === SOMEDAY.page ? "page" : undefined} onClick={go(SOMEDAY.page)}>
+          <span>{SOMEDAY.name}</span>
         </Link>
       )}
       {!loggedIn && (

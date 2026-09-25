@@ -41,6 +41,10 @@ export async function saveProfile(_prev: string | null, formData: FormData) {
       .eq("id", user.id);
   }
 
+  if (formData.get("someday_choice") === "1") {
+    await supabase.from("profiles").update({ someday_public: formData.get("someday_public") === "on" }).eq("id", user.id);
+  }
+
   revalidatePath(`/${profile.handle}`);
   redirect(`/${profile.handle}`);
 }
