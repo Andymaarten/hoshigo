@@ -716,14 +716,14 @@ export default function AddStamp({
       {hideStamp ? null : someday ? (
         <button
           type="button"
-          className="btn"
+          className="btn btn-small"
           aria-haspopup="dialog"
           onClick={() => {
             reset();
             setOpen(true);
           }}
         >
-          {SOMEDAY.addOther}
+          {SOMEDAY.addPress}
         </button>
       ) : (
         <div ref={slotRef} className="stamp-slot">

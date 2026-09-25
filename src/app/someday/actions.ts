@@ -60,7 +60,7 @@ export async function saveForSomeday(itemId: string): Promise<boolean> {
     image_url: item.image_url,
     url: item.url,
   });
-  revalidatePath("/someday");
+  // no revalidatePath: it would re-render the page you're on (the whole Friends feed)
   return !error || error.code === "23505";
 }
 
