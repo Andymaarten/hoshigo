@@ -31,7 +31,7 @@ export default function FriendButton({
       )}
       {state === "outgoing" && (
         <>
-          <span className="friend-status">Request sent</span>
+          <span className="friend-status">Request sent.</span>
           <button type="button" className="text-btn" disabled={pending} onClick={() => run(removeFriend)}>
             Cancel request
           </button>
@@ -39,7 +39,7 @@ export default function FriendButton({
       )}
       {state === "incoming" && (
         <>
-          <span className="friend-status">{name} wants to be friends</span>
+          <span className="friend-status">{name} would like to be friends.</span>
           <button type="button" className="btn" disabled={pending} onClick={() => run(acceptFriend)}>
             Accept request
           </button>
@@ -50,7 +50,7 @@ export default function FriendButton({
       )}
       {state === "friends" && (
         <>
-          <span className="friend-status">Friends</span>
+          <span className="friend-status">You are friends.</span>
           {confirming ? (
             <>
               <button
@@ -59,7 +59,7 @@ export default function FriendButton({
                 disabled={pending}
                 onClick={() => run(removeFriend)}
               >
-                Yes, remove {name}
+                Yes, stop our friendship
               </button>
               <button type="button" className="text-btn" onClick={() => setConfirming(false)}>
                 Keep
@@ -67,7 +67,7 @@ export default function FriendButton({
             </>
           ) : (
             <button type="button" className="text-btn" onClick={() => setConfirming(true)}>
-              Remove friend
+              Stop friendship
             </button>
           )}
         </>

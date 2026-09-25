@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { after } from "next/server";
 import { myFriendships, type FriendState } from "@/lib/friends";
-import { myFolloweeIds, type FollowState } from "@/lib/follows";
+import { friendsPage, myFolloweeIds, type FollowState, type FriendsPage } from "@/lib/follows";
 import { feedRows, shareableIds, withShareable, type FeedPage } from "@/lib/friends-feed";
 import { notifyFriendRequest } from "@/lib/notify-friend-request";
 
@@ -98,4 +98,11 @@ export async function unfollow(otherId: string, handle?: string): Promise<Follow
   await supabase.from("follows").delete().eq("follower", user.id).eq("followee", otherId);
   refresh(handle);
   return "none";
+}
+
+/** The next 20 names for a profile's friends line; the database decides what you may see. */
+export async function moreFriends(profileId: string, offset: number): Promise<FriendsPage | null> {
+  const { supabase, user } = await session();
+  if (!user || !UUID_RE.test(profileId) || !Number.isInteger(offset) || offset < 0) return null;
+  return friendsPage(supabase, profileId, 20, offset);
 }

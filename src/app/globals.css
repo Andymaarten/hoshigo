@@ -1077,8 +1077,7 @@ footer .cta {
 
 .friend-status {
   font-size: 14px;
-  font-weight: 700;
-  color: var(--muted);
+  color: var(--ink);
 }
 
 .text-btn {
@@ -1782,6 +1781,24 @@ footer .cta {
 }
 
 .profile-actions .friend-actions {
+  margin: 0;
+}
+
+/* status row and friends line read as one block: same left edge, same type size */
+.profile-relation {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.profile-relation:empty {
+  display: none;
+}
+
+.profile-relation .profile-actions,
+.profile-relation .people-line {
   margin: 0;
 }
 
