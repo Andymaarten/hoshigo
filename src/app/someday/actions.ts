@@ -28,9 +28,14 @@ export async function somedayState(itemId: string): Promise<{ saved: boolean } |
   if (!user || !UUID_RE.test(itemId)) return null;
   const { data: item } = await supabase.from("items").select("id, profile_id, work_id").eq("id", itemId).maybeSingle();
   if (!item || item.profile_id === user.id) return null;
-  let q = supabase.from("someday_items").select("id").eq("profile_id", user.id).limit(1);
-  q = item.work_id ? q.eq("work_id", item.work_id) : q.eq("source_item_id", item.id);
-  const { data, error } = await q;
+  const lookup = (onlySaved: boolean) => {
+    let q = supabase.from("someday_items").select("id").eq("profile_id", user.id).limit(1);
+    if (onlySaved) q = q.eq("status", "saved");
+    return item.work_id ? q.eq("work_id", item.work_id) : q.eq("source_item_id", item.id);
+  };
+  let { data, error } = await lookup(true);
+  // before the history migration there is no status column
+  if (error) ({ data, error } = await lookup(false));
   if (error) return null;
   return { saved: (data ?? []).length > 0 };
 }
@@ -59,12 +64,35 @@ export async function saveForSomeday(itemId: string): Promise<boolean> {
   return !error || error.code === "23505";
 }
 
-export async function removeSomeday(id: string): Promise<boolean> {
+/**
+ * "Loved it" (after the add went through) or "Not a hoshigo". The row stays, marked, so we
+ * learn what turned out to be five stars. Before the history migration it is deleted instead.
+ */
+export async function resolveSomeday(id: string, outcome: "loved" | "not_for_me"): Promise<boolean> {
   const { supabase, user } = await session();
   if (!user || !UUID_RE.test(id)) return false;
-  const { error } = await supabase.from("someday_items").delete().eq("id", id).eq("profile_id", user.id);
+  let lovedItemId: string | null = null;
+  if (outcome === "loved") {
+    const { data: row } = await supabase.from("someday_items").select("work_id, title, category_id").eq("id", id).eq("profile_id", user.id).maybeSingle();
+    if (row) {
+      // the listing just added from this row: newest of mine for the same work, else same title
+      let q = supabase.from("items").select("id").eq("profile_id", user.id).order("created_at", { ascending: false }).limit(1);
+      q = row.work_id ? q.eq("work_id", row.work_id) : q.eq("category_id", row.category_id).eq("title", row.title);
+      lovedItemId = ((await q).data?.[0]?.id as string | undefined) ?? null;
+    }
+  }
+  const { error } = await supabase
+    .from("someday_items")
+    .update({ status: outcome, resolved_at: new Date().toISOString(), loved_item_id: lovedItemId })
+    .eq("id", id)
+    .eq("profile_id", user.id);
+  if (error) {
+    const del = await supabase.from("someday_items").delete().eq("id", id).eq("profile_id", user.id);
+    revalidatePath("/someday");
+    return !del.error;
+  }
   revalidatePath("/someday");
-  return !error;
+  return true;
 }
 
 function httpUrl(raw: string): string | null {

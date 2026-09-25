@@ -49,10 +49,16 @@ export default async function SomedayPage({ searchParams }: { searchParams: Prom
   }
   const mine = !other;
 
-  const [{ data: rows, error }, { data: rawCats }] = await Promise.all([
-    supabase.from("someday_items").select("*").eq("profile_id", owner.id).order("created_at", { ascending: false }).limit(500).returns<Raw[]>(),
+  const listQuery = (onlySaved: boolean) => {
+    const q = supabase.from("someday_items").select("*").eq("profile_id", owner.id);
+    return (onlySaved ? q.eq("status", "saved") : q).order("created_at", { ascending: false }).limit(500).returns<Raw[]>();
+  };
+  const [firstTry, { data: rawCats }] = await Promise.all([
+    // only what's still saved; before the history migration every row is
+    listQuery(true),
     supabase.from("categories").select("*").order("sort_order").returns<Category[]>(),
   ]);
+  const { data: rows, error } = firstTry.error ? await listQuery(false) : firstTry;
   if (error && !mine) notFound();
   const categories = sortCategories(rawCats);
   const list = rows ?? [];
