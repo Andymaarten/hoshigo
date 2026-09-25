@@ -9,6 +9,7 @@ import { recordAppOpen } from "@/lib/app-usage";
 import InstallHintText from "./InstallHintText";
 
 const VISITS = "hoshigo.visits";
+const HINT_PAUSE_MS = 14 * 24 * 60 * 60 * 1000;
 const ADDED = "hoshigo.added";
 const DISMISSED = "hoshigo.installHintDismissed";
 const OPEN_DAY = "hoshigo.appOpenDay";
@@ -60,7 +61,9 @@ export default function AppChrome() {
       setStandalone(app);
       setIos(isIosSafari());
       setAndroid(isAndroid());
-      setDismissed(store.get(DISMISSED) === "1");
+      // A dismissal holds for two weeks; the old value "1" counts as long ago, so the hint returns once.
+      const dismissedAt = Number(store.get(DISMISSED) ?? "0");
+      setDismissed(Date.now() - dismissedAt < HINT_PAUSE_MS);
       setEligible(visits >= 2 || store.get(ADDED) === "1");
     });
     return () => window.removeEventListener("hoshigo:added", onAdded);
@@ -76,7 +79,7 @@ export default function AppChrome() {
   }, [pathname]);
 
   const dismiss = () => {
-    store.set(DISMISSED, "1");
+    store.set(DISMISSED, String(Date.now()));
     setDismissed(true);
   };
 
