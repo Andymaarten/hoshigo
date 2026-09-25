@@ -5,13 +5,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "@/app/[handle]/actions";
 import { pendingRequestCount } from "@/app/friends/actions";
-import { somedayAvailable } from "@/app/someday/actions";
 import { SOMEDAY } from "@/lib/someday";
 
 export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boolean; handle?: string }) {
   const pathname = usePathname();
   const [requests, setRequests] = useState(0);
-  const [someday, setSomeday] = useState(false);
   // Server pages can take a moment; mark the tapped item right away so it's clear something happens.
   const [pending, setPending] = useState<{ href: string; from: string } | null>(null);
   const current = pending && pending.from === pathname ? pending.href : pathname;
@@ -23,9 +21,6 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
     let live = true;
     pendingRequestCount()
       .then((n) => live && setRequests(n))
-      .catch(() => {});
-    somedayAvailable()
-      .then((ok) => live && setSomeday(ok))
       .catch(() => {});
     return () => {
       live = false;
@@ -39,7 +34,7 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
           <span>My hoshigo</span>
         </Link>
       )}
-      {loggedIn && someday && (
+      {loggedIn && (
         <Link href={SOMEDAY.page} aria-current={current === SOMEDAY.page ? "page" : undefined} onClick={go(SOMEDAY.page)}>
           <span>{SOMEDAY.name}</span>
         </Link>

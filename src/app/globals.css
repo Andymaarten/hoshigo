@@ -2572,3 +2572,7 @@ button.share-link:disabled {
   border: none;
   margin-top: 4px;
 }
+
+.about-text p + p {
+  margin-top: 14px;
+}
