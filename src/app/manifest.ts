@@ -5,16 +5,21 @@ import type { MetadataRoute } from "next";
 // iOS doesn't support share_target; docs/add-link.md has a Shortcut and a bookmarklet.
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "hoshigo",
     short_name: "hoshigo",
     description: "A small list of things you'd give five stars.",
     start_url: "/",
+    scope: "/",
     display: "standalone",
+    orientation: "portrait",
     background_color: "#efe7d8",
     theme_color: "#efe7d8",
     icons: [
-      { src: "/app-icon/192", sizes: "192x192", type: "image/png" },
-      { src: "/app-icon/512", sizes: "512x512", type: "image/png" },
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     share_target: {
       action: "/add",

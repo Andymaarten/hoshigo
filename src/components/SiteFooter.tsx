@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/[handle]/actions";
 import { SOMEDAY } from "@/lib/someday";
+import InstallButton from "./InstallButton";
 
 // Links repeated from the top, so the bottom of every page reads as a proper footer.
 // "Inspiration" gets its place here once that page exists.
@@ -38,6 +39,8 @@ export default async function SiteFooter({ loggedIn = false, handle }: { loggedI
             <Link href="/settings">Edit profile</Link>
             <Link href="/friends">Friends</Link>
             <Link href="/explore">Explore</Link>
+            <Link href="/app">hoshigo as an app</Link>
+            <InstallButton className="footer-link" />
             <form action={signOut}>
               <button type="submit" className="footer-link">
                 Log out
@@ -49,6 +52,9 @@ export default async function SiteFooter({ loggedIn = false, handle }: { loggedI
             <p>Keep your own five star page.</p>
             <Link href="/about" className="footer-about">
               About hoshigo
+            </Link>
+            <Link href="/app" className="footer-about">
+              hoshigo as an app
             </Link>
             <Link href="/login" className="cta">
               Sign up / Login

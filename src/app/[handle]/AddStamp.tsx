@@ -209,6 +209,8 @@ export default function AddStamp({
       reset();
       if (!onOwnPage && submittedCategory.current) setLanded(submittedCategory.current);
       if (somedayId) window.dispatchEvent(new CustomEvent(ADDED_EVENT, { detail: { somedayId } }));
+      // lets the home screen hint know a first hoshigo was added (src/components/AppChrome.tsx)
+      window.dispatchEvent(new Event("hoshigo:added"));
     }
     wasPending.current = pending;
     // eslint-disable-next-line react-hooks/exhaustive-deps
