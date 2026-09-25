@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { after } from "next/server";
 import { myFriendships, type FriendState } from "@/lib/friends";
+import { searchPeople, type FoundPerson } from "@/lib/people-search";
 import { friendsPage, myFolloweeIds, type FollowState, type FriendsPage } from "@/lib/follows";
 import { feedRows, shareableIds, withShareable, type FeedPage } from "@/lib/friends-feed";
 import { notifyFriendRequest } from "@/lib/notify-friend-request";
@@ -105,4 +106,10 @@ export async function moreFriends(profileId: string, offset: number): Promise<Fr
   const { supabase, user } = await session();
   if (!user || !UUID_RE.test(profileId) || !Number.isInteger(offset) || offset < 0) return null;
   return friendsPage(supabase, profileId, 10, offset);
+}
+
+export async function findPeople(q: string): Promise<FoundPerson[]> {
+  const { supabase, user } = await session();
+  if (!user) return [];
+  return searchPeople(supabase, user.id, String(q ?? ""));
 }
