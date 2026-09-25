@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { track } from "@vercel/analytics";
 
 // Chrome's install prompt arrives once, early, as an event; it is kept here so
 // any install button on any page can use it later.
@@ -17,6 +18,7 @@ if (typeof window !== "undefined") {
     notify();
   });
   window.addEventListener("appinstalled", () => {
+    track("app_installed");
     deferred = null;
     notify();
   });
@@ -44,6 +46,19 @@ export async function promptInstall() {
 export function isStandalone() {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
+}
+
+export function isAndroid() {
+  return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+}
+
+// The exact label of Safari's share sheet item in the phone's own language.
+export function iosAddLabel() {
+  const lang = typeof navigator === "undefined" ? "en" : navigator.language.toLowerCase();
+  if (lang.startsWith("nl")) return "Zet op beginscherm";
+  if (lang.startsWith("de")) return "Zum Home-Bildschirm";
+  if (lang.startsWith("fr")) return "Sur l’écran d’accueil";
+  return "Add to Home Screen";
 }
 
 // Real iPhone or iPad Safari, not an app's built in browser (those can't add to the home screen).

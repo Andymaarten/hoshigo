@@ -178,6 +178,18 @@ export default async function StatsPage() {
         return [label, error ? "n/a" : count ?? 0];
       })
     )),
+    ...(await (async (): Promise<[string, number | string][]> => {
+      const { data, error } = await admin.from("app_usage").select("app_last_opened_at");
+      if (error) return [["using hoshigo as an app", "n/a"]];
+      const rows = data ?? [];
+      const since = (days: number) => rows.filter((r) => Date.now() - Date.parse(r.app_last_opened_at as string) < days * 864e5).length;
+      const share = people.length ? `${Math.round((rows.length / people.length) * 100)}% of people` : "0%";
+      return [
+        ["using hoshigo as an app", `${rows.length} (${share})`],
+        ["opened the app, last 7 days", since(7)],
+        ["opened the app, last 30 days", since(30)],
+      ];
+    })()),
     ["public profiles", people.filter((p) => !p.is_private).length],
     ["private profiles", people.filter((p) => p.is_private).length],
     ["feedback messages", fb ? (await admin.from("feedback").select("id", { count: "exact", head: true })).count ?? 0 : "n/a"],
