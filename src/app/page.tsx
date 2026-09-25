@@ -27,7 +27,8 @@ export default async function HomePage({
   // the server); implicit-flow ones carry it in the URL hash (client-only) —
   // see RecoveryHashRedirect below for that case. Both happen when Supabase
   // falls back to the Site URL instead of our intended /auth/confirm target.
-  if (sp.type === "recovery") {
+  // Magic links land here too (?code= or ?token_hash=) when the redirect URL is not allowed.
+  if (sp.type === "recovery" || sp.code || sp.token_hash) {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(sp)) {
       if (typeof value === "string") params.set(key, value);
