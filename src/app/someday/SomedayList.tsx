@@ -10,6 +10,7 @@ import CoverImage from "@/components/CoverImage";
 import { ADDED_EVENT, ADD_PREFILL_EVENT, type AddPrefill } from "@/lib/item-order";
 import { SOMEDAY } from "@/lib/someday";
 import { resolveSomeday } from "./actions";
+import SomedayNote from "./SomedayNote";
 
 export type SomedayRow = {
   id: string;
@@ -26,6 +27,8 @@ export type SomedayRow = {
   /** the original listing while it exists and you may see it */
   source: Item | null;
   alsoFor: { handle: string; name: string }[];
+  /** undefined before the note migration: no note controls */
+  note?: string | null;
 };
 
 function formatDate(s: string) {
@@ -44,7 +47,17 @@ function safeUrl(u: string | null) {
   }
 }
 
-export default function SomedayList({ rows: initial, categories, mine }: { rows: SomedayRow[]; categories: Category[]; mine: boolean }) {
+export default function SomedayList({
+  rows: initial,
+  categories,
+  mine,
+  listPublic = false,
+}: {
+  rows: SomedayRow[];
+  categories: Category[];
+  mine: boolean;
+  listPublic?: boolean;
+}) {
   const [rows, setRows] = useState(initial);
   const [slug, setSlug] = useState("all");
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -158,6 +171,7 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
                       </Fragment>
                     ))}
                 </span>
+                {r.note !== undefined && <SomedayNote id={r.id} initial={r.note} editable={mine} listPublic={listPublic} />}
                 {r.alsoFor.length > 0 && (
                   <span className="feed-meta">
                     <span>

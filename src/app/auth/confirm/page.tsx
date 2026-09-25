@@ -10,7 +10,7 @@ function friendly(message: string) {
   if (/code verifier|different browser|storage/i.test(message)) {
     return "This link was opened in a different browser than the one you used to log in. Open it there, or ask for a fresh link below.";
   }
-  if (/expired|invalid/i.test(message)) return "That link has expired or was already used. Ask for a fresh one below.";
+  if (/expired|invalid|otp_expired|access_denied|already/i.test(message)) return "That link has expired or was already used. Ask for a fresh one below.";
   return "That link didn't work. Ask for a fresh one below.";
 }
 
@@ -46,6 +46,15 @@ function AuthConfirmInner() {
     });
 
     async function run() {
+      // Supabase sends people back with the reason in the query or hash when a link is spent or expired.
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const linkError =
+        searchParams.get("error_description") ?? searchParams.get("error_code") ?? hashParams.get("error_description") ?? hashParams.get("error_code");
+      if (linkError) {
+        setError(friendly(linkError));
+        return;
+      }
+
       const code = searchParams.get("code");
       const tokenHash = searchParams.get("token_hash");
       const type = searchParams.get("type");
@@ -82,7 +91,7 @@ function AuthConfirmInner() {
 
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        setError("That link is invalid or has expired.");
+        setError("That link has expired or was already used. Ask for a fresh one below.");
         return;
       }
       if (!recovering.current) router.replace("/onboarding");
@@ -99,9 +108,14 @@ function AuthConfirmInner() {
         {error ? (
           <>
             <p className="lede">{error}</p>
-            <Link href="/login" className="btn" style={{ marginTop: 16, alignSelf: "flex-start" }}>
-              Back to login
-            </Link>
+            <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+              <Link href="/login?mode=magic" className="btn">
+                Send a fresh link
+              </Link>
+              <Link href="/login" className="btn">
+                Log in with password
+              </Link>
+            </div>
           </>
         ) : (
           <p className="lede">Signing you in…</p>

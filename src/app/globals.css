@@ -1953,6 +1953,43 @@ footer .footer-nav form {
   font-size: 13px;
 }
 
+.someday-note {
+  margin: 6px 0 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.someday-note-edit {
+  all: unset;
+  display: block;
+  margin-top: 6px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  cursor: text;
+}
+
+.someday-note-add {
+  align-self: flex-start;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.someday-note-input {
+  margin-top: 6px;
+  width: 100%;
+  max-width: 420px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  background: var(--ground);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+}
+
 .btn.btn-quiet {
   border-color: var(--rule);
   color: var(--muted);
@@ -2127,10 +2164,28 @@ footer .footer-nav form {
 }
 
 .invite-url {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
   font-size: 13px;
   padding: 10px;
   border: 1px solid var(--rule);
   overflow-wrap: anywhere;
+}
+
+.invite-url:hover,
+.invite-url:focus-visible {
+  border-color: var(--ink);
+}
+
+.invite-copied {
+  flex: none;
+  font-weight: 700;
+  color: var(--accent);
 }
 
 .photo-row {

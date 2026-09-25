@@ -48,6 +48,8 @@ export default async function SomedayPage({ searchParams }: { searchParams: Prom
     owner = { id: p.id as string, handle: p.handle as string, name: (p.display_name as string) || (p.handle as string) };
   }
   const mine = !other;
+  // my own list: is it visible on my page? (then notes say so)
+  const listPublic = mine && user ? !!(await supabase.from("profiles").select("someday_public").eq("id", user.id).maybeSingle()).data?.someday_public : true;
 
   const listQuery = (onlySaved: boolean) => {
     const q = supabase.from("someday_items").select("*").eq("profile_id", owner.id);
@@ -108,6 +110,7 @@ export default async function SomedayPage({ searchParams }: { searchParams: Prom
       // the person you saved it from is already named; only others here
       source: (r.source_item_id && sourceById.get(r.source_item_id)) || null,
       alsoFor: (alsoFor.get(r.id) ?? []).filter((f) => f.handle !== from?.handle),
+      ...("note" in r ? { note: (r as Raw & { note: string | null }).note } : {}),
     };
   });
 
@@ -138,7 +141,7 @@ export default async function SomedayPage({ searchParams }: { searchParams: Prom
           <p className="bio">This list is almost here. Check back soon.</p>
         ) : (
           // remounts when the server sends a new list (after saving through the dialog)
-          <SomedayList key={items.map((i) => i.id).join()} rows={items} categories={categories} mine={mine} />
+          <SomedayList key={items.map((i) => i.id).join()} rows={items} categories={categories} mine={mine} listPublic={listPublic} />
         )}
       </main>
       <SiteFooter loggedIn={!!user} handle={myHandle} />

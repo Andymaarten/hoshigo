@@ -28,9 +28,11 @@ little, and now and then lets a bit of magic through the door.
 
 ## Principles
 
-0. **Keep, don't post.** The verb for putting something on your page is
-   "keep": "Keep a hoshigo", "Keep", "Kept in your films". Never "post",
-   "share" (for adding), "upload" or "add" when the thing is a hoshigo.
+0. **Add the new, keep the cherished.** The act of putting something new on
+   your page is "add": "Add a hoshigo", "Add", "Added to your films". The
+   collection you cherish is kept: "the hoshigos you keep", "Keep your own five
+   star page". Never "post" or "upload". (Owner's rule, 25 September; it
+   replaces the earlier "keep for everything" rule.)
 
 1. **Plain first.** Most sentences are just clear. The voice lives in the
    one line that isn't.

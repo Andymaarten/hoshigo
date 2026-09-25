@@ -816,7 +816,7 @@ export default function AddStamp({
                   Clear
                 </button>
               )}
-              <span className="hint">Share text from an app works too.</span>
+              <span className="hint">Tip: you can also paste what an app&apos;s Share button gives you.</span>
             </div>
             {linkNotice && (
               <div className="notice" role="status">
@@ -1172,6 +1172,14 @@ export default function AddStamp({
               </div>
             )}
 
+            {someday && (
+              <div className="field">
+                <label htmlFor="someday-note">
+                  {SOMEDAY.noteLabel} <span className="optional">optional</span>
+                </label>
+                <input id="someday-note" name="someday_note" maxLength={500} placeholder={SOMEDAY.notePlaceholder} />
+              </div>
+            )}
             {!someday && (
             <div className="field">
               <label htmlFor="add-note">

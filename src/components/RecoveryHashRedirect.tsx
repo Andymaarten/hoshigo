@@ -12,8 +12,9 @@ export default function RecoveryHashRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    if (window.location.hash.includes("type=recovery")) {
-      router.replace(`/auth/confirm${window.location.hash}`);
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery") || hash.includes("access_token=") || hash.includes("error_description=")) {
+      router.replace(`/auth/confirm${hash}`);
     }
   }, [router]);
 

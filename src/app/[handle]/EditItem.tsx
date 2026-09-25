@@ -7,6 +7,11 @@ import CoverImage from "@/components/CoverImage";
 import PhotoFromPage from "@/components/PhotoFromPage";
 import type { PinMap } from "@/lib/item-order";
 import { placeDisplay } from "@/lib/place-fields";
+import { displayUrl, extractUrl, stripTracking } from "@/lib/link-input";
+import { linkHelp } from "@/lib/link-help";
+import { SEARCHABLE, SOURCE_NAME } from "@/lib/category-display";
+
+type Match = { id: string; source: string; title: string; year: number | null };
 
 export default function EditItem({
   handle,
@@ -40,6 +45,70 @@ export default function EditItem({
   const [pin, setPin] = useState(!!item.pinned);
   const otherPin = pins?.[Number(categoryId)];
   const category = categories.find((c) => String(c.id) === categoryId);
+  const slug = category?.slug ?? "";
+
+  // The item's own link can be added or changed at any time. A new link is read for photos,
+  // and an item without a catalogue match is looked up again; the match shown is the one saved.
+  const [link, setLink] = useState(item.url ?? "");
+  const linkClean = link.trim() ? extractUrl(link) : null;
+  const finalUrl = linkClean ? stripTracking(linkClean) : "";
+  const [readFor, setReadFor] = useState(item.url ?? "");
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState("");
+  const [match, setMatch] = useState<Match | null>(null);
+  const readSeq = useRef(0);
+
+  async function readNewLink(url: string) {
+    const seq = ++readSeq.current;
+    setReadFor(url);
+    setMatch(null);
+    setReadNote("");
+    setReading(true);
+    try {
+      const res = await fetch(`/api/fetch-metadata?url=${encodeURIComponent(url)}`);
+      const data = res.ok ? await res.json() : null;
+      if (seq !== readSeq.current || !data) return;
+      if (data.status === "unsupported" && typeof data.notice === "string") {
+        setReadNote(data.notice);
+        return;
+      }
+      const found = [data.image_url, ...((data.image_urls as string[]) ?? [])].filter((x): x is string => typeof x === "string" && !!x);
+      if (found.length) {
+        setOptions((o) => [...new Set([...o, ...found])]);
+        setBroken((b) => b.filter((x) => !found.includes(x)));
+        setImageUrl((cur) => cur || found[0]);
+        setReadNote("Photos from that link are in the photo picker below.");
+      }
+      if (!item.work_id && category && (SEARCHABLE.has(category.slug) || category.slug === "videos")) {
+        const r = await fetch("/api/resolve-work", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category_id: category.id,
+            title: title || data.title || "",
+            by: (category.slug === "places" ? "" : by) || data.by || undefined,
+            url,
+          }),
+        });
+        const w = r.ok ? (await r.json())?.work : null;
+        if (seq !== readSeq.current) return;
+        // Same rule as adding: a fuzzy place hit is often another place, so only sure ones.
+        if (w?.id && (w.match_confidence === "high" || category.slug !== "places"))
+          setMatch({ id: w.id, source: w.source, title: w.title, year: w.year ?? null });
+      }
+    } catch {
+      // the link still saves; reading it is a bonus
+    } finally {
+      if (seq === readSeq.current) setReading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!finalUrl || finalUrl === readFor) return;
+    const t = setTimeout(() => readNewLink(finalUrl), 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalUrl]);
 
   useEffect(() => {
     if (wasPending.current && !pending && !error) {
@@ -55,7 +124,12 @@ export default function EditItem({
 
       <div className="field">
         <label htmlFor="edit-category_id">Category</label>
-        <select id="edit-category_id" name="category_id" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+        <select id="edit-category_id" name="category_id" value={categoryId} onChange={(e) => {
+            setCategoryId(e.target.value);
+            // a match belongs to the catalogue of the category it was found in
+            setMatch(null);
+            setReadFor("");
+          }}>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.label}
@@ -97,7 +171,59 @@ export default function EditItem({
           <input id="edit-by" name="by" value={by} onChange={(e) => setBy(e.target.value)} />
         </div>
       )}
-      <input type="hidden" name="year" value={item.year ?? ""} />
+      <div className="field">
+        <label htmlFor="edit-link">
+          Link <span className="optional">{!item.work_id && !match && item.url ? "required" : "optional"}</span>
+        </label>
+        <input
+          id="edit-link"
+          type="text"
+          inputMode="url"
+          autoCapitalize="off"
+          autoCorrect="off"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="Paste the link visitors should open"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+        />
+        <span className="hint">
+          {finalUrl ? `Visitors will go to ${displayUrl(finalUrl, 60)}` : "A link lets your friends find it."}
+          {reading ? " Reading the link…" : ""}
+        </span>
+        {link.trim() && !linkClean && <span className="error">That doesn&apos;t look like a link yet.</span>}
+        {readNote && !reading && <span className="hint">{readNote}</span>}
+        {!finalUrl && linkHelp(slug, title).length > 0 && (
+          <div className="link-help">
+            <span className="hint">Find it on</span>
+            <div className="sheet-row">
+              {linkHelp(slug, title).map((l) => (
+                <a key={l.name} href={l.href} target="_blank" rel="noopener noreferrer" className="btn btn-small">
+                  {l.name}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+        {link && (
+          <button type="button" className="text-btn" style={{ alignSelf: "flex-start" }} onClick={() => setLink("")}>
+            Clear
+          </button>
+        )}
+        {match && (
+          <p className="hint">
+            Found in {SOURCE_NAME[match.source] ?? match.source}: {match.title}
+            {match.year ? ` (${match.year})` : ""} ·{" "}
+            <button type="button" className="linkish" style={{ padding: 0 }} onClick={() => setMatch(null)}>
+              not this one?
+            </button>
+          </p>
+        )}
+      </div>
+      <input type="hidden" name="url" value={finalUrl} />
+      <input type="hidden" name="link_sent" value="1" />
+      <input type="hidden" name="work_id" value={match?.id ?? ""} />
+      <input type="hidden" name="year" value={match?.year ?? item.year ?? ""} />
       <input type="hidden" name="image_url" value={imageUrl} />
       <div className="field">
         <span className="field-label">Photo</span>

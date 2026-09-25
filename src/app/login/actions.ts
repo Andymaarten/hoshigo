@@ -21,6 +21,29 @@ export async function finishHumanCheck(start: string, signals: HumanSignals) {
   });
 }
 
+// Supabase's own wording is technical; people get a plain reason and a next step.
+function friendlyAuthError(message: string, code?: string) {
+  const m = `${message} ${code ?? ""}`;
+  if (/rate limit|only request this after|over_email_send_rate/i.test(m)) {
+    return "We just sent you an email. Give it a minute, check your spam folder, then try again.";
+  }
+  if (/invalid login credentials|invalid_credentials/i.test(m)) return "That email and password don't match. Try again, or use a magic link.";
+  if (/email not confirmed/i.test(m)) return "Please confirm your email first; the link is in your inbox. Or use a magic link.";
+  if (/redirect/i.test(m)) return "Login links are misconfigured on our side. Please use your password for now, or try again later.";
+  return message;
+}
+
+async function landingPath(userId: string, next: FormDataEntryValue | null) {
+  const path = (await pendingInvitePath()) ?? safeNextPath(next);
+  if (path) return path;
+  const supabase = await createClient();
+  const { data: profile } = await supabase.from("profiles").select("handle").eq("id", userId).maybeSingle();
+  const handle = profile?.handle as string | undefined;
+  return handle && !handle.startsWith("user-") ? `/${handle}` : "/onboarding";
+}
+
+const ALREADY = "This email already has a hoshigo. Log in with your password, or use a magic link.";
+
 // The honeypot is a field people never see; anything in it means a form filler.
 function isBot(formData: FormData) {
   return String(formData.get("website") || "") !== "";
@@ -33,14 +56,10 @@ export async function signInWithPassword(_prev: string | null, formData: FormDat
 
   const supabase = await createClient();
   const { data: signedIn, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return error.message;
+  if (error) return friendlyAuthError(error.message, error.code);
 
-  const next = (await pendingInvitePath()) ?? safeNextPath(formData.get("next"));
-  if (next) redirect(next);
   // Straight to your own page after logging in; people without a page yet finish onboarding first.
-  const { data: profile } = await supabase.from("profiles").select("handle").eq("id", signedIn.user.id).maybeSingle();
-  const handle = profile?.handle as string | undefined;
-  redirect(handle && !handle.startsWith("user-") ? `/${handle}` : "/onboarding");
+  redirect(await landingPath(signedIn.user.id, formData.get("next")));
 }
 
 export async function signUpWithPassword(_prev: string | null, formData: FormData) {
@@ -49,16 +68,25 @@ export async function signUpWithPassword(_prev: string | null, formData: FormDat
   if (!email || !password) return "Fill in both fields.";
   if (password.length < 8) return "Password needs at least 8 characters.";
   if (isBot(formData)) return "Something went wrong. Please try again.";
+
+  // Someone who already has an account and typed it into the signup form is
+  // simply logged in: no human check, no starting over.
+  const supabase = await createClient();
+  const existing = await supabase.auth.signInWithPassword({ email, password });
+  if (!existing.error) redirect(await landingPath(existing.data.user.id, formData.get("next")));
+
   const human = checkHumanToken(formData.get("human"));
   if (!human.ok) return NEEDS_HUMAN_CHECK;
 
-  const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/confirm` },
   });
-  if (error) return error.message;
+  if (error) return /already registered|already exists/i.test(error.message) ? ALREADY : friendlyAuthError(error.message, error.code);
+  // Supabase answers an existing, confirmed address with a user that has no identities.
+  if (data.user && data.user.identities?.length === 0) return ALREADY;
+  if (!data.session) return "Check your email to confirm your address, then you're in.";
   if (human.review) console.warn(`[human-check] review signup user=${data.user?.id ?? "unknown"}`);
 
   redirect("/onboarding");
@@ -84,7 +112,7 @@ export async function sendMagicLink(_prev: string | null, formData: FormData) {
   if (error && !human && /signups? not allowed|not found|otp_disabled/i.test(`${error.message} ${error.code ?? ""}`)) {
     return NEEDS_HUMAN_CHECK;
   }
-  if (error) return error.message;
+  if (error) return friendlyAuthError(error.message, error.code);
   if (check.review) console.warn("[human-check] review magic link signup");
 
   return "Check your email for the link.";

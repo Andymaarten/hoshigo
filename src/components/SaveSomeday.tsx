@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { saveForSomeday, somedayState } from "@/app/someday/actions";
 import { SOMEDAY } from "@/lib/someday";
+import SomedayNote from "@/app/someday/SomedayNote";
 
 /** "Save for someday" on someone else's listing. Flips at once; the save runs behind it. */
 export default function SaveSomeday({ itemId }: { itemId: string }) {
   // Shown at once as "not saved yet"; the check only corrects it (or hides it) afterwards.
   const [state, setState] = useState<{ saved: boolean } | null>({ saved: false });
   const [failed, setFailed] = useState(false);
+  const [newId, setNewId] = useState<string | null>(null);
+  const [noting, setNoting] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -25,7 +28,20 @@ export default function SaveSomeday({ itemId }: { itemId: string }) {
   }, [itemId]);
 
   if (!state) return null;
-  if (state.saved) return <span className="btn btn-small btn-on">{SOMEDAY.saved}</span>;
+  if (state.saved)
+    return (
+      <>
+        <span className="btn btn-small btn-on">{SOMEDAY.saved}</span>
+        {newId &&
+          (noting ? (
+            <SomedayNote id={newId} initial={null} editable listPublic={false} startOpen />
+          ) : (
+            <button type="button" className="text-btn" onClick={() => setNoting(true)}>
+              {SOMEDAY.savedAddNote}
+            </button>
+          ))}
+      </>
+    );
   return (
     <>
       <button
@@ -36,6 +52,7 @@ export default function SaveSomeday({ itemId }: { itemId: string }) {
           setState({ saved: true });
           saveForSomeday(itemId)
             .then((ok) => {
+              if (typeof ok === "string") setNewId(ok);
               if (!ok) {
                 setState({ saved: false });
                 setFailed(true);
