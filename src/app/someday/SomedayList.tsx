@@ -9,7 +9,7 @@ import { SHAPE } from "@/lib/category-display";
 import CoverImage from "@/components/CoverImage";
 import { ADDED_EVENT, ADD_PREFILL_EVENT, type AddPrefill } from "@/lib/item-order";
 import { SOMEDAY } from "@/lib/someday";
-import { removeSomeday } from "./actions";
+import { resolveSomeday } from "./actions";
 
 export type SomedayRow = {
   id: string;
@@ -58,7 +58,7 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
       const id = (e as CustomEvent<{ somedayId?: string }>).detail?.somedayId;
       if (!id) return;
       setRows((rs) => rs.filter((r) => r.id !== id));
-      removeSomeday(id).catch(() => {});
+      resolveSomeday(id, "loved").catch(() => {});
     }
     window.addEventListener(ADDED_EVENT, onAdded);
     return () => window.removeEventListener(ADDED_EVENT, onAdded);
@@ -153,7 +153,7 @@ export default function SomedayList({ rows: initial, categories, mine }: { rows:
                           disabled={pending}
                           onClick={() =>
                             start(async () => {
-                              if (await removeSomeday(r.id)) setRows((rs) => rs.filter((x) => x.id !== r.id));
+                              if (await resolveSomeday(r.id, "not_for_me")) setRows((rs) => rs.filter((x) => x.id !== r.id));
                               setConfirming(null);
                             })
                           }

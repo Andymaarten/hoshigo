@@ -8,6 +8,7 @@ import HeaderStamp from "@/components/HeaderStamp";
 import SiteFooter from "@/components/SiteFooter";
 import FriendButton from "@/components/FriendButton";
 import InviteLink from "@/components/InviteLink";
+import FriendRows from "./FriendRows";
 import FriendsFeed, { type FeedFriend } from "./FriendsFeed";
 import { feedRows, shareableIds, withShareable, type FeedPage } from "@/lib/friends-feed";
 import { myFolloweeIds } from "@/lib/follows";
@@ -130,16 +131,7 @@ export default async function FriendsPage({
           {friends.length === 0 ? (
             <p className="bio">No friends yet. Find people below, or send them your invite link.</p>
           ) : (
-            <ul className="friend-list">
-              {friends.map((p) => (
-                <li key={p.id}>
-                  <Link href={`/${p.handle}`} className="friend-row">
-                    <span className="friend-name">{name(p)}</span>
-                    <span className="friend-handle">@{p.handle}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <FriendRows people={friends.map((p) => ({ id: p.id, handle: p.handle, name: name(p) }))} />
           )}
         </section>
 

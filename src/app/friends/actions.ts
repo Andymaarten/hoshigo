@@ -100,9 +100,9 @@ export async function unfollow(otherId: string, handle?: string): Promise<Follow
   return "none";
 }
 
-/** The next 20 names for a profile's friends line; the database decides what you may see. */
+/** The next 10 names for a profile's friends line; the database decides what you may see. */
 export async function moreFriends(profileId: string, offset: number): Promise<FriendsPage | null> {
   const { supabase, user } = await session();
   if (!user || !UUID_RE.test(profileId) || !Number.isInteger(offset) || offset < 0) return null;
-  return friendsPage(supabase, profileId, 20, offset);
+  return friendsPage(supabase, profileId, 10, offset);
 }

@@ -6,10 +6,10 @@ import type { PersonName } from "@/lib/follows";
 import { moreFriends } from "@/app/friends/actions";
 
 const FIRST = 3;
-const STEP = 20;
+const STEP = 10;
 
 /**
- * "Friends: Sara, Roelant, Anne and 297 others". Each tap shows up to 20 more. With a
+ * "Friends: Sara, Roelant, Anne and 297 others". Each tap shows up to 10 more. With a
  * profileId the extra names are fetched a page at a time; without one, `people` is complete.
  */
 export default function PeopleLine({

@@ -171,6 +171,13 @@ export default async function StatsPage() {
       const { count, error } = await admin.from("follows").select("follower", { count: "exact", head: true });
       return error ? "n/a" : count ?? 0;
     })()],
+    ...(await Promise.all(
+      (["saved", "loved", "not_for_me"] as const).map(async (st): Promise<[string, number | string]> => {
+        const { count, error } = await admin.from("someday_items").select("id", { count: "exact", head: true }).eq("status", st);
+        const label = { saved: "someday: still saved", loved: "someday: loved it", not_for_me: "someday: not a hoshigo" }[st];
+        return [label, error ? "n/a" : count ?? 0];
+      })
+    )),
     ["public profiles", people.filter((p) => !p.is_private).length],
     ["private profiles", people.filter((p) => p.is_private).length],
     ["feedback messages", fb ? (await admin.from("feedback").select("id", { count: "exact", head: true })).count ?? 0 : "n/a"],
