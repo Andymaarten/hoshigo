@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { after } from "next/server";
 import { myFriendships, type FriendState } from "@/lib/friends";
+import { myFolloweeIds, type FollowState } from "@/lib/follows";
 import { feedRows, shareableIds, withShareable, type FeedPage } from "@/lib/friends-feed";
 import { notifyFriendRequest } from "@/lib/notify-friend-request";
 
@@ -29,6 +30,9 @@ export async function addFriend(otherId: string, handle?: string): Promise<Frien
   refresh(handle);
   if (error) return "none";
   if (data === "pending") {
+    // A waiting request also follows them (public profiles only; the database refuses the rest).
+    // Before the follows migration this insert just fails quietly.
+    await supabase.from("follows").insert({ follower: user.id, followee: otherId });
     const { data: me } = await supabase.from("profiles").select("handle, display_name").eq("id", user.id).single();
     if (me) after(() => notifyFriendRequest({ toId: otherId, fromName: me.display_name || me.handle, fromHandle: me.handle }));
   }
@@ -72,9 +76,26 @@ export async function loadOlderFeed(categoryId: number | null, cursorAt: string,
   if (!user) return { items: [], hasOlder: false };
   const rel = await myFriendships(supabase, user.id);
   if (!rel) return { items: [], hasOlder: false };
+  const people = [...new Set([...rel.friendIds, ...(await myFolloweeIds(supabase, user.id))])];
   const [page, ids] = await Promise.all([
-    feedRows(supabase, rel.friendIds, categoryId, { at: cursorAt, id: cursorId }),
-    shareableIds(supabase, rel.friendIds),
+    feedRows(supabase, people, categoryId, { at: cursorAt, id: cursorId }),
+    shareableIds(supabase, people),
   ]);
   return { items: withShareable(page.items, ids), hasOlder: page.hasOlder };
+}
+
+export async function follow(otherId: string, handle?: string): Promise<FollowState> {
+  const { supabase, user } = await session();
+  if (!user || !UUID_RE.test(otherId)) return "none";
+  const { error } = await supabase.from("follows").insert({ follower: user.id, followee: otherId });
+  refresh(handle);
+  return error && error.code !== "23505" ? "none" : "following";
+}
+
+export async function unfollow(otherId: string, handle?: string): Promise<FollowState> {
+  const { supabase, user } = await session();
+  if (!user || !UUID_RE.test(otherId)) return "none";
+  await supabase.from("follows").delete().eq("follower", user.id).eq("followee", otherId);
+  refresh(handle);
+  return "none";
 }

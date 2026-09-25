@@ -10,6 +10,7 @@ import FriendButton from "@/components/FriendButton";
 import InviteLink from "@/components/InviteLink";
 import FriendsFeed, { type FeedFriend } from "./FriendsFeed";
 import { feedRows, shareableIds, withShareable, type FeedPage } from "@/lib/friends-feed";
+import { myFolloweeIds } from "@/lib/follows";
 import { myFriendships, myInviteToken } from "@/lib/friends";
 import type { Category, Profile } from "@/lib/supabase/types";
 import { sortCategories } from "@/lib/category-display";
@@ -68,7 +69,10 @@ export default async function FriendsPage({
     );
   }
 
-  const peopleIds = [...new Set([...rel.friendIds, ...rel.incomingIds])];
+  const followeeIds = (await myFolloweeIds(supabase, user.id)).filter((id) => !rel.friendIds.includes(id));
+  // whose keeps show in the feed: friends, and people you follow (public window only, by RLS)
+  const feedIds = [...rel.friendIds, ...followeeIds];
+  const peopleIds = [...new Set([...rel.friendIds, ...rel.incomingIds, ...followeeIds])];
   const [{ data: people }, inviteToken] = await Promise.all([
     peopleIds.length
       ? supabase.from("profiles").select("id, handle, display_name, is_private").in("id", peopleIds).returns<Person[]>()
@@ -101,8 +105,9 @@ export default async function FriendsPage({
     rel.friendIds.includes(id) ? "friends" : rel.outgoingIds.includes(id) ? "request sent" : rel.incomingIds.includes(id) ? "wants to be friends" : null;
 
   const feedFriends: Record<string, FeedFriend> = {};
-  friends.forEach((p) => {
-    feedFriends[p.id] = { handle: p.handle, name: name(p), isPrivate: p.is_private };
+  feedIds.forEach((id) => {
+    const p = byId.get(id);
+    if (p) feedFriends[p.id] = { handle: p.handle, name: name(p), isPrivate: p.is_private };
   });
   const h = await headers();
   const origin = process.env.NEXT_PUBLIC_SITE_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
@@ -181,12 +186,12 @@ export default async function FriendsPage({
         </section>
 
         <section aria-labelledby="h-latest" className="friends-block">
-          <h2 id="h-latest">latest from your friends</h2>
-          {friends.length === 0 ? (
-            <p className="bio">When your friends keep something, it appears here, newest first. That&apos;s all.</p>
+          <h2 id="h-latest">latest from your friends and people you follow</h2>
+          {feedIds.length === 0 ? (
+            <p className="bio">When your friends or people you follow keep something, it appears here, newest first. That&apos;s all.</p>
           ) : (
             <Suspense fallback={<p className="bio">Gathering what your friends kept…</p>}>
-              <FeedSection supabase={supabase} friendIds={rel.friendIds} categories={categories} friends={feedFriends} initialSlug={catSlug} />
+              <FeedSection supabase={supabase} friendIds={feedIds} categories={categories} friends={feedFriends} initialSlug={catSlug} />
             </Suspense>
           )}
         </section>
