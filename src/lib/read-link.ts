@@ -28,7 +28,7 @@ const BROWSER_UA =
 const GOOGLEBOT_UA = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
 
 const SHORT_LINK_HOSTS =
-  /^(spotify\.link|spoti\.fi|maps\.app\.goo\.gl|goo\.gl|a\.co|amzn\.(eu|to|com|asia)|bit\.ly|t\.co|tinyurl\.com|lnkd\.in|apple\.co|ow\.ly|buff\.ly|is\.gd|rebrand\.ly|shorturl\.at|dzr\.page\.link|deezer\.page\.link|link\.deezer\.com|on\.soundcloud\.com|share\.google|g\.co|trib\.al)$/i;
+  /^(spotify\.link|spoti\.fi|maps\.app\.goo\.gl|goo\.gl|a\.co|amzn\.(eu|to|com|asia)|bit\.ly|t\.co|tinyurl\.com|lnkd\.in|apple\.co|ow\.ly|buff\.ly|is\.gd|rebrand\.ly|shorturl\.at|dzr\.page\.link|deezer\.page\.link|link\.deezer\.com|on\.soundcloud\.com|share\.google|g\.co|trib\.al|imdb\.to)$/i;
 
 type Meta = {
   title?: string;
@@ -39,6 +39,8 @@ type Meta = {
   source_label?: string;
   category_hint?: string;
   hint_reason?: string;
+  // A page we can't add (an IMDb person or list); shown to the person as is.
+  notice?: string;
 };
 
 type Status = "ok" | "blocked" | "timeout" | "error";
@@ -205,10 +207,52 @@ async function expandShortLink(url: string): Promise<string> {
 
 // ---------- ID based providers ----------
 
+const IMDB_KIND: Record<string, string> = {
+  movie: "films", tvMovie: "films", short: "films", video: "films", tvSpecial: "films",
+  tvSeries: "tv", tvMiniSeries: "tv", tvEpisode: "tv", tvShort: "tv", videoGame: "games",
+};
+
+// IMDb's own lookup: for titles TMDB doesn't know (episodes, small films) and names on person pages.
+async function imdbSuggestion(id: string) {
+  try {
+    const res = await fetchWithTimeout(`https://v3.sg.media-imdb.com/suggestion/x/${id}.json`, 6000);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const list = (data?.d ?? []) as { id: string; l?: string; y?: number; qid?: string; i?: { imageUrl?: string } }[];
+    return list.find((d) => d.id === id) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function fromImdbId(url: string): Promise<Meta | null> {
   const key = process.env.TMDB_API_KEY;
-  const id = url.match(/\/title\/(tt\d+)/)?.[1];
-  if (!key || !id) return null;
+  const path = new URL(url).pathname;
+  const id = path.match(/\/title\/(tt\d+)/)?.[1];
+  if (!id) {
+    const person = path.match(/\/name\/(nm\d+)/)?.[1];
+    const who = person ? (await imdbSuggestion(person))?.l : undefined;
+    const notice = person
+      ? `That's the IMDb page of ${who ?? "a person"}, not of a film or series. Paste the link of the film or series itself.`
+      : /\/list\//.test(path)
+        ? "That's an IMDb list, not one film or series. Paste the link of the film or series itself."
+        : "That IMDb page isn't a film or series. Paste the link of the film or series itself.";
+    return { notice, source_label: "IMDb" };
+  }
+  const fromTmdb = key ? await tmdbByImdbId(id, key) : null;
+  if (fromTmdb) return fromTmdb;
+  const hit = await imdbSuggestion(id);
+  if (!hit?.l) return null;
+  return {
+    title: hit.l,
+    image_url: hit.i?.imageUrl,
+    year: hit.y,
+    source_label: "IMDb",
+    category_hint: IMDB_KIND[hit.qid ?? ""] ?? "films",
+  };
+}
+
+async function tmdbByImdbId(id: string, key: string): Promise<Meta | null> {
   try {
     const res = await fetchWithTimeout(`https://api.themoviedb.org/3/find/${id}?external_source=imdb_id`, 6000, {
       Authorization: `Bearer ${key}`,
@@ -550,7 +594,8 @@ function ldString(v: unknown): string | undefined {
 // ---------- entry point ----------
 
 export type ReadLinkResult = {
-  status: Status | "not_a_link";
+  status: Status | "not_a_link" | "unsupported";
+  notice?: string;
   query?: string;
   link?: string;
   target?: string;
@@ -603,13 +648,15 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
     const host = new URL(target).hostname.toLowerCase();
 
     if (/(^|\.)open\.spotify\.com$/.test(host)) meta = (await fromSpotify(target)) ?? {};
-    else if (/(^|\.)imdb\.com$/.test(host)) meta = (await fromImdbId(target)) ?? {};
+    else if (/(^|\.)imdb\.[a-z.]+$/.test(host) && host !== "imdb.to") meta = (await fromImdbId(target)) ?? {};
     else if (/(^|\.)themoviedb\.org$/.test(host)) meta = (await fromTmdbPage(target)) ?? {};
     else if (/(^|\.)discogs\.com$/.test(host)) meta = (await fromDiscogsId(target)) ?? {};
     else if (/(^|\.)openlibrary\.org$/.test(host)) meta = (await fromOpenLibrary(target)) ?? {};
     else if (/(^|\.)(youtube\.com|youtu\.be)$/.test(host)) meta = (await fromYoutube(target)) ?? {};
     else if (/(^|\.)wikipedia\.org$/.test(host) && /^\/wiki\//.test(new URL(target).pathname)) meta = (await fromWikipedia(target)) ?? {};
     else if (/(^|\.)google\.[a-z.]+$/.test(host) || /goo\.gl$/.test(host)) meta = fromGoogleMapsPath(target) ?? {};
+
+    if (meta.notice) return { status: "unsupported", link, source_label: meta.source_label, notice: meta.notice };
 
     if (!meta.title) {
       try {
