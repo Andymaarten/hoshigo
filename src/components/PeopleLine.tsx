@@ -1,31 +1,64 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, useTransition } from "react";
 import Link from "next/link";
 import type { PersonName } from "@/lib/follows";
+import { moreFriends } from "@/app/friends/actions";
 
-const SHOWN = 3;
+const FIRST = 3;
+const STEP = 20;
 
-/** "Friends: Sara, Roelant, Anne and 4 others", the others open in place. No counts elsewhere. */
-export default function PeopleLine({ label, people }: { label: string; people: PersonName[] }) {
-  const [all, setAll] = useState(false);
-  if (!people.length) return null;
-  const shown = all ? people : people.slice(0, SHOWN);
-  const rest = people.length - shown.length;
+/**
+ * "Friends: Sara, Roelant, Anne and 297 others". Each tap shows up to 20 more. With a
+ * profileId the extra names are fetched a page at a time; without one, `people` is complete.
+ */
+export default function PeopleLine({
+  label,
+  people,
+  total,
+  profileId,
+}: {
+  label: string;
+  people: PersonName[];
+  total: number;
+  profileId?: string;
+}) {
+  const [loaded, setLoaded] = useState(people);
+  const [shown, setShown] = useState(Math.min(FIRST, people.length));
+  const [pending, start] = useTransition();
+  if (!total) return null;
+
+  const visible = loaded.slice(0, shown);
+  const rest = total - visible.length;
+
+  function more() {
+    const want = shown + STEP;
+    if (!profileId || loaded.length >= Math.min(want, total)) {
+      setShown(Math.min(want, loaded.length));
+      return;
+    }
+    start(async () => {
+      const page = await moreFriends(profileId, loaded.length);
+      const next = page ? [...loaded, ...page.people.filter((p) => !loaded.some((l) => l.handle === p.handle))] : loaded;
+      setLoaded(next);
+      setShown(Math.min(want, next.length));
+    });
+  }
+
   return (
     <p className="people-line">
       <span className="people-label">{label}:</span>{" "}
-      {shown.map((p, i) => (
+      {visible.map((p, i) => (
         <Fragment key={p.handle}>
-          {i > 0 && (i === shown.length - 1 && rest === 0 ? " and " : ", ")}
+          {i > 0 && (i === visible.length - 1 && rest === 0 ? " and " : ", ")}
           <Link href={`/${p.handle}`}>{p.display_name || p.handle}</Link>
         </Fragment>
       ))}
       {rest > 0 && (
         <>
-          {" and "}
-          <button type="button" className="text-btn" onClick={() => setAll(true)}>
-            {rest === 1 ? "1 other" : `${rest} others`}
+          {shown <= FIRST ? " and " : ", "}
+          <button type="button" className="text-btn" disabled={pending} onClick={more}>
+            {shown <= FIRST ? (rest === 1 ? "1 other" : `${rest} others`) : `${Math.min(STEP, rest)} more`}
           </button>
         </>
       )}

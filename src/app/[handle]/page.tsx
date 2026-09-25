@@ -12,7 +12,7 @@ import ProfileSocialLinks from "@/components/ProfileSocialLinks";
 import FriendButton from "@/components/FriendButton";
 import FollowButton from "@/components/FollowButton";
 import PeopleLine from "@/components/PeopleLine";
-import { followStateWith, friendsOf, myFollowers, type FollowState } from "@/lib/follows";
+import { followStateWith, friendsPage, myFollowers, type FollowState } from "@/lib/follows";
 import {
   friendStateWith,
   PUBLIC_WINDOW,
@@ -81,7 +81,7 @@ export default async function ProfilePage({
     user?.user && !isOwner && !profile.is_private && friendState !== "friends" && friendState !== "unavailable"
       ? followStateWith(supabase, user.user.id, profile.id)
       : Promise.resolve<FollowState>("unavailable"),
-    user?.user ? friendsOf(supabase, profile.id) : Promise.resolve(null),
+    user?.user ? friendsPage(supabase, profile.id, 3, 0) : Promise.resolve(null),
     isOwner ? myFollowers(supabase, profile.id) : Promise.resolve(null),
   ]);
 
@@ -179,19 +179,21 @@ export default async function ProfilePage({
             </Link>
           </p>
         )}
-        {user?.user && !isOwner && (
-          <div className="profile-actions">
-            <FriendButton
-              otherId={profile.id}
-              handle={profile.handle}
-              state={friendState}
-              name={displayName}
-            />
-            <FollowButton otherId={profile.id} handle={profile.handle} state={followState} />
-          </div>
-        )}
-        {friendList && <PeopleLine label="Friends" people={friendList} />}
-        {followers && <PeopleLine label="People who follow you" people={followers} />}
+        <div className="profile-relation">
+          {user?.user && !isOwner && (
+            <div className="profile-actions">
+              <FriendButton
+                otherId={profile.id}
+                handle={profile.handle}
+                state={friendState}
+                name={displayName}
+              />
+              <FollowButton otherId={profile.id} handle={profile.handle} state={followState} />
+            </div>
+          )}
+          {friendList && <PeopleLine label="Friends" people={friendList.people} total={friendList.total} profileId={profile.id} />}
+          {followers && <PeopleLine label="People who follow you" people={followers} total={followers.length} />}
+        </div>
         <ProfileSocialLinks links={profile.social_links ?? []} />
       </header>
 

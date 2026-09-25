@@ -33,3 +33,20 @@ export async function friendsOf(supabase: Supabase, profileId: string): Promise<
   const { data, error } = await supabase.rpc("friends_of", { p_profile: profileId });
   return error ? null : ((data ?? []) as PersonName[]);
 }
+
+export type FriendsPage = { people: PersonName[]; total: number };
+
+/**
+ * One page of a profile's friends as this viewer may see them: mutual friends first, then by
+ * name. null = not available (logged out, a private profile you're not friends with, or before
+ * the migrations). Falls back to the older all at once friends_of() when the paged one is missing.
+ */
+export async function friendsPage(supabase: Supabase, profileId: string, limit: number, offset: number): Promise<FriendsPage | null> {
+  const { data, error } = await supabase.rpc("friends_of_page", { p_profile: profileId, p_limit: limit, p_offset: offset });
+  if (!error) {
+    const rows = (data ?? []) as (PersonName & { total: number })[];
+    return { people: rows.map(({ handle, display_name }) => ({ handle, display_name })), total: rows.length ? Number(rows[0].total) : offset };
+  }
+  const everyone = await friendsOf(supabase, profileId);
+  return everyone ? { people: everyone.slice(offset, offset + limit), total: everyone.length } : null;
+}
