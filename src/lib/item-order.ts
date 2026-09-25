@@ -11,7 +11,11 @@ export type PinMap = Record<number, { id: string; title: string }>;
 
 /** A prefilled add, sent from a listing sheet to the add stamp on the same page. */
 export const ADD_PREFILL_EVENT = "hoshigo:add-prefill";
+/** Sent after a prefilled add saved, with the someday row it came from (if any). */
+export const ADDED_EVENT = "hoshigo:added";
 export type AddPrefill = {
+  /** set when the add came from the someday list, so that row can go once added */
+  somedayId?: string;
   categoryId: number;
   workId: string | null;
   title: string;

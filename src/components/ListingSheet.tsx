@@ -7,6 +7,7 @@ import SharePanel from "@/components/SharePanel";
 import { displayUrl } from "@/lib/link-input";
 import { PUBLIC_PER_CATEGORY } from "@/lib/share-rules";
 import { ADD_PREFILL_EVENT, type AddPrefill } from "@/lib/item-order";
+import SaveSomeday from "@/components/SaveSomeday";
 import { placeDisplay } from "@/lib/place-fields";
 
 // Defense in depth: addItem already rejects non-http(s) links before they're saved, but this
@@ -105,9 +106,10 @@ export default function ListingSheetBody({
               window.dispatchEvent(new CustomEvent(ADD_PREFILL_EVENT, { detail }));
             }}
           >
-            Keep in my hoshigo
+            Add to my hoshigo
           </button>
         )}
+        {canAdd && <SaveSomeday itemId={item.id} />}
         {href && <span className="link-dest">{displayUrl(item.url!)}</span>}
       </div>
       {!shareable && mine && (

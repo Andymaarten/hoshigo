@@ -6,6 +6,7 @@ import { excerpt, getSharedListing, shareImagePath, sharePath, SHARE_FORMATS } f
 import { SHAPE } from "@/lib/category-display";
 import CoverImage from "@/components/CoverImage";
 import SharePanel from "@/components/SharePanel";
+import SaveSomeday from "@/components/SaveSomeday";
 import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import HeaderStamp from "@/components/HeaderStamp";
@@ -103,6 +104,7 @@ export default async function ListingPage({ params }: Params) {
             See all of {name}&rsquo;s five stars
           </Link>
           <SharePanel handle={profile.handle} itemId={item.id} title={item.title} by={item.by} mine={isOwner} friendsOnly={profile.is_private} />
+          {loggedIn && !isOwner && <SaveSomeday itemId={item.id} />}
         </div>
       </main>
 

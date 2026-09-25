@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { saveProfile } from "./actions";
 import SocialLinksEditor from "@/components/SocialLinksEditor";
 import FriendRequestChoice from "@/components/FriendRequestChoice";
+import SomedayChoice from "@/components/SomedayChoice";
 import VisibilityChoice from "@/components/VisibilityChoice";
 import type { SocialLink } from "@/lib/supabase/types";
 
@@ -15,6 +16,7 @@ export default function SettingsForm({
   initialEmail,
   initialIsPrivate,
   friendsEnabled,
+  initialSomedayPublic,
 }: {
   initialBio: string;
   initialName: string;
@@ -23,6 +25,8 @@ export default function SettingsForm({
   initialEmail: boolean;
   initialIsPrivate: boolean;
   friendsEnabled: boolean;
+  /** undefined before the someday migration: no choice shown */
+  initialSomedayPublic?: boolean;
 }) {
   const [error, action, pending] = useActionState(saveProfile, null);
 
@@ -38,6 +42,7 @@ export default function SettingsForm({
       </div>
       <VisibilityChoice initialPrivate={initialIsPrivate} />
       {friendsEnabled && <FriendRequestChoice initialAuto={initialAutoAccept} initialEmail={initialEmail} />}
+      {initialSomedayPublic !== undefined && <SomedayChoice initialPublic={initialSomedayPublic} />}
       <SocialLinksEditor initialLinks={initialSocialLinks} />
       {error && <p className="error">{error}</p>}
       <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>

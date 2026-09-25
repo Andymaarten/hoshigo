@@ -10,7 +10,7 @@ import CoverImage from "@/components/CoverImage";
 import PhotoFromPage from "@/components/PhotoFromPage";
 import { displayUrl, extractUrl, stripTracking } from "@/lib/link-input";
 import { linkHelp } from "@/lib/link-help";
-import { ADD_PREFILL_EVENT, type AddPrefill, type PinMap } from "@/lib/item-order";
+import { ADDED_EVENT, ADD_PREFILL_EVENT, type AddPrefill, type PinMap } from "@/lib/item-order";
 import { placeLine, splitPlaceLine } from "@/lib/place-fields";
 import { BY_LABEL, COVER_FROM_CATALOG, SEARCHABLE, SEARCH_HINT, SHAPE, SOURCE_NAME } from "@/lib/category-display";
 
@@ -135,11 +135,13 @@ export default function AddStamp({
   const [lastFound, setLastFound] = useState<string[]>([]);
   const [landed, setLanded] = useState<{ label: string; slug: string } | null>(null);
   const submittedCategory = useRef<{ label: string; slug: string } | null>(null);
+  const fromSomeday = useRef<string | null>(null);
 
   const category = categories.find((c) => String(c.id) === categoryId);
   const slug = category?.slug ?? "";
 
   function reset() {
+    fromSomeday.current = null;
     setScreen("start");
     setPath("paste");
     setCategoryId("");
@@ -193,9 +195,11 @@ export default function AddStamp({
 
   useEffect(() => {
     if (wasPending.current && !pending && !error) {
+      const somedayId = fromSomeday.current;
       setOpen(false);
       reset();
       if (!onOwnPage && submittedCategory.current) setLanded(submittedCategory.current);
+      if (somedayId) window.dispatchEvent(new CustomEvent(ADDED_EVENT, { detail: { somedayId } }));
     }
     wasPending.current = pending;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,6 +233,7 @@ export default function AddStamp({
       const cat = categories.find((c) => c.id === p?.categoryId);
       if (!cat) return;
       reset();
+      fromSomeday.current = p.somedayId ?? null;
       setLanded(null);
       setCategoryId(String(cat.id));
       setWorkId(p.workId ?? "");
