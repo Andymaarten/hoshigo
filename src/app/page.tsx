@@ -44,12 +44,12 @@ export default async function HomePage({
     heroLinks,
   ] = await Promise.all([supabase.auth.getUser(), heroLinksFor(supabase)]);
 
-  // Logged in people can read the homepage too; only someone without a page yet is sent on.
+  // Logged in people go straight to their own page; the manifesto lives on /about for them.
   let myHandle: string | undefined;
   if (user) {
     const { data: profile } = await supabase.from("profiles").select("handle").eq("id", user.id).single();
     if (!profile || profile.handle.startsWith("user-")) redirect("/onboarding");
-    myHandle = profile.handle;
+    redirect(`/${profile.handle}`);
   }
 
   return (
