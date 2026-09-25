@@ -88,18 +88,26 @@ export default async function FriendsPage({
 
   let results: Person[] = [];
   if (q.length >= 2) {
-    // PostgREST .or() syntax breaks on commas, parens and quotes, so keep only name characters.
-    const pattern = `%${q.replace(/[^\p{L}\p{N} ._-]/gu, "").replace(/[_]/g, "\\_")}%`;
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, handle, display_name, is_private")
-      .or(`handle.ilike.${pattern},display_name.ilike.${pattern}`)
-      .neq("id", user.id)
-      .not("handle", "like", "user-%")
-      .order("handle")
-      .limit(10)
-      .returns<Person[]>();
-    results = data ?? [];
+    const { data: found, error } = await supabase.rpc("search_people", { q });
+    if (!error) {
+      results = (found ?? []) as Person[];
+    } else {
+      // Before the unaccent migration: widen letters that often carry accents to a one
+      // character wildcard, then keep only real matches after stripping accents here.
+      const plain = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+      const needle = plain(q).replace(/[^\p{L}\p{N} .-]/gu, "");
+      const pattern = `%${needle.replace(/[aeiouycns]/g, "_")}%`;
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, handle, display_name, is_private")
+        .or(`handle.ilike.${pattern},display_name.ilike.${pattern}`)
+        .neq("id", user.id)
+        .not("handle", "like", "user-%")
+        .order("handle")
+        .limit(50)
+        .returns<Person[]>();
+      results = (data ?? []).filter((p) => plain(p.handle).includes(needle) || plain(p.display_name ?? "").includes(needle)).slice(0, 10);
+    }
   }
   const relation = (id: string) =>
     rel.friendIds.includes(id) ? "friends" : rel.outgoingIds.includes(id) ? "request sent" : rel.incomingIds.includes(id) ? "wants to be friends" : null;

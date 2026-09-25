@@ -33,13 +33,7 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
           <span>My hoshigo</span>
         </Link>
       )}
-      {loggedIn ? (
-        <form action={signOut}>
-          <button type="submit" className="menu-link">
-            <span>Log out</span>
-          </button>
-        </form>
-      ) : (
+      {!loggedIn && (
         <>
           <Link href="/login" aria-current={current === "/login" ? "page" : undefined} onClick={go("/login")}>
             <span>Login</span>
@@ -62,6 +56,11 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
           <Link href="/explore" aria-current={current === "/explore" ? "page" : undefined} onClick={go("/explore")}>
             <span>Explore</span>
           </Link>
+          <form action={signOut}>
+            <button type="submit" className="menu-link">
+              <span>Log out</span>
+            </button>
+          </form>
         </>
       )}
     </nav>

@@ -849,6 +849,37 @@ footer .cta {
   flex: none;
 }
 
+footer .footer-nav {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding: 20px 28px;
+}
+
+footer .footer-nav a,
+footer .footer-link,
+footer .footer-about {
+  all: unset;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+footer .footer-nav a:hover,
+footer .footer-link:hover,
+footer .footer-about:hover {
+  color: var(--accent);
+}
+
+footer .footer-nav form {
+  display: contents;
+}
+
 .auth-main {
   flex: 1;
   display: flex;

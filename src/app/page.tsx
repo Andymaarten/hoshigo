@@ -47,10 +47,12 @@ export default async function HomePage({
   ]);
   const heroLinks = featured?.length ? featured.map((p) => `/${p.handle}`) : HOSHIGO_LINKS;
 
+  // Logged in people can read the homepage too; only someone without a page yet is sent on.
+  let myHandle: string | undefined;
   if (user) {
     const { data: profile } = await supabase.from("profiles").select("handle").eq("id", user.id).single();
-    if (profile && !profile.handle.startsWith("user-")) redirect(`/${profile.handle}`);
-    redirect("/onboarding");
+    if (!profile || profile.handle.startsWith("user-")) redirect("/onboarding");
+    myHandle = profile.handle;
   }
 
   return (
@@ -59,7 +61,7 @@ export default async function HomePage({
       <header className="hero">
         <div className="masthead">
           <div className="entry">
-            <Wordmark />
+            <Wordmark handle={myHandle} />
             <div className="gloss">
               <span className="ja" lang="ja">
                 星五
@@ -72,7 +74,7 @@ export default async function HomePage({
               hoshigo comes from Japanese: <i>hoshi</i>, star, and <i>go</i>, five. Five stars.
             </p>
           </div>
-          <SiteNav />
+          <SiteNav loggedIn={!!user} handle={myHandle} />
         </div>
       </header>
 
@@ -97,7 +99,7 @@ export default async function HomePage({
 
       <HeroField links={heroLinks} />
 
-      <SiteFooter />
+      <SiteFooter loggedIn={!!user} handle={myHandle} />
     </div>
   );
 }
