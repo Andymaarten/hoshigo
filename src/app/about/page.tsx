@@ -2,6 +2,7 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import HeaderStamp from "@/components/HeaderStamp";
 import { createClient } from "@/lib/supabase/server";
+import HeroField, { heroLinksFor } from "@/components/HeroField";
 import Wordmark from "@/components/Wordmark";
 
 export default async function AboutPage() {
@@ -10,7 +11,10 @@ export default async function AboutPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const myHandle = user ? (await supabase.from("profiles").select("handle").eq("id", user.id).single()).data?.handle : undefined;
+  const [myHandle, heroLinks] = await Promise.all([
+    user ? supabase.from("profiles").select("handle").eq("id", user.id).single().then((r) => r.data?.handle as string | undefined) : undefined,
+    heroLinksFor(supabase),
+  ]);
 
   return (
     <div className="page">
@@ -42,6 +46,8 @@ export default async function AboutPage() {
         <p>So the next time somebody asks: do you have any podcast tips?</p>
         <p>Yes, have a look at my hoshigo.</p>
       </section>
+
+      <HeroField links={heroLinks} />
 
       <SiteFooter loggedIn={!!user} />
     </div>
