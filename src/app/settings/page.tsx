@@ -6,6 +6,8 @@ import HeaderStamp from "@/components/HeaderStamp";
 import SiteFooter from "@/components/SiteFooter";
 import SettingsForm from "./form";
 import Wordmark from "@/components/Wordmark";
+import Link from "next/link";
+import InstallButton from "@/components/InstallButton";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -51,6 +53,14 @@ export default async function SettingsPage() {
           initialSomedayPublic={profile.someday_public}
           initialEmailUpdates={profile.email_updates}
         />
+      </section>
+
+      <section className="settings-app" style={{ maxWidth: 480 }}>
+        <h2>hoshigo as an app</h2>
+        <p className="bio">
+          Put hoshigo on your home screen, and add to it from any app. <Link href="/app">How it works</Link>
+        </p>
+        <InstallButton />
       </section>
 
       <SiteFooter loggedIn />
