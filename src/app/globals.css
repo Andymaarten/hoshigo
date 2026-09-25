@@ -1985,6 +1985,49 @@ footer .footer-nav form {
   }
 }
 
+/* ---------- changelog ---------- */
+
+.changelog-day .block-label {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.changelog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 62ch;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.changelog-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.changelog-body {
+  margin: 4px 0 0;
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.email-preview {
+  width: 100%;
+  max-width: 640px;
+  height: 520px;
+  border: 1px solid var(--rule);
+  background: #fff;
+}
+
 .link-help {
   display: flex;
   flex-direction: column;

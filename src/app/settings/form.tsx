@@ -17,6 +17,7 @@ export default function SettingsForm({
   initialIsPrivate,
   friendsEnabled,
   initialSomedayPublic,
+  initialEmailUpdates,
 }: {
   initialBio: string;
   initialName: string;
@@ -27,6 +28,8 @@ export default function SettingsForm({
   friendsEnabled: boolean;
   /** undefined before the someday migration: no choice shown */
   initialSomedayPublic?: boolean;
+  /** undefined before the changelog migration: no toggle */
+  initialEmailUpdates?: boolean;
 }) {
   const [error, action, pending] = useActionState(saveProfile, null);
 
@@ -43,6 +46,13 @@ export default function SettingsForm({
       <VisibilityChoice initialPrivate={initialIsPrivate} />
       {friendsEnabled && <FriendRequestChoice initialAuto={initialAutoAccept} initialEmail={initialEmail} />}
       {initialSomedayPublic !== undefined && <SomedayChoice initialPublic={initialSomedayPublic} />}
+      {initialEmailUpdates !== undefined && (
+        <label className="check-row">
+          <input type="hidden" name="updates_choice" value="1" />
+          <input type="checkbox" name="email_updates" defaultChecked={initialEmailUpdates} />
+          Email me now and then about what&apos;s new on hoshigo
+        </label>
+      )}
       <SocialLinksEditor initialLinks={initialSocialLinks} />
       {error && <p className="error">{error}</p>}
       <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>

@@ -38,6 +38,7 @@ export default async function SiteFooter({ loggedIn = false, handle }: { loggedI
             <Link href="/settings">Edit profile</Link>
             <Link href="/friends">Friends</Link>
             <Link href="/explore">Explore</Link>
+            <Link href="/new">What&apos;s new</Link>
             <form action={signOut}>
               <button type="submit" className="footer-link">
                 Log out
@@ -49,6 +50,9 @@ export default async function SiteFooter({ loggedIn = false, handle }: { loggedI
             <p>Keep your own five star page.</p>
             <Link href="/about" className="footer-about">
               About hoshigo
+            </Link>
+            <Link href="/new" className="footer-about">
+              What&apos;s new
             </Link>
             <Link href="/login" className="cta">
               Sign up / Login
