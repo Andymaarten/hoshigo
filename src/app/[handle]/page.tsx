@@ -220,7 +220,7 @@ export default async function ProfilePage({
           ))}
         {isOwner && (items ?? []).length === 0 && (
           <p className="bio" style={{ marginTop: 40 }}>
-            Nothing kept yet. Press the red stamp to keep your first hoshigo.
+            You haven&apos;t added any hoshigos yet. Press the red button to add your first!
           </p>
         )}
       </main>
