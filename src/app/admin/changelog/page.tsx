@@ -22,7 +22,7 @@ export default async function ChangelogAdminPage() {
       </div>
       <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>what changed.</h1>
       <p className="bio">
-        <Link href="/stats">Stats</Link> · <Link href="/new">The public page</Link>
+        <Link href="/stats">Stats</Link>
       </p>
     </header>
   );

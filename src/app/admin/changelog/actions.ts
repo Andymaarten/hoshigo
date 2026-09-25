@@ -35,7 +35,6 @@ export async function saveEntry(entry: {
   const q = entry.id ? admin.from("changelog_entries").update(row).eq("id", entry.id) : admin.from("changelog_entries").insert(row);
   const { data, error } = await q.select("*").single();
   if (error) return { ok: false, message: error.message };
-  revalidatePath("/new");
   return { ok: true, entry: data as ChangelogEntry };
 }
 
