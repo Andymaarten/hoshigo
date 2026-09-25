@@ -10,6 +10,9 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import ProfileSocialLinks from "@/components/ProfileSocialLinks";
 import FriendButton from "@/components/FriendButton";
+import FollowButton from "@/components/FollowButton";
+import PeopleLine from "@/components/PeopleLine";
+import { followStateWith, friendsOf, myFollowers, type FollowState } from "@/lib/follows";
 import {
   friendStateWith,
   PUBLIC_WINDOW,
@@ -70,6 +73,17 @@ export default async function ProfilePage({
   if (user?.user && !isOwner)
     friendState = await friendStateWith(supabase, user.user.id, profile.id);
   const canBrowseAll = isOwner || friendState === "friends";
+
+  // Follow: public profiles only, and pointless once you're friends. Friends list: logged in
+  // visitors only (the database also hides a private profile's list from non friends).
+  // Followers: only ever on your own page.
+  const [followState, friendList, followers] = await Promise.all([
+    user?.user && !isOwner && !profile.is_private && friendState !== "friends" && friendState !== "unavailable"
+      ? followStateWith(supabase, user.user.id, profile.id)
+      : Promise.resolve<FollowState>("unavailable"),
+    user?.user ? friendsOf(supabase, profile.id) : Promise.resolve(null),
+    isOwner ? myFollowers(supabase, profile.id) : Promise.resolve(null),
+  ]);
 
   // A private profile shows non-friends only its name, bio and the friend button.
   const hideAll = profile.is_private && !canBrowseAll;
@@ -166,13 +180,18 @@ export default async function ProfilePage({
           </p>
         )}
         {user?.user && !isOwner && (
-          <FriendButton
-            otherId={profile.id}
-            handle={profile.handle}
-            state={friendState}
-            name={displayName}
-          />
+          <div className="profile-actions">
+            <FriendButton
+              otherId={profile.id}
+              handle={profile.handle}
+              state={friendState}
+              name={displayName}
+            />
+            <FollowButton otherId={profile.id} handle={profile.handle} state={followState} />
+          </div>
         )}
+        {friendList && <PeopleLine label="Friends" people={friendList} />}
+        {followers && <PeopleLine label="People who follow you" people={followers} />}
         <ProfileSocialLinks links={profile.social_links ?? []} />
       </header>
 

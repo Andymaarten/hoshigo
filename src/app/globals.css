@@ -1771,6 +1771,53 @@ footer .cta {
   overflow-wrap: anywhere;
 }
 
+/* ---------- follow and the friends line ---------- */
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.profile-actions .friend-actions {
+  margin: 0;
+}
+
+.friend-actions-inline {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn.btn-on {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.people-line {
+  margin: 12px 0 0;
+  max-width: 62ch;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.people-label {
+  font-weight: 700;
+}
+
+.people-line a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.people-line .text-btn {
+  vertical-align: baseline;
+}
+
 .link-help {
   display: flex;
   flex-direction: column;

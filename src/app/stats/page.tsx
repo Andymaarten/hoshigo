@@ -166,6 +166,10 @@ export default async function StatsPage() {
     ["hoshigos kept", itemList.length],
     ["friendships", friendships ? accepted.length : "n/a"],
     ["pending requests", friendships ? pending.length : "n/a"],
+    ["follows", await (async () => {
+      const { count, error } = await admin.from("follows").select("follower", { count: "exact", head: true });
+      return error ? "n/a" : count ?? 0;
+    })()],
     ["public profiles", people.filter((p) => !p.is_private).length],
     ["private profiles", people.filter((p) => p.is_private).length],
     ["feedback messages", fb ? (await admin.from("feedback").select("id", { count: "exact", head: true })).count ?? 0 : "n/a"],
