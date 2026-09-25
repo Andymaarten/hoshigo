@@ -785,3 +785,9 @@ drop policy if exists "public changelog" on public.changelog_entries;
 create policy "public changelog" on public.changelog_entries
   for select using (audience = 'public' and not hidden);
 -- update_emails: no policies at all, so only the service role can touch it
+
+-- Someday notes (see docs/migrations/2026-09-26-someday-note.sql)
+
+alter table public.someday_items add column if not exists note text;
+alter table public.someday_items drop constraint if exists someday_items_note_length;
+alter table public.someday_items add constraint someday_items_note_length check (note is null or char_length(note) <= 500);

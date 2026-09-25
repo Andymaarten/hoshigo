@@ -9,6 +9,8 @@ import SiteFooter from "@/components/SiteFooter";
 import FriendButton from "@/components/FriendButton";
 import InviteLink from "@/components/InviteLink";
 import FriendRows from "./FriendRows";
+import PeopleSearch from "./PeopleSearch";
+import { searchPeople } from "@/lib/people-search";
 import FriendsFeed, { type FeedFriend } from "./FriendsFeed";
 import { feedRows, shareableIds, withShareable, type FeedPage } from "@/lib/friends-feed";
 import { myFolloweeIds } from "@/lib/follows";
@@ -87,31 +89,7 @@ export default async function FriendsPage({
     .filter((p): p is Person => !!p)
     .sort((a, b) => name(a).localeCompare(name(b)));
 
-  let results: Person[] = [];
-  if (q.length >= 2) {
-    const { data: found, error } = await supabase.rpc("search_people", { q });
-    if (!error) {
-      results = (found ?? []) as Person[];
-    } else {
-      // Before the unaccent migration: widen letters that often carry accents to a one
-      // character wildcard, then keep only real matches after stripping accents here.
-      const plain = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-      const needle = plain(q).replace(/[^\p{L}\p{N} .-]/gu, "");
-      const pattern = `%${needle.replace(/[aeiouycns]/g, "_")}%`;
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, handle, display_name, is_private")
-        .or(`handle.ilike.${pattern},display_name.ilike.${pattern}`)
-        .neq("id", user.id)
-        .not("handle", "like", "user-%")
-        .order("handle")
-        .limit(50)
-        .returns<Person[]>();
-      results = (data ?? []).filter((p) => plain(p.handle).includes(needle) || plain(p.display_name ?? "").includes(needle)).slice(0, 10);
-    }
-  }
-  const relation = (id: string) =>
-    rel.friendIds.includes(id) ? "friends" : rel.outgoingIds.includes(id) ? "request sent" : rel.incomingIds.includes(id) ? "wants to be friends" : null;
+  const results = await searchPeople(supabase, user.id, q);
 
   const feedFriends: Record<string, FeedFriend> = {};
   feedIds.forEach((id) => {
@@ -156,31 +134,7 @@ export default async function FriendsPage({
 
         <section aria-labelledby="h-find" className="friends-block">
           <h2 id="h-find">find people</h2>
-          <form action="/friends" className="friend-search">
-            <div className="field" style={{ flex: 1 }}>
-              <label htmlFor="q">Search by name or page name</label>
-              <input id="q" name="q" type="search" defaultValue={q} placeholder="a name, or hoshigo.cc/name" autoCapitalize="off" spellCheck={false} />
-            </div>
-            <button type="submit" className="btn">
-              Search
-            </button>
-          </form>
-          {q.length >= 2 &&
-            (results.length === 0 ? (
-              <p className="bio">Nobody found for &ldquo;{q}&rdquo;.</p>
-            ) : (
-              <ul className="friend-list">
-                {results.map((p) => (
-                  <li key={p.id}>
-                    <Link href={`/${p.handle}`} className="friend-row">
-                      <span className="friend-name">{name(p)}</span>
-                      <span className="friend-handle">@{p.handle}</span>
-                      {relation(p.id) && <span className="friend-tagline">{relation(p.id)}</span>}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ))}
+          <PeopleSearch initialQ={q} initialResults={results} />
 
           {inviteToken && <InviteLink url={`${origin}/invite/${inviteToken}`} />}
         </section>

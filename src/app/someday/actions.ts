@@ -41,14 +41,15 @@ export async function somedayState(itemId: string): Promise<{ saved: boolean } |
 }
 
 /** Saves a snapshot of a listing you can see. Saving twice keeps one row. */
-export async function saveForSomeday(itemId: string): Promise<boolean> {
+/** The new row's id when saved (so a note can follow), true when it was already saved, false on failure. */
+export async function saveForSomeday(itemId: string): Promise<string | boolean> {
   const { supabase, user } = await session();
   if (!user || !UUID_RE.test(itemId)) return false;
   // Read with the visitor's own rights: you can only save what you're allowed to see.
   const { data: item } = await supabase.from("items").select("*").eq("id", itemId).returns<Item[]>().maybeSingle();
   if (!item || item.profile_id === user.id) return false;
   // Saving twice is caught by the unique indexes (23505), so no lookup first.
-  const { error } = await supabase.from("someday_items").insert({
+  const { data: inserted, error } = await supabase.from("someday_items").insert({
     profile_id: user.id,
     from_profile_id: item.profile_id,
     source_item_id: item.id,
@@ -59,9 +60,10 @@ export async function saveForSomeday(itemId: string): Promise<boolean> {
     year: item.year,
     image_url: item.image_url,
     url: item.url,
-  });
+  }).select("id").single();
   // no revalidatePath: it would re-render the page you're on (the whole Friends feed)
-  return !error || error.code === "23505";
+  if (error) return error.code === "23505";
+  return (inserted?.id as string | undefined) ?? true;
 }
 
 /**
@@ -118,7 +120,8 @@ export async function addToSomeday(_prev: string | null, formData: FormData): Pr
   if (!title || !categoryId) return "Title and category are required.";
   if (url && !httpUrl(url)) return "That link doesn't look like a valid web address.";
   if (image && !httpUrl(image)) return "That image link doesn't look like a valid web address.";
-  const { error } = await supabase.from("someday_items").insert({
+  const note = String(formData.get("someday_note") || "").trim().slice(0, 500);
+  const row: Record<string, unknown> = {
     profile_id: user.id,
     category_id: categoryId,
     work_id: UUID_RE.test(workId) ? workId : null,
@@ -127,8 +130,20 @@ export async function addToSomeday(_prev: string | null, formData: FormData): Pr
     year: /^\d{3,4}$/.test(yearRaw) ? Number(yearRaw) : null,
     url: url || null,
     image_url: image || null,
-  });
+  };
+  let { error } = await supabase.from("someday_items").insert(note ? { ...row, note } : row);
+  // before the note migration there is no note column: save without it
+  if (error && note && error.code !== "23505") ({ error } = await supabase.from("someday_items").insert(row));
   if (error && error.code !== "23505") return error.message;
   revalidatePath("/someday");
   return null;
+}
+
+/** Your own line on a saved card; empty clears it. */
+export async function setSomedayNote(id: string, note: string): Promise<boolean> {
+  const { supabase, user } = await session();
+  if (!user || !UUID_RE.test(id)) return false;
+  const clean = String(note ?? "").trim().slice(0, 500);
+  const { error } = await supabase.from("someday_items").update({ note: clean || null }).eq("id", id).eq("profile_id", user.id);
+  return !error;
 }

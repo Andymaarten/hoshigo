@@ -1172,6 +1172,14 @@ export default function AddStamp({
               </div>
             )}
 
+            {someday && (
+              <div className="field">
+                <label htmlFor="someday-note">
+                  {SOMEDAY.noteLabel} <span className="optional">optional</span>
+                </label>
+                <input id="someday-note" name="someday_note" maxLength={500} placeholder={SOMEDAY.notePlaceholder} />
+              </div>
+            )}
             {!someday && (
             <div className="field">
               <label htmlFor="add-note">
