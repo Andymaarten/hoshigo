@@ -1758,6 +1758,33 @@ footer .cta {
   max-width: 62ch;
 }
 
+.feedback-message {
+  white-space: pre-wrap;
+}
+
+.feedback-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.feedback-controls select,
+.feedback-controls input {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1.5px solid var(--ink);
+  background: var(--ground);
+  font: inherit;
+  font-size: 14px;
+}
+
+.feedback-controls input {
+  flex: 1;
+  min-width: 160px;
+}
+
 .stats-feedback li {
   padding: 12px 0;
   border-bottom: 1px solid var(--rule);

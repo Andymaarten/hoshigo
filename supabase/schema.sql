@@ -637,3 +637,12 @@ using public.friendships f
 where f.status = 'accepted'
   and ((fo.follower = f.requester and fo.followee = f.addressee)
     or (fo.follower = f.addressee and fo.followee = f.requester));
+
+-- Feedback status (see docs/migrations/2026-09-25-feedback-status.sql)
+
+alter table public.feedback add column if not exists status text not null default 'open';
+alter table public.feedback drop constraint if exists feedback_status_check;
+alter table public.feedback add constraint feedback_status_check
+  check (status in ('open', 'planned', 'done', 'wontfix'));
+alter table public.feedback add column if not exists handled_at timestamptz;
+alter table public.feedback add column if not exists handled_note text;
