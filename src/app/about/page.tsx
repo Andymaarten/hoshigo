@@ -20,10 +20,6 @@ export default async function AboutPage() {
           <SiteNav loggedIn={!!user} handle={myHandle} />
         </div>
         <HeaderStamp />
-        <div className="kicker">
-          <span className="dot" aria-hidden="true" />
-          manifesto
-        </div>
         <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>what we&apos;re about</h1>
       </header>
 
@@ -37,12 +33,14 @@ export default async function AboutPage() {
         </p>
         <p>
           We&apos;re not traditional social media. No ads. No algorithm deciding what you see and trying to make you
-          stay longer. We like you to be gone within a few minutes.
+          stay longer. Even better: we like you to be gone within <strong>a few minutes</strong>.
         </p>
         <p>
-          hoshigo is by people, for people. No AI, no bots. Only verified profiles of real people with real taste:
-          every page here belongs to someone.
+          hoshigo is by people, for people. No fake profiles, no bots. Only verified profiles of real people with real
+          taste: every page here belongs to someone.
         </p>
+        <p>So the next time somebody asks: do you have any podcast tips?</p>
+        <p>Yes, have a look at my hoshigo.</p>
       </section>
 
       <SiteFooter loggedIn={!!user} />
