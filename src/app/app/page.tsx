@@ -6,6 +6,8 @@ import InstallHintText from "@/components/InstallHintText";
 import AndroidHint from "./AndroidHint";
 import Bookmarklet from "./Bookmarklet";
 import styles from "./app.module.css";
+import Choices from "./Choices";
+import { AndroidIcon, LaptopIcon, PhoneIcon } from "./icons";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -41,28 +43,60 @@ export default async function AppPage() {
       </header>
 
       <main className="app-guide">
-        <section>
-          <h2>iPhone and iPad</h2>
-          <InstallHintText platform="ios" />
-          <p className="app-note">In Safari, the share icon is at the bottom of the screen; scroll the list down a little to find it, then tap Add.</p>
-          <p className="app-note">Opened hoshigo from Instagram or WhatsApp? Open it in Safari first; in those apps the option is missing.</p>
-        </section>
-
-        <section>
-          <h2>Android</h2>
-          <AndroidHint />
-        </section>
-
-        <section>
-          <h2>Computer</h2>
-          <ol>
-            <li>Open hoshigo.cc in Chrome or Edge.</li>
-            <li>
-              Click the install icon at the right of the address bar, or choose <b>Install hoshigo</b> from the menu.
-            </li>
-          </ol>
-          <p className="app-note">On a Mac with Safari: File, then Add to Dock.</p>
-        </section>
+        <Choices
+          choices={[
+            {
+              key: "ios",
+              label: "iPhone and iPad",
+              icon: <PhoneIcon />,
+              panel: (
+                <>
+                  <InstallHintText platform="ios" />
+                  <ol>
+                    <li>Open hoshigo.cc in Safari.</li>
+                    <li>Tap the share icon at the bottom of the screen.</li>
+                    <li>
+                      Scroll down a little and tap <b>Add to Home Screen</b>, then <b>Add</b>.
+                    </li>
+                  </ol>
+                  <p className="app-note">Opened hoshigo from Instagram or WhatsApp? Open it in Safari first; in those apps the option is missing.</p>
+                </>
+              ),
+            },
+            {
+              key: "android",
+              label: "Android",
+              icon: <AndroidIcon />,
+              panel: (
+                <>
+                  <AndroidHint />
+                  <ol>
+                    <li>Open hoshigo.cc in Chrome.</li>
+                    <li>
+                      Tap the menu <b>⋮</b>, then <b>Install app</b> or <b>Add to Home screen</b>.
+                    </li>
+                  </ol>
+                </>
+              ),
+            },
+            {
+              key: "computer",
+              label: "Computer",
+              icon: <LaptopIcon />,
+              panel: (
+                <>
+                  <ol>
+                    <li>Open hoshigo.cc in Chrome or Edge.</li>
+                    <li>
+                      Click the install icon at the right of the address bar, or choose <b>Install hoshigo</b> from the menu.
+                    </li>
+                  </ol>
+                  <p className="app-note">On a Mac with Safari: File, then Add to Dock.</p>
+                </>
+              ),
+            },
+          ]}
+        />
 
         {/* second in importance to installing, so it waits behind a quiet link */}
         <details className={styles.more} id="add-from-any-app">
