@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ownerHandle } from "@/lib/owner";
 import { adminClient } from "@/lib/supabase/admin";
-import { sendBatch } from "@/lib/changelog";
+import { sendOne } from "@/lib/changelog";
 import { composeWelcome, setWelcomeSwitch } from "@/lib/welcome";
 import type { WelcomeStep } from "@/lib/welcome-copy";
 
@@ -32,7 +32,7 @@ export async function previewWelcome(handle: string, step: WelcomeStep): Promise
   const p = await personFor(handle);
   if (!p) return { error: "No such page (or not allowed)." };
   const mail = await composeWelcome(p.admin, step, p);
-  return { html: mail.html, subject: mail.subject, picks: mail.picks.length };
+  return { html: mail.previewHtml, subject: mail.subject, picks: mail.picks.length };
 }
 
 export async function testWelcome(handle: string, step: WelcomeStep): Promise<string> {
@@ -43,7 +43,7 @@ export async function testWelcome(handle: string, step: WelcomeStep): Promise<st
   if (!to) return "SIGNUP_NOTIFY_EMAIL is not set.";
   const mail = await composeWelcome(p.admin, step, p);
   // a test never records picks or steps, and its unsubscribe link points at the chosen person
-  const res = await sendBatch([{ to, subject: `[test] ${mail.subject}`, html: mail.html, text: mail.text, ...mail.links }]);
+  const res = await sendOne({ to, subject: `[test] ${mail.subject}`, html: mail.html, text: mail.text, ...mail.links }, mail.inline);
   return res.error ?? `Test sent to ${to}.`;
 }
 

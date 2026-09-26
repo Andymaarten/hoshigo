@@ -81,7 +81,8 @@ function paragraphText(p: EmailParagraph) {
 function pickHtml(p: EmailPick) {
   const href = escapeHtml(p.href);
   const cover = p.image
-    ? `<img src="${escapeHtml(p.image)}" width="64" height="64" alt="${escapeHtml(p.title)}" style="display:block; margin:0 auto; width:64px; height:64px; object-fit:cover; border:1px solid ${RULE}; border-radius:2px; background-color:${SHEET};">`
+    ? // when covers are blocked, the alt text sits on a small paper square, which still looks intended
+      `<img src="${escapeHtml(p.image)}" width="64" height="64" alt="${escapeHtml(`Cover of ${p.title}`)}" style="display:block; margin:0 auto; width:64px; height:64px; object-fit:cover; border:1px solid ${RULE}; border-radius:2px; background-color:${SHEET}; ${SERIF} font-size:9px; line-height:1.2; font-style:italic; color:${MUTED}; overflow:hidden;">`
     : `<div style="margin:0 auto; width:64px; height:64px; border:1px solid ${RULE}; border-radius:2px; background-color:${SHEET};"></div>`;
   return `<tr><td align="center" style="padding:0 0 30px;">
   <a href="${href}" style="text-decoration:none; color:${INK};">
