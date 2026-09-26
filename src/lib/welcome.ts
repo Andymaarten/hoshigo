@@ -51,14 +51,11 @@ export async function dueWelcomes(admin: SupabaseClient, now = Date.now()): Prom
   const real = people.filter((p) => typeof p.handle === "string" && !(p.handle as string).startsWith("user-"));
   const ids = real.map((p) => p.id as string);
   if (!ids.length) return [];
-  const [{ data: sent }, { data: items }, usage] = await Promise.all([
+  const [{ data: sent }, usage] = await Promise.all([
     admin.from("welcome_emails").select("profile_id, step").in("profile_id", ids),
-    admin.from("items").select("profile_id").in("profile_id", ids).limit(20000),
     admin.from("app_usage").select("profile_id").in("profile_id", ids),
   ]);
   const sentSet = new Set((sent ?? []).map((s) => `${s.profile_id}|${s.step}`));
-  const itemCount = new Map<string, number>();
-  (items ?? []).forEach((i) => itemCount.set(i.profile_id as string, (itemCount.get(i.profile_id as string) ?? 0) + 1));
   // before the app usage migration nobody counts as having the app
   const hasApp = new Set(usage.error ? [] : (usage.data ?? []).map((u) => u.profile_id as string));
 
@@ -193,11 +190,16 @@ export async function sendWelcomeNow(admin: SupabaseClient, profileId: string) {
  * The daily run. Sends only when the owner switched welcome emails on; otherwise it just
  * reports what it would send. Records each sent step so nothing goes out twice.
  */
-export async function runWelcome(admin: SupabaseClient): Promise<{ on: boolean; due: { handle: string; step: number }[]; sent: number; error: string | null }> {
+export async function runWelcome(
+  admin: SupabaseClient,
+  deadline = Date.now() + 270_000
+): Promise<{ on: boolean; due: { handle: string; step: number }[]; sent: number; error: string | null; backfill: BackfillResult | null }> {
+  // the owner's one off backfill runs first, on its own confirm, whatever the daily switch says
+  const backfill = await runBackfill(admin, deadline);
   const on = (await welcomeSwitch(admin)) === true;
   const due = await dueWelcomes(admin);
   const summary = due.map((d) => ({ handle: d.handle, step: d.step }));
-  if (!on || !due.length) return { on, due: summary, sent: 0, error: null };
+  if (!on || !due.length) return { on, due: summary, sent: 0, error: null, backfill };
 
   let sent = 0;
   for (const d of due) {
@@ -207,15 +209,99 @@ export async function runWelcome(admin: SupabaseClient): Promise<{ on: boolean; 
     // claim the step first: if two runs overlap, the primary key lets only one send
     const { error: claim } = await admin.from("welcome_emails").insert({ profile_id: d.profileId, step: d.step });
     if (claim) continue;
+    if (Date.now() > deadline) break;
     // one by one through the single endpoint (it carries the inline images), under Resend's 2 a second
     if (sent) await new Promise((r) => setTimeout(r, 600));
     const res = await sendOne({ to: email, subject: mail.subject, html: mail.html, text: mail.text, ...mail.links }, mail.inline);
     if (res.error) {
       await admin.from("welcome_emails").delete().eq("profile_id", d.profileId).eq("step", d.step);
-      return { on, due: summary, sent, error: res.error };
+      return { on, due: summary, sent, error: res.error, backfill };
     }
     await recordPicks(admin, d.profileId, mail.picks).catch(() => {});
     sent++;
   }
-  return { on, due: summary, sent, error: null };
+  return { on, due: summary, sent, error: null, backfill };
+}
+
+// ---- one off: the welcome for everyone who never had it (people from before it existed) ----
+
+export type BackfillState = {
+  pending: boolean;
+  requestedAt?: string;
+  lastRun?: { at: string; sent: number; failed: number; left: number };
+};
+export type BackfillResult = { sent: number; failed: number; left: number } | null;
+
+export async function backfillState(admin: SupabaseClient): Promise<BackfillState | null> {
+  const { data, error } = await admin.from("app_settings").select("value").eq("key", "welcome_backfill").maybeSingle();
+  if (error) return null;
+  return { pending: false, ...((data?.value as BackfillState | undefined) ?? {}) };
+}
+
+export async function setBackfillState(admin: SupabaseClient, state: BackfillState) {
+  return admin.from("app_settings").upsert({ key: "welcome_backfill", value: state, updated_at: new Date().toISOString() });
+}
+
+/** Real pages that want emails and never got the welcome (step 1). */
+export async function backfillTargets(admin: SupabaseClient): Promise<{ id: string; handle: string; name: string }[]> {
+  const people: { id: string; handle: string; display_name: string | null }[] = [];
+  for (let from = 0; from < 100000; from += 1000) {
+    const { data, error } = await admin.from("profiles").select("id, handle, display_name").eq("email_updates", true).range(from, from + 999);
+    if (error) return [];
+    people.push(...((data ?? []) as typeof people));
+    if (!data || data.length < 1000) break;
+  }
+  const had = new Set<string>();
+  for (let from = 0; from < 100000; from += 1000) {
+    const { data } = await admin.from("welcome_emails").select("profile_id").eq("step", 1).range(from, from + 999);
+    (data ?? []).forEach((r) => had.add(r.profile_id as string));
+    if (!data || data.length < 1000) break;
+  }
+  return people
+    .filter((p) => typeof p.handle === "string" && !p.handle.startsWith("user-") && !had.has(p.id))
+    .map((p) => ({ id: p.id, handle: p.handle, name: p.display_name || p.handle }));
+}
+
+/**
+ * Sends the pending backfill, one by one about 600 ms apart, until done or the deadline.
+ * Whatever is left stays pending for the next daily run; nobody gets it twice (welcome_emails).
+ */
+async function runBackfill(admin: SupabaseClient, deadline: number): Promise<BackfillResult> {
+  const state = await backfillState(admin);
+  if (!state?.pending) return null;
+  const targets = await backfillTargets(admin);
+  let sent = 0;
+  let failed = 0;
+  let i = 0;
+  for (; i < targets.length; i++) {
+    if (Date.now() > deadline) break;
+    const t = targets[i];
+    const email = await emailOf(admin, t.id);
+    if (!email) {
+      failed++;
+      continue;
+    }
+    const { error: claim } = await admin.from("welcome_emails").insert({ profile_id: t.id, step: 1 });
+    if (claim) continue;
+    const mail = await composeWelcome(admin, 1, { profileId: t.id, handle: t.handle, name: t.name });
+    if (sent || failed) await new Promise((r) => setTimeout(r, 600));
+    const res = await sendOne({ to: email, subject: mail.subject, html: mail.html, text: mail.text, ...mail.links }, mail.inline);
+    if (res.error) {
+      await admin.from("welcome_emails").delete().eq("profile_id", t.id).eq("step", 1);
+      failed++;
+      continue;
+    }
+    await recordPicks(admin, t.id, mail.picks).catch(() => {});
+    sent++;
+  }
+  const left = targets.length - i;
+  const prev = state.lastRun && state.pending && state.requestedAt && state.lastRun.at > state.requestedAt ? state.lastRun : null;
+  const lastRun = {
+    at: new Date().toISOString(),
+    sent: sent + (prev?.sent ?? 0),
+    failed: failed + (prev?.failed ?? 0),
+    left,
+  };
+  await setBackfillState(admin, { pending: left > 0, requestedAt: state.requestedAt, lastRun });
+  return { sent, failed, left };
 }

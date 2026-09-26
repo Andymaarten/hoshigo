@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { WELCOME_COPY, WELCOME_DAYS, type WelcomeStep } from "@/lib/welcome-copy";
 import TipBrowser from "./TipBrowser";
 import type { BrowseRow } from "@/lib/picks-browse";
+import type { BackfillState } from "@/lib/welcome";
+import Backfill from "./Backfill";
 import { previewWelcome, removeApproved, setWelcome, testWelcome } from "./actions";
 
 export type Approved = { id: string; kind: "work" | "listing"; title: string; by: string | null };
@@ -15,6 +17,8 @@ export default function EmailsAdmin({
   due,
   categories,
   browse,
+  backfillCount,
+  backfill,
   approved: initialApproved,
   defaultHandle,
 }: {
@@ -22,6 +26,8 @@ export default function EmailsAdmin({
   due: { handle: string; step: number }[];
   categories: { id: number; label: string }[];
   browse: { rows: BrowseRow[]; hasMore: boolean; total: number };
+  backfillCount: number;
+  backfill: BackfillState | null;
   approved: Approved[];
   defaultHandle: string;
 }) {
@@ -65,6 +71,11 @@ export default function EmailsAdmin({
         <p className="bio">
           {due.length ? `Due today: ${due.map((d) => `@${d.handle} (${d.step})`).join(", ")}.` : "Nobody is due today."}
         </p>
+      </section>
+
+      <section>
+        <h2>welcome for everyone else</h2>
+        <Backfill count={backfillCount} state={backfill} />
       </section>
 
       <section>
