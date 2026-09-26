@@ -813,3 +813,32 @@ create policy "own app usage can be added" on public.app_usage
 drop policy if exists "own app usage can be updated" on public.app_usage;
 create policy "own app usage can be updated" on public.app_usage
   for update using (auth.uid() = profile_id) with check (auth.uid() = profile_id);
+
+-- Welcome emails, settings and pick blocklist (see docs/migrations/2026-09-27-welcome-mails.sql)
+
+-- one row per email sent, so no step is ever sent twice
+create table if not exists public.welcome_emails (
+  profile_id uuid not null references public.profiles (id) on delete cascade,
+  step int not null check (step in (1, 2, 3)),
+  sent_at timestamptz not null default now(),
+  primary key (profile_id, step)
+);
+
+-- tiny key/value switches the owner flips on /admin/emails, e.g. welcome_emails = {"on": true}
+create table if not exists public.app_settings (
+  key text primary key,
+  value jsonb not null default '{}',
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.pick_blocklist (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('work', 'title', 'by')),
+  value text not null,
+  created_at timestamptz not null default now(),
+  unique (kind, value)
+);
+
+alter table public.welcome_emails enable row level security;
+alter table public.app_settings enable row level security;
+alter table public.pick_blocklist enable row level security;
