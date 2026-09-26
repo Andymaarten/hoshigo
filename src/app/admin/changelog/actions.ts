@@ -48,7 +48,8 @@ function compose(entries: ChangelogEntry[], userId: string) {
 export async function sendTest(subject: string): Promise<Result> {
   const admin = await gate();
   if (!admin) return { ok: false, message: "Not allowed." };
-  const to = process.env.SIGNUP_NOTIFY_EMAIL;
+  // Test sends go to TEST_EMAIL_TO when set (e.g. a Hotmail inbox), else to the owner notification address.
+  const to = (process.env.TEST_EMAIL_TO || process.env.SIGNUP_NOTIFY_EMAIL)?.trim();
   if (!to) return { ok: false, message: "SIGNUP_NOTIFY_EMAIL is not set." };
   const entries = await pendingEntries(admin);
   if (!entries.length) return { ok: false, message: "Nothing new to send yet." };

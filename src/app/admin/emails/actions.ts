@@ -38,7 +38,8 @@ export async function previewWelcome(handle: string, step: WelcomeStep): Promise
 export async function testWelcome(handle: string, step: WelcomeStep): Promise<string> {
   const p = await personFor(handle);
   if (!p) return "No such page (or not allowed).";
-  const to = process.env.SIGNUP_NOTIFY_EMAIL;
+  // Test sends go to TEST_EMAIL_TO when set (e.g. a Hotmail inbox), else to the owner notification address.
+  const to = (process.env.TEST_EMAIL_TO || process.env.SIGNUP_NOTIFY_EMAIL)?.trim();
   if (!to) return "SIGNUP_NOTIFY_EMAIL is not set.";
   const mail = await composeWelcome(p.admin, step, p);
   // a test never records picks or steps, and its unsubscribe link points at the chosen person
