@@ -5,11 +5,9 @@ import { communityPicks, recordPicks, type Pick } from "@/lib/community-picks";
 import {
   COMMUNITY_HEADING,
   COMMUNITY_INTRO,
-  keptBy,
   WELCOME_COPY,
   WELCOME_DAYS,
   WELCOME_FOOTER,
-  WELCOME_MOTIF,
   WELCOME_ONE_TAP,
   WELCOME_SIGNATURE,
   type WelcomeStep,
@@ -91,30 +89,29 @@ export function renderWelcome(
   const site = SITE();
   const paragraphs: EmailParagraph[] = [...copy.paragraphs];
   if (step === 3 && invite) paragraphs.push(invite);
-  paragraphs.push(WELCOME_SIGNATURE);
-  // Lucas is adding a community block to renderEmail; until it lands the picks go in as
-  // plain paragraphs after the signature, and the same data rides along in `community`.
-  if (picks.length) {
-    paragraphs.push([{ strong: COMMUNITY_HEADING }, `\n${COMMUNITY_INTRO}`]);
-    picks.forEach((p) =>
-      paragraphs.push([
-        { strong: p.title },
-        `${p.by ? `, ${p.by}` : ""}\n${keptBy(p.name)}${p.note ? `\n\u201c${p.note}\u201d` : ""}\n${site}${p.path}`,
-      ])
-    );
-  }
   // day 4 goes through /add, which logs people in if needed and opens the add dialog on their page
   const href = step === 1 ? `${site}/add` : step === 2 ? `${site}/app` : invite ?? `${site}/friends`;
   const input = {
     preheader: copy.preheader,
     heading: copy.heading,
-    motif: WELCOME_MOTIF,
     paragraphs,
     button: { label: copy.button, href },
+    signature: WELCOME_SIGNATURE,
     footer: WELCOME_FOOTER,
     footerLink: { label: WELCOME_ONE_TAP, href: links.oneClickUrl },
     community: picks.length
-      ? { heading: COMMUNITY_HEADING, intro: COMMUNITY_INTRO, picks: picks.map((p) => ({ ...p, href: `${site}${p.path}` })) }
+      ? {
+          heading: COMMUNITY_HEADING,
+          intro: COMMUNITY_INTRO,
+          picks: picks.map((p) => ({
+            title: p.title,
+            by: p.by ?? undefined,
+            owner: p.name,
+            note: p.note ?? undefined,
+            href: `${site}${p.path}`,
+            image: p.imageUrl ?? undefined,
+          })),
+        }
       : undefined,
   } as EmailInput;
   return { subject: copy.subject, ...renderEmail(input) };

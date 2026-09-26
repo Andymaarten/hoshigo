@@ -32,7 +32,7 @@ export type EmailInput = {
   paragraphs: EmailParagraph[];
   button?: { label: string; href: string };
   /** two or three things people keep, with a small cover each */
-  community?: { heading?: string; picks: EmailPick[] };
+  community?: { heading?: string; intro?: string; picks: EmailPick[] };
   /** a closing line, e.g. "Hoshi" */
   signature?: string;
   footer: string;
@@ -120,7 +120,8 @@ export function renderEmail({
   const communityHtml = picks.length
     ? `<tr><td style="padding:44px 0 0;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-    <tr><td style="border-top:1px solid ${RULE}; padding:28px 0 22px; ${SANS} font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:${MUTED};">${escapeHtml(community?.heading ?? "Kept by others")}</td></tr>
+    <tr><td style="border-top:1px solid ${RULE}; padding:28px 0 ${community?.intro ? 8 : 22}px; ${SANS} font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:${MUTED};">${escapeHtml(community?.heading ?? "Kept by others")}</td></tr>
+    ${community?.intro ? `<tr><td style="${SERIF} font-size:16px; line-height:1.5; color:${MUTED}; padding:0 0 22px;">${escapeHtml(community.intro)}</td></tr>` : ""}
     ${picks.map((p, i) => pickHtml(p, i === picks.length - 1)).join("\n")}
   </table>
 </td></tr>`
