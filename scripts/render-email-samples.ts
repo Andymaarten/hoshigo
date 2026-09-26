@@ -30,7 +30,7 @@ const picks = [
 ];
 const links = { oneClickUrl: "https://hoshigo.cc/api/unsubscribe?t=sample" };
 
-out("welcome", renderWelcome(1, picks, links, null));
+out("welcome", renderWelcome(1, picks, links, null, "remote"));
 out("day-10", renderWelcome(2, [], links, null));
 out("day-21", renderWelcome(3, picks, links, "https://hoshigo.cc/invite/sample"));
 

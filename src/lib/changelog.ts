@@ -105,6 +105,41 @@ export async function recipientCount(admin: SupabaseClient): Promise<number | nu
 }
 
 /** Resend's batch endpoint takes up to 100 emails per call. Returns how many were accepted. */
+export type InlineImage = { filename: string; content: string; content_id: string };
+
+/**
+ * One email through Resend's single endpoint, which (unlike /emails/batch) takes inline
+ * attachments: images referenced as <img src="cid:...">, shown even when remote images
+ * are blocked (Proton, Apple Mail with remote content off).
+ */
+export async function sendOne(
+  m: { to: string; subject: string; html: string; text: string; oneClickUrl: string },
+  inline: InlineImage[] = []
+): Promise<{ error: string | null }> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return { error: "RESEND_API_KEY is not set." };
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: UPDATES_FROM(),
+        to: [m.to],
+        subject: m.subject,
+        html: m.html,
+        text: m.text,
+        headers: { "List-Unsubscribe": `<${m.oneClickUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+        ...(inline.length ? { attachments: inline.map((a) => ({ ...a, content_type: "image/png" })) } : {}),
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) return { error: `Resend said ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    return { error: null };
+  } catch (e) {
+    return { error: String(e) };
+  }
+}
+
 export async function sendBatch(
   messages: { to: string; subject: string; html: string; text: string; unsubscribeUrl: string; oneClickUrl: string }[]
 ): Promise<{ sent: number; error: string | null }> {
