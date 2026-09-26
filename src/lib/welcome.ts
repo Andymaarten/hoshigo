@@ -17,6 +17,9 @@ import {
   type WelcomeStep,
 } from "@/lib/welcome-copy";
 
+// Images in emails load from production directly: mail apps may not follow the hoshigo.cc to www redirect.
+const EMAIL_ASSETS = "https://www.hoshigo.cc";
+
 const DAY = 86400000;
 // a step is only sent in the few days after its day, so people who signed up long before this
 // feature existed never get a "few days in" email weeks late
@@ -110,10 +113,10 @@ export function renderWelcome(
           heading: copy.heading,
           paragraphs,
           // /add logs people in if needed and opens the add dialog on their page
-          imageButton: { src: `${site}/email/add-a-hoshigo.png`, alt: copy.button, href: `${site}/add`, width: 180, height: 180 },
+          imageButton: { src: `${EMAIL_ASSETS}/email/add-a-hoshigo.png`, alt: copy.button, href: `${site}/add`, width: 180, height: 180 },
           community: picks.length >= 2 ? { heading: WELCOME_INSPIRATION, picks: communityPicks } : undefined,
           quietButton: { label: WELCOME_GOODBYE, href: site },
-          ps: { text: WELCOME_PS, icon: `${site}/email/app-icon.png`, iconLabel: "hoshigo", linkLabel: WELCOME_PS_LINK, href: `${site}/app` },
+          ps: { text: WELCOME_PS, icon: `${EMAIL_ASSETS}/email/app-icon.png`, iconLabel: "hoshigo", linkLabel: WELCOME_PS_LINK, href: `${site}/app` },
           ...footerParts,
         }
       : {
