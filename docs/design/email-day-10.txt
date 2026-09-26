@@ -1,0 +1,15 @@
+星五
+
+A place on your home screen.
+
+The best things turn up when you're not looking: a song in a café, a book on a friend's shelf.
+
+Put hoshigo on your home screen and it's one tap away when they do. Then you can add from any app, straight from the share sheet. It takes a minute to set up; I timed it.
+
+Put hoshigo on my phone: ../../public/app
+
+Hoshi
+
+—
+You get these notes because you started a hoshigo page. Stop these emails in your settings, or
+unsubscribe in one tap: https://hoshigo.cc/api/unsubscribe?t=sample

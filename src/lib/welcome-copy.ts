@@ -2,22 +2,23 @@
 
 export type WelcomeStep = 1 | 2 | 3;
 
-export const WELCOME_DAYS: Record<WelcomeStep, number> = { 1: 4, 2: 10, 3: 21 };
+// Step 1 is the welcome, sent the moment onboarding is finished (src/app/onboarding/actions.ts);
+// the daily run only catches it up if that send failed. It replaced "Your first five" on day 4.
+export const WELCOME_DAYS: Record<WelcomeStep, number> = { 1: 0, 2: 10, 3: 21 };
 
 export const WELCOME_MOTIF = "hoshigo · 星五 · five stars";
 export const WELCOME_SIGNATURE = "Hoshi";
 
 export const WELCOME_COPY: Record<WelcomeStep, { subject: string; preheader: string; heading: string; paragraphs: string[]; button: string }> = {
   1: {
-    subject: "Your first five",
-    preheader: "A page takes only a handful. Here is the quickest way to add one.",
-    heading: "Room for a few more.",
+    subject: "Your hoshigo is ready",
+    preheader: "It holds only what you have given five stars, so there's no rush to fill it.",
+    heading: "Your hoshigo is ready.",
     paragraphs: [
-      "Your page has a few empty shelves. That's how every notebook starts.",
-      "The quickest way to add a hoshigo: copy a link from Spotify, IMDb or anywhere at all, and paste it into hoshigo. I'll try to fill in the rest. On your phone, the “Add to hoshigo” shortcut in the share sheet does the same from any app.",
-      "No hurry. Only the ones you'd give five stars.",
+      "It holds only what you have given five stars, so there's no rush to fill it.",
+      "Start with one: the film you still think about, or the book you keep lending out.",
     ],
-    button: "Add a hoshigo",
+    button: "add a hoshigo",
   },
   2: {
     subject: "hoshigo, one tap away",
@@ -41,6 +42,11 @@ export const WELCOME_COPY: Record<WelcomeStep, { subject: string; preheader: str
     button: "Invite a friend",
   },
 };
+
+export const WELCOME_INSPIRATION = "Do you seek inspiration?";
+export const WELCOME_GOODBYE = "Hope to see you soon";
+export const WELCOME_PS = "PS: You can also use hoshigo as an app on your phone.";
+export const WELCOME_PS_LINK = "Press here to install.";
 
 export const COMMUNITY_HEADING = "from the community";
 export const COMMUNITY_INTRO = "A few things other people would give five stars this week.";

@@ -5,6 +5,7 @@ import Wordmark from "@/components/Wordmark";
 import InstallHintText from "@/components/InstallHintText";
 import AndroidHint from "./AndroidHint";
 import Bookmarklet from "./Bookmarklet";
+import styles from "./app.module.css";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -63,7 +64,10 @@ export default async function AppPage() {
           <p className="app-note">On a Mac with Safari: File, then Add to Dock.</p>
         </section>
 
-        <section id="add-from-any-app">
+        {/* second in importance to installing, so it waits behind a quiet link */}
+        <details className={styles.more} id="add-from-any-app">
+          <summary>Click here if you want to learn how to add hoshigos automatically</summary>
+          <section>
           <h2>Add from any app</h2>
           <p>
             Found something in Spotify, YouTube or your browser that deserves a place? Send it straight to hoshigo; it opens
@@ -101,7 +105,8 @@ export default async function AppPage() {
           <h3>Computer</h3>
           <p>Drag this to your bookmarks bar, then click it on any page you want to add:</p>
           <Bookmarklet />
-        </section>
+          </section>
+        </details>
       </main>
 
       <SiteFooter loggedIn={!!user} handle={myHandle} />

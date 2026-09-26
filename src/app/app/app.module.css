@@ -1,0 +1,20 @@
+.more {
+  margin: 36px 0;
+}
+
+.more > summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more[open] > summary {
+  margin-bottom: 8px;
+}

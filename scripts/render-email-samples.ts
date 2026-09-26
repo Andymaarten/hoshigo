@@ -1,35 +1,38 @@
 // Renders sample emails to docs/design/email-*.html for design review.
-// Run: npx tsx scripts/render-email-samples.ts
+// Run: NEXT_PUBLIC_SITE_URL=../../public UNSUBSCRIBE_SECRET=x npx tsx scripts/render-email-samples.ts
+// (the site URL points the images at the local public folder so the samples open offline)
 import { writeFileSync } from "node:fs";
 import { renderEmail } from "../src/lib/email-layout";
+import { renderWelcome } from "../src/lib/welcome";
+import type { Pick } from "../src/lib/community-picks";
 
 const out = (name: string, r: { html: string; text: string }) => {
   writeFileSync(`docs/design/email-${name}.html`, r.html);
   writeFileSync(`docs/design/email-${name}.txt`, r.text);
 };
 
-out(
-  "welcome",
-  renderEmail({
-    preheader: "Your page is ready for the first few things you'd give five stars.",
-    heading: "Welcome to hoshigo.",
-    paragraphs: [
-      "Your page is ready. It holds only what you'd give five stars, so there's no rush to fill it.",
-      "Start with one: the film you still think about, or the book you keep lending out.",
-    ],
-    button: { label: "Add your first hoshigo", href: "https://hoshigo.cc/" },
-    community: {
-      heading: "Kept by others this week",
-      picks: [
-        { title: "Perfect Days", by: "Wim Wenders, 2023", owner: "Sara", note: "Watch it on a slow Sunday.", href: "https://hoshigo.cc/sara", image: "email-covers/cover-1.png" },
-        { title: "The Remains of the Day", by: "Kazuo Ishiguro", owner: "Andy", href: "https://hoshigo.cc/andymaarten", image: "email-covers/cover-2.png" },
-        { title: "In a Landscape", by: "John Cage, played by Stephen Drury", owner: "Mark", note: "For writing late at night.", href: "https://hoshigo.cc/mark", image: "email-covers/cover-3.png" },
-      ],
-    },
-    signature: "Hoshi",
-    footer: "You're getting this because you just made a hoshigo.",
-  })
-);
+const pick = (handle: string, name: string, title: string, by: string, image: string): Pick => ({
+  itemId: handle,
+  workId: null,
+  handle,
+  name,
+  title,
+  by,
+  category: null,
+  imageUrl: `../design/email-covers/${image}`,
+  note: null,
+  path: `/${handle}`,
+});
+const picks = [
+  pick("sara", "Sara", "Perfect Days", "Wim Wenders", "cover-1.png"),
+  pick("andymaarten", "Andy", "The Remains of the Day", "Kazuo Ishiguro", "cover-2.png"),
+  pick("mark", "Mark", "In a Landscape", "John Cage", "cover-3.png"),
+];
+const links = { oneClickUrl: "https://hoshigo.cc/api/unsubscribe?t=sample" };
+
+out("welcome", renderWelcome(1, picks, links, null));
+out("day-10", renderWelcome(2, [], links, null));
+out("day-21", renderWelcome(3, picks, links, "https://hoshigo.cc/invite/sample"));
 
 out(
   "friend-request",
@@ -46,12 +49,11 @@ out(
 out(
   "update",
   renderEmail({
-    preheader: "Three small things, and hoshigo on your home screen.",
+    preheader: "hoshigo on your home screen, and adding from any app.",
     heading: "A few new things.",
     paragraphs: [
-      [{ strong: "hoshigo as an app." }, " Add it to your home screen and it opens like any other app, without the browser around it."],
+      [{ strong: "hoshigo as an app." }, " Add it to your home screen and it opens like any other app."],
       [{ strong: "Add from anywhere." }, " Share a link from Spotify or YouTube straight to your page."],
-      [{ strong: "Someday." }, " A quiet list for tips you haven't tried yet."],
     ],
     button: { label: "Open hoshigo", href: "https://hoshigo.cc/" },
     signature: "Andy",

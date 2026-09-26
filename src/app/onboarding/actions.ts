@@ -1,6 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { adminClient } from "@/lib/supabase/admin";
+import { sendWelcomeNow } from "@/lib/welcome";
 import { createClient } from "@/lib/supabase/server";
 import { parseSocialLinksPayload } from "@/lib/social-links";
 import { pendingAddPath, pendingInvitePath } from "@/lib/post-login";
@@ -50,7 +53,12 @@ export async function saveHandle(_prev: string | null, formData: FormData) {
     .update({ email_friend_requests: formData.get("email_friend_requests") === "on" })
     .eq("id", user.id);
 
-  if (isFirstOnboarding) await notifyNewSignup({ handle, displayName, email: user.email });
+  if (isFirstOnboarding) {
+    await notifyNewSignup({ handle, displayName, email: user.email });
+    // after the response, so the welcome never slows down arriving on your new page
+    const admin = adminClient();
+    if (admin) after(() => sendWelcomeNow(admin, user.id));
+  }
 
   redirect((await pendingInvitePath()) ?? (await pendingAddPath()) ?? `/${handle}`);
 }
