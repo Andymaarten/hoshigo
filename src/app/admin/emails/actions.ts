@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { ownerHandle } from "@/lib/owner";
 import { adminClient } from "@/lib/supabase/admin";
 import { sendOne } from "@/lib/changelog";
-import { composeWelcome, setWelcomeSwitch } from "@/lib/welcome";
+import { backfillState, backfillTargets, composeWelcome, setBackfillState, setWelcomeSwitch } from "@/lib/welcome";
 import type { WelcomeStep } from "@/lib/welcome-copy";
 import { browseListings, type BrowseQuery, type BrowseRow } from "@/lib/picks-browse";
 
@@ -85,4 +85,25 @@ export async function browseTips(query: BrowseQuery): Promise<{ rows: BrowseRow[
     sort: query.sort === "kept" ? "kept" : "newest",
     page: Math.max(0, Math.floor(Number(query.page) || 0)),
   });
+}
+
+/** Schedule the welcome for everyone who never had it; the next daily run sends it. */
+export async function scheduleBackfill(): Promise<{ ok: boolean; message: string; count?: number }> {
+  const admin = await gate();
+  if (!admin) return { ok: false, message: "Not allowed." };
+  const count = (await backfillTargets(admin)).length;
+  if (!count) return { ok: false, message: "Everyone already had the welcome." };
+  const prev = await backfillState(admin);
+  const { error } = await setBackfillState(admin, { pending: true, requestedAt: new Date().toISOString(), lastRun: prev?.lastRun });
+  revalidatePath("/admin/emails");
+  return error ? { ok: false, message: error.message } : { ok: true, message: "Scheduled for the next run at 09:00.", count };
+}
+
+export async function cancelBackfill(): Promise<string | null> {
+  const admin = await gate();
+  if (!admin) return "Not allowed.";
+  const prev = await backfillState(admin);
+  const { error } = await setBackfillState(admin, { pending: false, lastRun: prev?.lastRun });
+  revalidatePath("/admin/emails");
+  return error ? error.message : null;
 }
