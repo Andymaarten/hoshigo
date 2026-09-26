@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { renderEmail, type EmailInput, type EmailParagraph } from "@/lib/email-layout";
-import { SITE, sendBatch, unsubscribeToken } from "@/lib/changelog";
+import { SITE, sendOne, unsubscribeToken, type InlineImage } from "@/lib/changelog";
+import { EMAIL_IMAGES, type EmailImageId } from "@/lib/email-images";
 import { communityPicks, recordPicks, type Pick } from "@/lib/community-picks";
 import {
   COMMUNITY_HEADING,
@@ -86,11 +87,21 @@ export async function inviteUrl(admin: SupabaseClient, profileId: string): Promi
   return token ? `${SITE()}/invite/${token}` : null;
 }
 
+// Our own images travel inside the email (cid:), so they show even with remote images off.
+// Previews in the browser can't read cid: links, so they use the hosted copies instead.
+const imageSrc = (id: EmailImageId, mode: "cid" | "remote") => (mode === "cid" ? `cid:${id}` : `${EMAIL_ASSETS}/email/${id}.png`);
+
+export function inlineImages(step: WelcomeStep): InlineImage[] {
+  const ids: EmailImageId[] = step === 1 ? ["add-a-hoshigo", "app-icon"] : [];
+  return ids.map((id) => ({ filename: `${id}.png`, content: EMAIL_IMAGES[id], content_id: id }));
+}
+
 export function renderWelcome(
   step: WelcomeStep,
   picks: Pick[],
   links: { oneClickUrl: string },
-  invite: string | null
+  invite: string | null,
+  mode: "cid" | "remote" = "cid"
 ) {
   const copy = WELCOME_COPY[step];
   const site = SITE();
@@ -113,10 +124,10 @@ export function renderWelcome(
           heading: copy.heading,
           paragraphs,
           // /add logs people in if needed and opens the add dialog on their page
-          imageButton: { src: `${EMAIL_ASSETS}/email/add-a-hoshigo.png`, alt: copy.button, href: `${site}/add`, width: 180, height: 180 },
+          imageButton: { src: imageSrc("add-a-hoshigo", mode), alt: copy.button, href: `${site}/add`, width: 180, height: 180 },
           community: picks.length >= 2 ? { heading: WELCOME_INSPIRATION, picks: communityPicks } : undefined,
           quietButton: { label: WELCOME_GOODBYE, href: site },
-          ps: { text: WELCOME_PS, icon: `${EMAIL_ASSETS}/email/app-icon.png`, iconLabel: "hoshigo", linkLabel: WELCOME_PS_LINK, href: `${site}/app` },
+          ps: { text: WELCOME_PS, icon: imageSrc("app-icon", mode), iconLabel: "hoshigo", linkLabel: WELCOME_PS_LINK, href: `${site}/app` },
           ...footerParts,
         }
       : {
@@ -138,7 +149,8 @@ export async function composeWelcome(admin: SupabaseClient, step: WelcomeStep, d
     step === 3 ? inviteUrl(admin, d.profileId) : Promise.resolve(null),
   ]);
   const links = unsubscribeLinks(d.profileId);
-  return { ...renderWelcome(step, picks, links, invite), picks, links };
+  const preview = renderWelcome(step, picks, links, invite, "remote");
+  return { ...renderWelcome(step, picks, links, invite, "cid"), previewHtml: preview.html, inline: inlineImages(step), picks, links };
 }
 
 export function unsubscribeLinks(profileId: string) {
@@ -165,7 +177,7 @@ export async function sendWelcomeNow(admin: SupabaseClient, profileId: string) {
     const { error: claim } = await admin.from("welcome_emails").insert({ profile_id: profileId, step: 1 });
     if (claim) return;
     const mail = await composeWelcome(admin, 1, { profileId, handle: p.handle, name: (p.display_name as string) || p.handle });
-    const res = await sendBatch([{ to: email, subject: mail.subject, html: mail.html, text: mail.text, ...mail.links }]);
+    const res = await sendOne({ to: email, subject: mail.subject, html: mail.html, text: mail.text, ...mail.links }, mail.inline);
     if (res.error) {
       await admin.from("welcome_emails").delete().eq("profile_id", profileId).eq("step", 1);
       console.error("[welcome] send failed", res.error);
@@ -195,7 +207,9 @@ export async function runWelcome(admin: SupabaseClient): Promise<{ on: boolean; 
     // claim the step first: if two runs overlap, the primary key lets only one send
     const { error: claim } = await admin.from("welcome_emails").insert({ profile_id: d.profileId, step: d.step });
     if (claim) continue;
-    const res = await sendBatch([{ to: email, subject: mail.subject, html: mail.html, text: mail.text, ...mail.links }]);
+    // one by one through the single endpoint (it carries the inline images), under Resend's 2 a second
+    if (sent) await new Promise((r) => setTimeout(r, 600));
+    const res = await sendOne({ to: email, subject: mail.subject, html: mail.html, text: mail.text, ...mail.links }, mail.inline);
     if (res.error) {
       await admin.from("welcome_emails").delete().eq("profile_id", d.profileId).eq("step", d.step);
       return { on, due: summary, sent, error: res.error };

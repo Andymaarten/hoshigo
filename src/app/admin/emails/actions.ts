@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { ownerHandle } from "@/lib/owner";
 import { adminClient } from "@/lib/supabase/admin";
-import { sendBatch } from "@/lib/changelog";
+import { sendOne } from "@/lib/changelog";
 import { composeWelcome, setWelcomeSwitch } from "@/lib/welcome";
 import type { WelcomeStep } from "@/lib/welcome-copy";
+import { browseListings, type BrowseQuery, type BrowseRow } from "@/lib/picks-browse";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
@@ -32,7 +33,7 @@ export async function previewWelcome(handle: string, step: WelcomeStep): Promise
   const p = await personFor(handle);
   if (!p) return { error: "No such page (or not allowed)." };
   const mail = await composeWelcome(p.admin, step, p);
-  return { html: mail.html, subject: mail.subject, picks: mail.picks.length };
+  return { html: mail.previewHtml, subject: mail.subject, picks: mail.picks.length };
 }
 
 export async function testWelcome(handle: string, step: WelcomeStep): Promise<string> {
@@ -43,7 +44,7 @@ export async function testWelcome(handle: string, step: WelcomeStep): Promise<st
   if (!to) return "SIGNUP_NOTIFY_EMAIL is not set.";
   const mail = await composeWelcome(p.admin, step, p);
   // a test never records picks or steps, and its unsubscribe link points at the chosen person
-  const res = await sendBatch([{ to, subject: `[test] ${mail.subject}`, html: mail.html, text: mail.text, ...mail.links }]);
+  const res = await sendOne({ to, subject: `[test] ${mail.subject}`, html: mail.html, text: mail.text, ...mail.links }, mail.inline);
   return res.error ?? `Test sent to ${to}.`;
 }
 
@@ -71,4 +72,17 @@ export async function removeApproved(id: string): Promise<string | null> {
   const { error } = await admin.from("pick_approved").delete().eq("id", id);
   revalidatePath("/admin/emails");
   return error ? error.message : null;
+}
+
+export async function browseTips(query: BrowseQuery): Promise<{ rows: BrowseRow[]; hasMore: boolean; total: number } | null> {
+  const admin = await gate();
+  if (!admin) return null;
+  return browseListings(admin, {
+    q: String(query.q ?? "").slice(0, 60),
+    category: Number.isInteger(query.category) ? query.category : null,
+    withNote: !!query.withNote,
+    withCover: !!query.withCover,
+    sort: query.sort === "kept" ? "kept" : "newest",
+    page: Math.max(0, Math.floor(Number(query.page) || 0)),
+  });
 }

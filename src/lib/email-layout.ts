@@ -78,10 +78,16 @@ function paragraphText(p: EmailParagraph) {
     .join("");
 }
 
+// the outlined, italic button: calm enough to sit twice in one email
+function quietButtonHtml(b: { label: string; href: string }) {
+  return `<table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr><td style="border:1px solid ${INK}; border-radius:2px;"><a href="${escapeHtml(b.href)}" style="display:inline-block; padding:12px 26px; ${SERIF} font-size:17px; font-style:italic; color:${INK}; text-decoration:none;">${escapeHtml(b.label)}</a></td></tr></table>`;
+}
+
 function pickHtml(p: EmailPick) {
   const href = escapeHtml(p.href);
   const cover = p.image
-    ? `<img src="${escapeHtml(p.image)}" width="64" height="64" alt="${escapeHtml(p.title)}" style="display:block; margin:0 auto; width:64px; height:64px; object-fit:cover; border:1px solid ${RULE}; border-radius:2px; background-color:${SHEET};">`
+    ? // when covers are blocked, the alt text sits on a small paper square, which still looks intended
+      `<img src="${escapeHtml(p.image)}" width="64" height="64" alt="${escapeHtml(`Cover of ${p.title}`)}" style="display:block; margin:0 auto; width:64px; height:64px; object-fit:cover; border:1px solid ${RULE}; border-radius:2px; background-color:${SHEET}; ${SERIF} font-size:9px; line-height:1.2; font-style:italic; color:${MUTED}; overflow:hidden;">`
     : `<div style="margin:0 auto; width:64px; height:64px; border:1px solid ${RULE}; border-radius:2px; background-color:${SHEET};"></div>`;
   return `<tr><td align="center" style="padding:0 0 30px;">
   <a href="${href}" style="text-decoration:none; color:${INK};">
@@ -137,7 +143,7 @@ export function renderEmail(input: EmailInput): { html: string; text: string } {
   if (quietButton) {
     parts.push(
       row(
-        `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border:1px solid ${INK}; border-radius:2px;"><a href="${escapeHtml(quietButton.href)}" style="display:inline-block; padding:12px 26px; ${SERIF} font-size:17px; font-style:italic; color:${INK}; text-decoration:none;">${escapeHtml(quietButton.label)}</a></td></tr></table>`,
+        quietButtonHtml(quietButton),
         picks.length >= 2 ? "12px 0 0" : "36px 0 0"
       )
     );
@@ -148,12 +154,12 @@ export function renderEmail(input: EmailInput): { html: string; text: string } {
   if (ps) {
     parts.push(
       row(
-        `<div style="${SERIF} font-size:16px; line-height:1.6; color:${INK}; max-width:400px;">${escapeHtml(ps.text)}</div>
+        `<div style="${SERIF} font-size:16px; line-height:1.6; color:${INK}; max-width:400px;">${brs(ps.text)}</div>
 <a href="${escapeHtml(ps.href)}" style="display:inline-block; text-decoration:none; padding-top:20px;">
   <img src="${escapeHtml(ps.icon)}" width="64" height="64" alt="${escapeHtml(ps.iconLabel)} app icon" style="display:block; margin:0 auto; width:64px; height:64px; border:0; border-radius:14px;">
   <div style="${SANS} font-size:11px; line-height:1; color:${INK}; padding-top:6px;">${escapeHtml(ps.iconLabel)}</div>
 </a>
-<div style="padding-top:16px;"><a href="${escapeHtml(ps.href)}" style="${SERIF} font-size:16px; color:${INK}; text-decoration:underline;">${escapeHtml(ps.linkLabel)}</a></div>`,
+<div style="padding-top:22px;">${quietButtonHtml({ label: ps.linkLabel, href: ps.href })}</div>`,
         "72px 0 0"
       )
     );
@@ -208,7 +214,7 @@ ${parts.join("\n")}
       : []),
     ...(quietButton ? [`${quietButton.label}: ${quietButton.href}`, ""] : []),
     ...(signature ? [signature, ""] : []),
-    ...(ps ? [ps.text, `${ps.linkLabel} ${ps.href}`, ""] : []),
+    ...(ps ? [ps.text, `${ps.linkLabel}: ${ps.href}`, ""] : []),
     "—",
     footer,
     ...(footerLink ? [`${footerLink.label}: ${footerLink.href}`] : []),
