@@ -11,7 +11,7 @@ export const WELCOME_SIGNATURE = "Hoshi";
 
 export const WELCOME_COPY: Record<WelcomeStep, { subject: string; preheader: string; heading: string; paragraphs: string[]; button: string }> = {
   1: {
-    subject: "Your hoshigo is ready",
+    subject: "hoshigo says hello",
     preheader: "It holds only what you have given five stars, so there's no rush to fill it.",
     heading: "Your hoshigo is ready.",
     paragraphs: [
@@ -44,9 +44,9 @@ export const WELCOME_COPY: Record<WelcomeStep, { subject: string; preheader: str
 };
 
 export const WELCOME_INSPIRATION = "Do you seek inspiration?";
-export const WELCOME_GOODBYE = "Hope to see you soon";
-export const WELCOME_PS = "PS: You can also use hoshigo as an app on your phone.";
-export const WELCOME_PS_LINK = "Press here to install.";
+export const WELCOME_GOODBYE = "More? Hope to see you soon";
+export const WELCOME_PS = "PS\nDid you know you can install hoshigo as an app on your phone?";
+export const WELCOME_PS_LINK = "Press here to install";
 
 export const COMMUNITY_HEADING = "from the community";
 export const COMMUNITY_INTRO = "A few things other people would give five stars this week.";

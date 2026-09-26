@@ -19,11 +19,12 @@ from Andy's hoshigo: ../../public/andymaarten
 In a Landscape, John Cage
 from Mark's hoshigo: ../../public/mark
 
-Hope to see you soon: ../../public
+More? Hope to see you soon: ../../public
 
-PS: You can also use hoshigo as an app on your phone.
-Press here to install. ../../public/app
+PS
+Did you know you can install hoshigo as an app on your phone?
+Press here to install: ../../public/app
 
 —
-You get these notes because you started a hoshigo page. Stop these emails in your settings, or
-unsubscribe in one tap: https://hoshigo.cc/api/unsubscribe?t=sample
+
+Stop the occasional emails from Hoshi: https://hoshigo.cc/api/unsubscribe?t=sample
