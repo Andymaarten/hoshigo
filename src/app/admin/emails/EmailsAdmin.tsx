@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
-import CoverImage from "@/components/CoverImage";
 import { WELCOME_COPY, WELCOME_DAYS, type WelcomeStep } from "@/lib/welcome-copy";
-import { approveTip, previewWelcome, removeApproved, setWelcome, testWelcome } from "./actions";
+import TipBrowser from "./TipBrowser";
+import type { BrowseRow } from "@/lib/picks-browse";
+import { previewWelcome, removeApproved, setWelcome, testWelcome } from "./actions";
 
-export type Candidate = { id: string; title: string; by: string | null; imageUrl: string; note: string; handle: string; matched: boolean; approved: boolean };
 export type Approved = { id: string; kind: "work" | "listing"; title: string; by: string | null };
 
 const STEPS: WelcomeStep[] = [1, 2, 3];
@@ -14,13 +13,15 @@ const STEPS: WelcomeStep[] = [1, 2, 3];
 export default function EmailsAdmin({
   on: initialOn,
   due,
-  candidates,
+  categories,
+  browse,
   approved: initialApproved,
   defaultHandle,
 }: {
   on: boolean;
   due: { handle: string; step: number }[];
-  candidates: Candidate[];
+  categories: { id: number; label: string }[];
+  browse: { rows: BrowseRow[]; hasMore: boolean; total: number };
   approved: Approved[];
   defaultHandle: string;
 }) {
@@ -30,7 +31,6 @@ export default function EmailsAdmin({
   const [step, setStep] = useState<WelcomeStep>(1);
   const [preview, setPreview] = useState<{ html: string; subject: string; picks: number } | null>(null);
   const [msg, setMsg] = useState("");
-  const [approvedIds, setApprovedIds] = useState(new Set(candidates.filter((c) => c.approved).map((c) => c.id)));
   const [approved, setApproved] = useState(initialApproved);
 
   return (
@@ -140,48 +140,9 @@ export default function EmailsAdmin({
       </section>
 
       <section>
-        <h2>candidates</h2>
-        <p className="bio">Recent listings on public pages with a cover and a note, catalogue matches first. Approving a matched one approves the work.</p>
-        <ul className="feed-list">
-          {candidates.map((c) => (
-            <li key={c.id} className="feed-row someday-row">
-              <div className="thumb" aria-hidden="true">
-                <CoverImage src={c.imageUrl} small />
-              </div>
-              <div className="feed-txt">
-                <span className="title">{c.title}</span>
-                {c.by && <span className="by">{c.by}</span>}
-                <span className="someday-meta">
-                  <Link href={`/${c.handle}/${c.id}`}>@{c.handle}</Link> · {c.matched ? "catalogue" : "by hand"}
-                </span>
-                <p className="someday-note">{c.note.slice(0, 200)}</p>
-              </div>
-              <div className="someday-actions">
-                <label className="check-row" style={{ fontSize: 14 }}>
-                  <input
-                    type="checkbox"
-                    checked={approvedIds.has(c.id)}
-                    disabled={pending}
-                    onChange={(e) => {
-                      const v = e.target.checked;
-                      start(async () => {
-                        const err = await approveTip(c.id, v);
-                        if (err) return setMsg(err);
-                        setApprovedIds((s) => {
-                          const n = new Set(s);
-                          if (v) n.add(c.id);
-                          else n.delete(c.id);
-                          return n;
-                        });
-                      });
-                    }}
-                  />
-                  Approve for tips
-                </label>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <h2>choose tips</h2>
+        <p className="bio">Every listing a stranger may see. Approving one with a catalogue match approves the work.</p>
+        <TipBrowser categories={categories} initial={browse} />
       </section>
     </>
   );
