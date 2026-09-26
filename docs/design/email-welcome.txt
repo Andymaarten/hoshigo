@@ -1,0 +1,29 @@
+星五
+
+Your hoshigo is ready.
+
+It holds only what you have given five stars, so there's no rush to fill it.
+
+Start with one: the film you still think about, or the book you keep lending out.
+
+add a hoshigo: ../../public/add
+
+Do you seek inspiration?
+
+Perfect Days, Wim Wenders
+from Sara's hoshigo: ../../public/sara
+
+The Remains of the Day, Kazuo Ishiguro
+from Andy's hoshigo: ../../public/andymaarten
+
+In a Landscape, John Cage
+from Mark's hoshigo: ../../public/mark
+
+Hope to see you soon: ../../public
+
+PS: You can also use hoshigo as an app on your phone.
+Press here to install. ../../public/app
+
+—
+You get these notes because you started a hoshigo page. Stop these emails in your settings, or
+unsubscribe in one tap: https://hoshigo.cc/api/unsubscribe?t=sample

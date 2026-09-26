@@ -226,10 +226,15 @@ export default function AddStamp({
     window.history.replaceState(null, "", `/${handle}`);
     clearPendingAdd().catch(() => {});
     reset();
-    setPath("paste");
-    setScreen("link");
-    setLinkInput(initialAddLink);
     setOpen(true);
+    // Without a link (e.g. from an email's "add a hoshigo") the dialog stays on its first choice screen.
+    if (initialAddLink.trim()) {
+      queueMicrotask(() => {
+        setPath("paste");
+        setScreen("link");
+        setLinkInput(initialAddLink);
+      });
+    }
     // Runs once on arrival; readLink is declared further down and only called here.
     // eslint-disable-next-line react-hooks/immutability
     if (initialAddLink.trim()) readLink(initialAddLink);

@@ -813,3 +813,48 @@ create policy "own app usage can be added" on public.app_usage
 drop policy if exists "own app usage can be updated" on public.app_usage;
 create policy "own app usage can be updated" on public.app_usage
   for update using (auth.uid() = profile_id) with check (auth.uid() = profile_id);
+
+-- Welcome emails, settings and approved picks (see docs/migrations/2026-09-27-welcome-mails.sql)
+
+-- one row per email sent, so no step is ever sent twice
+create table if not exists public.welcome_emails (
+  profile_id uuid not null references public.profiles (id) on delete cascade,
+  step int not null check (step in (1, 2, 3)),
+  sent_at timestamptz not null default now(),
+  primary key (profile_id, step)
+);
+
+-- tiny key/value switches the owner flips on /admin/emails, e.g. welcome_emails = {"on": true}
+create table if not exists public.app_settings (
+  key text primary key,
+  value jsonb not null default '{}',
+  updated_at timestamptz not null default now()
+);
+
+-- what the owner approved as a tip: a catalogue work (any good listing of it may be shown)
+-- or one specific listing
+create table if not exists public.pick_approved (
+  id uuid primary key default gen_random_uuid(),
+  work_id uuid references public.works (id) on delete cascade,
+  item_id uuid references public.items (id) on delete cascade,
+  note text,
+  created_at timestamptz not null default now(),
+  check (work_id is not null or item_id is not null)
+);
+create unique index if not exists pick_approved_work on public.pick_approved (work_id) where work_id is not null and item_id is null;
+create unique index if not exists pick_approved_item on public.pick_approved (item_id) where item_id is not null;
+
+-- which picks someone already got, so a later email never repeats one
+create table if not exists public.welcome_email_picks (
+  profile_id uuid not null references public.profiles (id) on delete cascade,
+  work_id uuid references public.works (id) on delete set null,
+  item_id uuid references public.items (id) on delete set null,
+  sent_at timestamptz not null default now()
+);
+create index if not exists welcome_email_picks_profile on public.welcome_email_picks (profile_id);
+
+alter table public.welcome_emails enable row level security;
+alter table public.app_settings enable row level security;
+alter table public.pick_approved enable row level security;
+alter table public.welcome_email_picks enable row level security;
+
