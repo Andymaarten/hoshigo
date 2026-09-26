@@ -11,5 +11,5 @@ Put hoshigo on my phone: ../../public/app
 Hoshi
 
 —
-You get these notes because you started a hoshigo page. Stop these emails in your settings, or
-unsubscribe in one tap: https://hoshigo.cc/api/unsubscribe?t=sample
+
+Stop the occasional emails from Hoshi: https://hoshigo.cc/api/unsubscribe?t=sample
