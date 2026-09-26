@@ -1,8 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { renderEmail, type EmailInput, type EmailParagraph } from "@/lib/email-layout";
 import { SITE, sendBatch, unsubscribeToken } from "@/lib/changelog";
-import { communityPicks, type Pick } from "@/lib/community-picks";
-import { WELCOME_COPY, WELCOME_DAYS, WELCOME_FOOTER, WELCOME_STOP, type WelcomeStep } from "@/lib/welcome-copy";
+import { communityPicks, recordPicks, type Pick } from "@/lib/community-picks";
+import {
+  COMMUNITY_HEADING,
+  COMMUNITY_INTRO,
+  keptBy,
+  WELCOME_COPY,
+  WELCOME_DAYS,
+  WELCOME_FOOTER,
+  WELCOME_MOTIF,
+  WELCOME_ONE_TAP,
+  WELCOME_SIGNATURE,
+  type WelcomeStep,
+} from "@/lib/welcome-copy";
 
 const DAY = 86400000;
 // a step is only sent in the few days after its day, so people who signed up long before this
@@ -59,28 +70,64 @@ export async function dueWelcomes(admin: SupabaseClient, now = Date.now()): Prom
   return out;
 }
 
-export function renderWelcome(step: WelcomeStep, d: { name: string; handle: string }, picks: Pick[], unsubscribeUrl: string) {
+/** The personal invite link for the day 21 email (made if the person has none yet). */
+export async function inviteUrl(admin: SupabaseClient, profileId: string): Promise<string | null> {
+  const { data } = await admin.from("friend_invites").select("token").eq("profile_id", profileId).maybeSingle();
+  let token = data?.token as string | undefined;
+  if (!token) {
+    const { data: made } = await admin.from("friend_invites").insert({ profile_id: profileId }).select("token").single();
+    token = made?.token as string | undefined;
+  }
+  return token ? `${SITE()}/invite/${token}` : null;
+}
+
+export function renderWelcome(
+  step: WelcomeStep,
+  picks: Pick[],
+  links: { oneClickUrl: string },
+  invite: string | null
+) {
   const copy = WELCOME_COPY[step];
   const site = SITE();
-  const paragraphs: EmailParagraph[] = copy.paragraphs.map((p) => p.replace("{name}", d.name));
-  // Lucas is adding a community block to renderEmail; until it exists the picks go in as
-  // plain paragraphs, and the same data rides along in `community` for when it does.
+  const paragraphs: EmailParagraph[] = [...copy.paragraphs];
+  if (step === 3 && invite) paragraphs.push(invite);
+  paragraphs.push(WELCOME_SIGNATURE);
+  // Lucas is adding a community block to renderEmail; until it lands the picks go in as
+  // plain paragraphs after the signature, and the same data rides along in `community`.
   if (picks.length) {
-    paragraphs.push(copy.picksIntro);
+    paragraphs.push([{ strong: COMMUNITY_HEADING }, `\n${COMMUNITY_INTRO}`]);
     picks.forEach((p) =>
-      paragraphs.push([{ strong: p.title }, `${p.by ? `, ${p.by}` : ""} (kept by ${p.name})\n“${p.note.slice(0, 200)}”\n${site}${p.path}`])
+      paragraphs.push([
+        { strong: p.title },
+        `${p.by ? `, ${p.by}` : ""}\n${keptBy(p.name)}${p.note ? `\n\u201c${p.note}\u201d` : ""}\n${site}${p.path}`,
+      ])
     );
   }
+  // day 4 goes through /add, which logs people in if needed and opens the add dialog on their page
+  const href = step === 1 ? `${site}/add` : step === 2 ? `${site}/app` : invite ?? `${site}/friends`;
   const input = {
     preheader: copy.preheader,
     heading: copy.heading,
+    motif: WELCOME_MOTIF,
     paragraphs,
-    button: { label: copy.button, href: step === 1 ? `${site}/${d.handle}` : step === 2 ? site : `${site}/${d.handle}` },
+    button: { label: copy.button, href },
     footer: WELCOME_FOOTER,
-    footerLink: { label: WELCOME_STOP, href: unsubscribeUrl },
-    community: picks.map((p) => ({ ...p, href: `${site}${p.path}` })),
+    footerLink: { label: WELCOME_ONE_TAP, href: links.oneClickUrl },
+    community: picks.length
+      ? { heading: COMMUNITY_HEADING, intro: COMMUNITY_INTRO, picks: picks.map((p) => ({ ...p, href: `${site}${p.path}` })) }
+      : undefined,
   } as EmailInput;
   return { subject: copy.subject, ...renderEmail(input) };
+}
+
+/** Everything for one person's email, also used for the owner's preview and test. */
+export async function composeWelcome(admin: SupabaseClient, step: WelcomeStep, d: { profileId: string; name: string; handle: string }) {
+  const [picks, invite] = await Promise.all([
+    communityPicks(admin, d.profileId, 3).catch(() => [] as Pick[]),
+    step === 3 ? inviteUrl(admin, d.profileId) : Promise.resolve(null),
+  ]);
+  const links = unsubscribeLinks(d.profileId);
+  return { ...renderWelcome(step, picks, links, invite), picks, links };
 }
 
 export function unsubscribeLinks(profileId: string) {
@@ -107,17 +154,16 @@ export async function runWelcome(admin: SupabaseClient): Promise<{ on: boolean; 
   for (const d of due) {
     const email = await emailOf(admin, d.profileId);
     if (!email) continue;
-    const picks = await communityPicks(admin, d.profileId, 3).catch(() => []);
-    const links = unsubscribeLinks(d.profileId);
-    const mail = renderWelcome(d.step, d, picks, links.unsubscribeUrl);
+    const mail = await composeWelcome(admin, d.step, d);
     // claim the step first: if two runs overlap, the primary key lets only one send
     const { error: claim } = await admin.from("welcome_emails").insert({ profile_id: d.profileId, step: d.step });
     if (claim) continue;
-    const res = await sendBatch([{ to: email, subject: mail.subject, html: mail.html, text: mail.text, ...links }]);
+    const res = await sendBatch([{ to: email, subject: mail.subject, html: mail.html, text: mail.text, ...mail.links }]);
     if (res.error) {
       await admin.from("welcome_emails").delete().eq("profile_id", d.profileId).eq("step", d.step);
       return { on, due: summary, sent, error: res.error };
     }
+    await recordPicks(admin, d.profileId, mail.picks).catch(() => {});
     sent++;
   }
   return { on, due: summary, sent, error: null };
