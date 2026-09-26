@@ -52,5 +52,5 @@ export const COMMUNITY_HEADING = "from the community";
 export const COMMUNITY_INTRO = "A few things other people would give five stars this week.";
 export const keptBy = (name: string) => `kept by ${name}`;
 
-export const WELCOME_FOOTER = "You get these notes because you started a hoshigo page. Stop these emails in your settings, or";
-export const WELCOME_ONE_TAP = "unsubscribe in one tap";
+export const WELCOME_FOOTER = "";
+export const WELCOME_ONE_TAP = "Stop the occasional emails from Hoshi";
