@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ownerHandle } from "@/lib/owner";
 import { adminClient } from "@/lib/supabase/admin";
-import { dueWelcomes, welcomeSwitch } from "@/lib/welcome";
+import { backfillState, backfillTargets, dueWelcomes, welcomeSwitch } from "@/lib/welcome";
 import Wordmark from "@/components/Wordmark";
 import EmailsAdmin, { type Approved } from "./EmailsAdmin";
 import { browseListings } from "@/lib/picks-browse";
@@ -43,9 +43,11 @@ export default async function EmailsAdminPage() {
     );
   }
 
-  const [{ data: approvedRows }, due, browse, { data: cats }] = await Promise.all([
+  const [{ data: approvedRows }, due, backfillPeople, backfill, browse, { data: cats }] = await Promise.all([
     admin.from("pick_approved").select("id, work_id, item_id, created_at").order("created_at", { ascending: false }),
     dueWelcomes(admin),
+    backfillTargets(admin),
+    backfillState(admin),
     browseListings(admin, { q: "", category: null, withNote: false, withCover: false, sort: "newest", page: 0 }),
     admin.from("categories").select("id, slug, label, sort_order"),
   ]);
@@ -70,7 +72,7 @@ export default async function EmailsAdminPage() {
     <div className="page">
       {header}
       <main className="stats-main">
-        <EmailsAdmin on={on} due={due.map((d) => ({ handle: d.handle, step: d.step }))} categories={categories} browse={browse} approved={approved} defaultHandle={handle} />
+        <EmailsAdmin on={on} due={due.map((d) => ({ handle: d.handle, step: d.step }))} categories={categories} browse={browse} backfillCount={backfillPeople.length} backfill={backfill} approved={approved} defaultHandle={handle} />
       </main>
     </div>
   );
