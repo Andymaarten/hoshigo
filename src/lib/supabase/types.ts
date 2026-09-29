@@ -23,6 +23,8 @@ export interface Profile {
   someday_public?: boolean;
   /** undefined until the changelog migration has run */
   email_updates?: boolean;
+  /** undefined until the weekly migration has run */
+  weekly_email?: boolean;
   created_at: string;
 }
 

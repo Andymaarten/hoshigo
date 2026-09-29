@@ -5,6 +5,7 @@ import { saveProfile } from "./actions";
 import SocialLinksEditor from "@/components/SocialLinksEditor";
 import FriendRequestChoice from "@/components/FriendRequestChoice";
 import SomedayChoice from "@/components/SomedayChoice";
+import WeeklyChoice from "@/components/WeeklyChoice";
 import VisibilityChoice from "@/components/VisibilityChoice";
 import type { SocialLink } from "@/lib/supabase/types";
 
@@ -18,6 +19,7 @@ export default function SettingsForm({
   friendsEnabled,
   initialSomedayPublic,
   initialEmailUpdates,
+  initialWeekly,
 }: {
   initialBio: string;
   initialName: string;
@@ -30,6 +32,8 @@ export default function SettingsForm({
   initialSomedayPublic?: boolean;
   /** undefined before the changelog migration: no toggle */
   initialEmailUpdates?: boolean;
+  /** undefined before the weekly migration: no choice */
+  initialWeekly?: boolean;
 }) {
   const [error, action, pending] = useActionState(saveProfile, null);
 
@@ -53,6 +57,7 @@ export default function SettingsForm({
           Email me now and then about what&apos;s new on hoshigo
         </label>
       )}
+      {initialWeekly !== undefined && <WeeklyChoice initialOn={initialWeekly} />}
       <SocialLinksEditor initialLinks={initialSocialLinks} />
       {error && <p className="error">{error}</p>}
       <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>

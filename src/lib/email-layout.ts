@@ -34,6 +34,8 @@ export type EmailInput = {
   imageButton?: { src: string; alt: string; href: string; width: number; height: number };
   /** two or three things people keep, with a small cover each */
   community?: { heading?: string; intro?: string; picks: EmailPick[] };
+  /** more blocks like `community` (e.g. the weekly email's two), any number of picks each, shown after the buttons */
+  sections?: { heading: string; intro?: string; picks: EmailPick[] }[];
   /** a second, quieter button in outline */
   quietButton?: { label: string; href: string };
   /** a closing note with the app icon, like a home screen */
@@ -100,7 +102,7 @@ function pickHtml(p: EmailPick) {
 }
 
 export function renderEmail(input: EmailInput): { html: string; text: string } {
-  const { preheader, heading, paragraphs, button, imageButton, community, quietButton, ps, signature, footer, footerLink } = input;
+  const { preheader, heading, paragraphs, button, imageButton, community, sections = [], quietButton, ps, signature, footer, footerLink } = input;
   const home = input.home ?? "https://hoshigo.cc";
   const picks = community?.picks.slice(0, 3) ?? [];
 
@@ -139,6 +141,17 @@ export function renderEmail(input: EmailInput): { html: string; text: string } {
       : "";
     parts.push(row(intro, "64px 0 30px"));
     parts.push(`<tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${picks.map(pickHtml).join("\n")}</table></td></tr>`);
+  }
+  for (const sec of sections.filter((x) => x.picks.length)) {
+    parts.push(
+      row(
+        `<div style="${SERIF} font-size:22px; line-height:1.35; color:${INK};">${escapeHtml(sec.heading)}</div>${
+          sec.intro ? `<div style="${SERIF} font-size:16px; line-height:1.5; color:${MUTED}; padding-top:6px;">${escapeHtml(sec.intro)}</div>` : ""
+        }`,
+        "56px 0 30px"
+      )
+    );
+    parts.push(`<tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${sec.picks.map(pickHtml).join("\n")}</table></td></tr>`);
   }
   if (quietButton) {
     parts.push(
@@ -212,6 +225,9 @@ ${parts.join("\n")}
           ...picks.flatMap((p) => [`${p.title}${p.by ? `, ${p.by}` : ""}`, `from ${possessive(p.owner)} hoshigo: ${p.href}`, ""]),
         ]
       : []),
+    ...sections
+      .filter((x) => x.picks.length)
+      .flatMap((sec) => [sec.heading, "", ...sec.picks.flatMap((p) => [`${p.title}${p.by ? `, ${p.by}` : ""}`, `from ${possessive(p.owner)} hoshigo: ${p.href}`, ""])]),
     ...(quietButton ? [`${quietButton.label}: ${quietButton.href}`, ""] : []),
     ...(signature ? [signature, ""] : []),
     ...(ps ? [ps.text, `${ps.linkLabel}: ${ps.href}`, ""] : []),

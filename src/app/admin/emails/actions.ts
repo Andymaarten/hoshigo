@@ -6,6 +6,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { sendOne } from "@/lib/changelog";
 import { backfillState, backfillTargets, composeWelcome, setBackfillState, setWelcomeSwitch } from "@/lib/welcome";
 import type { WelcomeStep } from "@/lib/welcome-copy";
+import { composeWeekly, loadWeek } from "@/lib/weekly";
 import { browseListings, type BrowseQuery, type BrowseRow } from "@/lib/picks-browse";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
@@ -106,4 +107,36 @@ export async function cancelBackfill(): Promise<string | null> {
   const { error } = await setBackfillState(admin, { pending: false, lastRun: prev?.lastRun });
   revalidatePath("/admin/emails");
   return error ? error.message : null;
+}
+
+export async function setWeekly(on: boolean): Promise<string | null> {
+  const admin = await gate();
+  if (!admin) return "Not allowed.";
+  const { error } = await admin.from("app_settings").upsert({ key: "weekly_emails", value: { on }, updated_at: new Date().toISOString() });
+  revalidatePath("/admin/emails");
+  return error ? error.message : null;
+}
+
+async function weeklyFor(handle: string) {
+  const admin = await gate();
+  if (!admin) return { error: "Not allowed." } as const;
+  const { data: p } = await admin.from("profiles").select("id").eq("handle", handle.trim().toLowerCase()).maybeSingle();
+  if (!p) return { error: "No such page." } as const;
+  const mail = await composeWeekly(admin, await loadWeek(admin), p.id as string);
+  return mail ? { mail } : ({ error: "Nothing to send this person this week, so no email." } as const);
+}
+
+export async function previewWeekly(handle: string): Promise<{ html: string; subject: string; note: string } | { error: string }> {
+  const r = await weeklyFor(handle);
+  if ("error" in r) return { error: r.error ?? "Failed." };
+  return { html: r.mail.html, subject: r.mail.subject, note: `${r.mail.counts.friends} from friends, ${r.mail.counts.trending} trending.` };
+}
+
+export async function testWeekly(handle: string): Promise<string> {
+  const to = process.env.SIGNUP_NOTIFY_EMAIL;
+  if (!to) return "SIGNUP_NOTIFY_EMAIL is not set.";
+  const r = await weeklyFor(handle);
+  if ("error" in r) return r.error ?? "Failed.";
+  const res = await sendOne({ to, subject: `[test] ${r.mail.subject}`, html: r.mail.html, text: r.mail.text, ...r.mail.links });
+  return res.error ?? `Test sent to ${to}.`;
 }

@@ -30,6 +30,9 @@ export default async function EmailsAdminPage() {
   );
 
   const on = admin ? await welcomeSwitch(admin) : null;
+  const weeklyOn = admin
+    ? ((await admin.from("app_settings").select("value").eq("key", "weekly_emails").maybeSingle()).data?.value as { on?: boolean } | undefined)?.on === true
+    : false;
   if (!admin || on === null) {
     return (
       <div className="page">
@@ -72,7 +75,7 @@ export default async function EmailsAdminPage() {
     <div className="page">
       {header}
       <main className="stats-main">
-        <EmailsAdmin on={on} due={due.map((d) => ({ handle: d.handle, step: d.step }))} categories={categories} browse={browse} backfillCount={backfillPeople.length} backfill={backfill} approved={approved} defaultHandle={handle} />
+        <EmailsAdmin on={on} due={due.map((d) => ({ handle: d.handle, step: d.step }))} categories={categories} browse={browse} backfillCount={backfillPeople.length} weeklyOn={weeklyOn} backfill={backfill} approved={approved} defaultHandle={handle} />
       </main>
     </div>
   );

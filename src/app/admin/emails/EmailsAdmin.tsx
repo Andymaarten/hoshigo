@@ -6,6 +6,7 @@ import TipBrowser from "./TipBrowser";
 import type { BrowseRow } from "@/lib/picks-browse";
 import type { BackfillState } from "@/lib/welcome";
 import Backfill from "./Backfill";
+import WeeklyAdmin from "./WeeklyAdmin";
 import { previewWelcome, removeApproved, setWelcome, testWelcome } from "./actions";
 
 export type Approved = { id: string; kind: "work" | "listing"; title: string; by: string | null };
@@ -19,6 +20,7 @@ export default function EmailsAdmin({
   browse,
   backfillCount,
   backfill,
+  weeklyOn,
   approved: initialApproved,
   defaultHandle,
 }: {
@@ -27,6 +29,7 @@ export default function EmailsAdmin({
   categories: { id: number; label: string }[];
   browse: { rows: BrowseRow[]; hasMore: boolean; total: number };
   backfillCount: number;
+  weeklyOn: boolean;
   backfill: BackfillState | null;
   approved: Approved[];
   defaultHandle: string;
@@ -76,6 +79,11 @@ export default function EmailsAdmin({
       <section>
         <h2>welcome for everyone else</h2>
         <Backfill count={backfillCount} state={backfill} />
+      </section>
+
+      <section>
+        <h2>weekly email</h2>
+        <WeeklyAdmin on={weeklyOn} defaultHandle={defaultHandle} />
       </section>
 
       <section>
