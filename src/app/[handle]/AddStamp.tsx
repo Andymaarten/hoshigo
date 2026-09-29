@@ -10,6 +10,7 @@ import { clearPendingAdd } from "../add/actions";
 import Sheet from "@/components/Sheet";
 import CoverImage from "@/components/CoverImage";
 import PhotoFromPage from "@/components/PhotoFromPage";
+import PoweredByBgg from "@/components/PoweredByBgg";
 import { displayUrl, extractUrl, stripTracking } from "@/lib/link-input";
 import { linkHelp } from "@/lib/link-help";
 import { ADDED_EVENT, ADD_PREFILL_EVENT, type AddPrefill, type PinMap } from "@/lib/item-order";
@@ -936,6 +937,7 @@ export default function AddStamp({
                 ))}
               </ul>
             )}
+            {results?.some((r) => r.source === "bgg") && <PoweredByBgg />}
             {slug === "games" && (
               <p className="hint">
                 A board game that isn&apos;t listed?{" "}
@@ -1049,6 +1051,7 @@ export default function AddStamp({
                 </>
               )}
             </p>
+            {matchedSource === "bgg" && <PoweredByBgg />}
             {path === "paste" && suggested.length > 1 && !workId && (
               <div className="chip-row" aria-label="Other likely categories">
                 {suggested

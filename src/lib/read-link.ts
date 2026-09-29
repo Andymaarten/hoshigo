@@ -41,6 +41,7 @@ type Meta = {
   hint_reason?: string;
   // A page we can't add (an IMDb person or list); shown to the person as is.
   notice?: string;
+  skip_page?: boolean;
 };
 
 type Status = "ok" | "blocked" | "timeout" | "error";
@@ -353,6 +354,58 @@ async function fromOpenLibrary(url: string): Promise<Meta | null> {
   }
 }
 
+// TIDAL: every shape (listen., browse/, bare /album/, share ?u) is read from the public
+// tidal.com/browse page, whose og:title is "Artist - Title". Its oEmbed has no title.
+async function fromTidal(url: string): Promise<Meta | null> {
+  const m = new URL(url).pathname.match(/\/(album|track)s?\/(\d+)/);
+  if (!m) return null;
+  const hint = m[1] === "track" ? "songs" : "albums";
+  try {
+    const res = await fetchWithTimeout(`https://tidal.com/browse/${m[1]}/${m[2]}`, 7000, { "User-Agent": BROWSER_UA });
+    if (!res.ok) return { source_label: "TIDAL", category_hint: hint };
+    const html = await res.text();
+    const og = metaTag(html, "og:title");
+    const split = og?.match(/^(.+?)\s+-\s+(.+)$/);
+    return {
+      title: split ? split[2] : og ?? undefined,
+      by: split?.[1],
+      image_url: metaTag(html, "og:image") ?? undefined,
+      source_label: "TIDAL",
+      category_hint: hint,
+    };
+  } catch {
+    return { source_label: "TIDAL", category_hint: hint };
+  }
+}
+
+// Qobuz: album links of any shape are read from the www album page (any slug redirects to the
+// real one). Its og:title is "Title, Artist - Qobuz" and JSON-LD has the plain title, so the
+// artist is what follows the title. Track pages aren't public: category only.
+async function fromQobuz(url: string): Promise<Meta | null> {
+  const path = new URL(url).pathname;
+  if (/\/track\//.test(path)) return { source_label: "Qobuz", category_hint: "songs", skip_page: true };
+  const id = path.match(/\/album\/(?:[^/]+\/)?([a-z0-9]+)\/?$/i)?.[1];
+  if (!id) return null;
+  try {
+    const res = await fetchWithTimeout(`https://www.qobuz.com/gb-en/album/x/${id}`, 7000, { "User-Agent": BROWSER_UA });
+    if (!res.ok) return { source_label: "Qobuz", category_hint: "albums" };
+    const html = await res.text();
+    const og = (metaTag(html, "og:title") ?? "").replace(/\s+-\s+Qobuz\s*$/i, "");
+    const name = html.match(/"@type":"MusicAlbum"[^}]*?"name":"((?:[^"\\]|\\.)*)"/)?.[1];
+    const title = name ? JSON.parse(`"${name}"`) as string : og;
+    const by = title && og.startsWith(`${title}, `) ? og.slice(title.length + 2) : undefined;
+    return {
+      title: title || undefined,
+      by,
+      image_url: metaTag(html, "og:image") ?? undefined,
+      source_label: "Qobuz",
+      category_hint: "albums",
+    };
+  } catch {
+    return { source_label: "Qobuz", category_hint: "albums" };
+  }
+}
+
 async function fromSpotify(url: string): Promise<Meta | null> {
   const path = new URL(url).pathname;
   const hint = /\/track\//.test(path) ? "songs" : /\/(episode|show)\//.test(path) ? "podcasts" : /\/album\//.test(path) ? "albums" : undefined;
@@ -648,6 +701,8 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
     const host = new URL(target).hostname.toLowerCase();
 
     if (/(^|\.)open\.spotify\.com$/.test(host)) meta = (await fromSpotify(target)) ?? {};
+    else if (/(^|\.)tidal\.com$/.test(host)) meta = (await fromTidal(target)) ?? {};
+    else if (/(^|\.)qobuz\.com$/.test(host)) meta = (await fromQobuz(target)) ?? {};
     else if (/(^|\.)imdb\.[a-z.]+$/.test(host) && host !== "imdb.to") meta = (await fromImdbId(target)) ?? {};
     else if (/(^|\.)themoviedb\.org$/.test(host)) meta = (await fromTmdbPage(target)) ?? {};
     else if (/(^|\.)discogs\.com$/.test(host)) meta = (await fromDiscogsId(target)) ?? {};
@@ -658,7 +713,8 @@ export async function readLink(raw: string, slugs: string[], opts: { useLlm?: bo
 
     if (meta.notice) return { status: "unsupported", link, source_label: meta.source_label, notice: meta.notice };
 
-    if (!meta.title) {
+    // A provider that knows the page has nothing to read (a Qobuz track) keeps its category.
+    if (!meta.title && !meta.skip_page) {
       try {
         const res = await fetchWithTimeout(target, 8000);
         finalUrl = res.url || target;

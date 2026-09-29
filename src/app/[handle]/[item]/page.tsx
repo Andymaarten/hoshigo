@@ -11,6 +11,8 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteNav from "@/components/SiteNav";
 import HeaderStamp from "@/components/HeaderStamp";
 import Wordmark from "@/components/Wordmark";
+import PoweredByBgg from "@/components/PoweredByBgg";
+import OpenIn from "@/components/OpenIn";
 
 type Params = { params: Promise<{ handle: string; item: string }> };
 
@@ -100,6 +102,12 @@ export default async function ListingPage({ params }: Params) {
           <h1>{item.title}</h1>
           {(item.by || item.year) && <div className="meta">{[item.by, item.year].filter(Boolean).join(", ")}</div>}
           {item.note && <p className="note">{item.note}</p>}
+          {item.open_link && (
+            <div className="sheet-row">
+              <OpenIn link={item.open_link} />
+            </div>
+          )}
+          {item.work_source === "bgg" && <PoweredByBgg />}
           <Link href={`/${profile.handle}`} className="btn listing-more">
             See all of {name}&rsquo;s five stars
           </Link>

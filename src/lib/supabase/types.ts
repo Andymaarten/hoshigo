@@ -40,6 +40,10 @@ export interface Item {
   profile_id: string;
   category_id: number;
   work_id: string | null;
+  /** the catalogue the work came from; only set where withWorkInfo ran */
+  work_source?: string | null;
+  /** the viewer's "Open in …" link from the work; only set where withWorkInfo ran */
+  open_link?: import("@/lib/platforms").OpenLink | null;
   title: string;
   by: string | null;
   year: number | null;

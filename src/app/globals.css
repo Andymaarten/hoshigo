@@ -2983,3 +2983,30 @@ footer {
   margin: 0 0 6px;
   font-size: 15px;
 }
+
+/* "Powered by BGG": small, quiet, required by BoardGameGeek wherever their data shows */
+.bgg-credit {
+  display: inline-block;
+  align-self: flex-start;
+  margin-top: 8px;
+  line-height: 0;
+  opacity: 0.85;
+}
+
+.bgg-credit img {
+  height: 20px;
+  width: auto;
+}
+
+/* owner pages: small plain tables */
+.admin-table {
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 6px 16px 6px 0;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+}

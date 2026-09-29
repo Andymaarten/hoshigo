@@ -7,6 +7,17 @@ import { normalizeUrl } from "@/lib/normalize-url";
 import { isWorkSource } from "@/lib/works";
 import { placeLine } from "@/lib/place-fields";
 import { sourceFitsCategory } from "@/lib/category-display";
+import { after } from "next/server";
+import { adminClient } from "@/lib/supabase/admin";
+import { ensureWorkLinks } from "@/lib/work-links-build";
+
+// "Open in …" links for a newly linked work, built after the response so adding stays quick.
+function linkWorkLater(workId: string) {
+  after(async () => {
+    const admin = adminClient();
+    if (admin) await ensureWorkLinks(admin, workId).catch((e) => console.error(`[work_links] ${workId}: ${e}`));
+  });
+}
 
 async function requireUser() {
   const supabase = await createClient();
@@ -117,6 +128,7 @@ export async function addItem(handle: string, _prev: string | null, formData: Fo
   if (error) return error.message;
 
   if (inserted?.id) await savePlaceFields(supabase, inserted.id, place);
+  if (linkedWork) linkWorkLater(workId);
 
   // The pin option is only shown once the pinning migration has run.
   if (formData.get("pin") === "on" && inserted?.id) {
@@ -231,6 +243,7 @@ export async function updateItem(handle: string, _prev: string | null, formData:
   // Only the places form sends these fields. Without them the item is (now) in another
   // category, so the old type and location must go.
   await savePlaceFields(supabase, itemId, place ?? { place_type: null, city: null, country: null });
+  if (link) linkWorkLater(newWorkId);
 
   if (formData.get("pin_choice") === "1") {
     await supabase.rpc("pin_item", { p_item: itemId, p_pin: formData.get("pin") === "on" });

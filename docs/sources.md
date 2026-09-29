@@ -764,3 +764,19 @@ Nieuwe bron toevoegen aan de categorie-herkenning: `DOMAIN_RULES` / `ruleFromUrl
 catalogus-bron toevoegen (naast TMDB/MusicBrainz/Open Library): nieuwe `resolve*`-functie in
 [`src/lib/resolve-work.ts`](../src/lib/resolve-work.ts) plus een nieuwe waarde in de
 `source`-check van de `works`-tabel (`supabase/schema.sql`).
+
+### Ronde 15 (2026-09-29): BGG goedgekeurd, Qobuz en TIDAL
+
+- BGG: aanroepen gaan met `Authorization: Bearer <BGG_TOKEN>` en onze User-Agent; 202 (in de
+  wachtrij) en 429 (te snel) krijgen een nieuwe poging, 401/403 wordt gelogd als `[works]`.
+  De BGG-pagina met de voorwaarden gaf onze server een Cloudflare-blokkade, dus het
+  headerformaat is niet opnieuw tegen die pagina gecontroleerd.
+- Token: ingelogd op boardgamegeek.com naar https://boardgamegeek.com/applications, bij de
+  goedgekeurde applicatie "Tokens" openen, een token aanmaken en kopiëren. In Vercel
+  `BGG_TOKEN` zetten (Production en Preview), redeployen.
+- "Powered by BGG"-logo (gelinkt naar boardgamegeek.com) bij BGG-zoekresultaten, bij een
+  BGG-match in het formulier en op lijstkaarten en pagina's met een BGG-werk. Het logo komt
+  van BGG's eigen beeldserver (niet zelf gehost: de voorwaarden waren niet te lezen).
+- Qobuz (www/open/play, album en track) en TIDAL (browse/listen/kaal, album en track, ?u)
+  worden gelezen en aan MusicBrainz gekoppeld; `scripts/qobuz-tidal-check.ts`. Qobuz-tracks
+  hebben geen openbare pagina: alleen categorie songs, titel zelf invullen.

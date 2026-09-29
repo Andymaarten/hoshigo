@@ -877,6 +877,15 @@ async function bgg(path: string): Promise<string | null> {
       await new Promise((r) => setTimeout(r, 1500));
       continue;
     }
+    // BGG asks for a few seconds between calls and answers 429 when we go faster.
+    if (res.status === 429) {
+      await new Promise((r) => setTimeout(r, 5000));
+      continue;
+    }
+    if (res.status === 401 || res.status === 403) {
+      console.error(`[works] BGG refused the token (${res.status}); check BGG_TOKEN`);
+      return null;
+    }
     return res.ok ? res.text() : null;
   }
   return null;
