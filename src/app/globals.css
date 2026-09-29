@@ -212,7 +212,7 @@ a.word {
 }
 
 .gloss {
-  margin-top: 8px;
+  margin-top: 4px;
   font-size: 15px;
   line-height: 20px;
   color: var(--muted);
@@ -230,14 +230,14 @@ a.word {
 
 .entry hr {
   width: 180px;
-  margin: 14px 0 12px;
+  margin: 9px 0 7px;
   border: 0;
   border-top: 1.5px solid var(--ink);
 }
 
 .def {
   font-size: 19px;
-  line-height: 1.35;
+  line-height: 1.25;
   max-width: 60ch;
 }
 
@@ -3056,4 +3056,11 @@ footer {
   text-align: left;
   padding: 6px 16px 6px 0;
   border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+}
+
+/* Tighter dictionary entry on phones: gloss, rule and definition sit closer together. */
+@media (max-width: 640px) {
+  .gloss { margin-top: 2px; }
+  .entry hr { margin: 6px 0 5px; }
+  .masthead + * h1, .hero > h1 { margin-top: 8px; }
 }
