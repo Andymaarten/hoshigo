@@ -2935,3 +2935,14 @@ footer {
   margin-left: 6px;
   padding: 0 14px;
 }
+
+.push-setting {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.push-label {
+  margin: 0 0 6px;
+  font-size: 15px;
+}

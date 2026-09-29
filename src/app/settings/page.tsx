@@ -8,6 +8,7 @@ import SettingsForm from "./form";
 import Wordmark from "@/components/Wordmark";
 import Link from "next/link";
 import InstallButton from "@/components/InstallButton";
+import PushSetting from "@/components/PushSetting";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -61,6 +62,7 @@ export default async function SettingsPage() {
           Put hoshigo on your home screen, and add to it from any app. <Link href="/app">How it works</Link>
         </p>
         <InstallButton />
+        <PushSetting />
       </section>
 
       <SiteFooter loggedIn />

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { ownerHandle } from "@/lib/owner";
 import { adminClient } from "@/lib/supabase/admin";
 import { sendOne } from "@/lib/changelog";
+import { sendTestPush } from "@/lib/push";
+import { createClient } from "@/lib/supabase/server";
 import { backfillState, backfillTargets, composeWelcome, setBackfillState, setWelcomeSwitch } from "@/lib/welcome";
 import type { WelcomeStep } from "@/lib/welcome-copy";
 import { browseListings, type BrowseQuery, type BrowseRow } from "@/lib/picks-browse";
@@ -49,6 +51,16 @@ export async function testWelcome(handle: string, step: WelcomeStep): Promise<st
 }
 
 /** Approve a listing as a tip: its catalogue work when it has one (any good listing of it may be shown). */
+/** The owner's own devices get one test notification each. */
+export async function testPush(): Promise<string> {
+  const admin = await gate();
+  if (!admin) return "Not allowed.";
+  const {
+    data: { user },
+  } = await (await createClient()).auth.getUser();
+  return user ? sendTestPush(admin, user.id) : "Not allowed.";
+}
+
 export async function approveTip(itemId: string, on: boolean): Promise<string | null> {
   const admin = await gate();
   if (!admin || !UUID_RE.test(itemId)) return "Not allowed.";

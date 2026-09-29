@@ -6,7 +6,7 @@ import TipBrowser from "./TipBrowser";
 import type { BrowseRow } from "@/lib/picks-browse";
 import type { BackfillState } from "@/lib/welcome";
 import Backfill from "./Backfill";
-import { previewWelcome, removeApproved, setWelcome, testWelcome } from "./actions";
+import { previewWelcome, removeApproved, setWelcome, testPush, testWelcome } from "./actions";
 
 export type Approved = { id: string; kind: "work" | "listing"; title: string; by: string | null };
 
@@ -110,6 +110,9 @@ export default function EmailsAdmin({
           </button>
           <button type="button" className="btn btn-small" disabled={pending || !handle.trim()} onClick={() => start(async () => setMsg(await testWelcome(handle, step)))}>
             Send test to me
+          </button>
+          <button type="button" className="btn btn-small" disabled={pending} onClick={() => start(async () => setMsg(await testPush()))}>
+            Send a test notification to my devices
           </button>
         </div>
         {msg && <p className="hint">{msg}</p>}
