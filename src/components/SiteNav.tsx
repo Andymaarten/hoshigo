@@ -38,7 +38,7 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
   }, [loggedIn, pathname]);
 
   return (
-    <nav className="menu" aria-label="Main">
+    <nav className={loggedIn ? "menu menu-full" : "menu"} aria-label="Main">
       {loggedIn && handle && (
         <Link href={`/${handle}`} aria-current={current === `/${handle}` ? "page" : undefined} onClick={go(`/${handle}`)}>
           <span>My hoshigo</span>

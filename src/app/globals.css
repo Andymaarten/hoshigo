@@ -182,7 +182,7 @@ a.word {
      to float in that corner without wrapping messily, so it drops below as its
      own full-width row instead. The "form" (the Log out button) only exists in
      the logged-in nav, so it's a reliable way to tell the two states apart. */
-  .masthead:has(.menu form) {
+  .masthead:has(.menu-full) {
     flex-direction: column;
     align-items: flex-start;
     padding-right: 0;
@@ -190,7 +190,7 @@ a.word {
 
   /* One quiet row. The negative margin lets the first label's padding hang
      outside, so its text lines up with the wordmark above. */
-  .masthead:has(.menu form) .menu {
+  .masthead:has(.menu-full) .menu {
     position: static;
     flex-wrap: nowrap;
     justify-content: flex-start;
@@ -199,17 +199,13 @@ a.word {
     margin: 6px 0 0 -6px;
   }
 
-  .masthead:has(.menu form) .menu a,
-  .masthead:has(.menu form) .menu .menu-link {
+  .masthead:has(.menu-full) .menu a,
+  .masthead:has(.menu-full) .menu .menu-link {
     font-size: 14px;
     white-space: nowrap;
   }
 
-  .masthead:has(.menu form) .menu form {
-    order: 1;
-    display: flex;
   }
-}
 
 .gloss {
   margin-top: 4px;
