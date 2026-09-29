@@ -1,7 +1,7 @@
 // Every line on /news. Short, British, no hyphens; "add" is the act, "keep" the collection.
 
 export const NEWS = {
-  nav: "news",
+  nav: "News",
   heading: "news for you.",
   empty: "Nothing yet. When someone follows your page, saves one of your hoshigos or becomes your friend, it shows up here.",
   thisWeek: "this week",

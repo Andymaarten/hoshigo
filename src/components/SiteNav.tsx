@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { signOut } from "@/app/[handle]/actions";
 import { navFlags } from "@/app/friends/actions";
 import { newsFresh } from "@/app/news/actions";
 import { NEWS } from "@/lib/news-copy";
@@ -78,11 +77,6 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
           <Link href="/explore" aria-current={current === "/explore" ? "page" : undefined} onClick={go("/explore")}>
             <span>Explore</span>
           </Link>
-          <form action={signOut}>
-            <button type="submit" className="menu-link">
-              <span>Log out</span>
-            </button>
-          </form>
         </>
       )}
     </nav>
