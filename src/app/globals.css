@@ -2997,3 +2997,16 @@ footer {
   height: 20px;
   width: auto;
 }
+
+/* owner pages: small plain tables */
+.admin-table {
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 6px 16px 6px 0;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+}

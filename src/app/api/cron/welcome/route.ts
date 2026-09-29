@@ -3,6 +3,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { runWelcome } from "@/lib/welcome";
 import { sendDailyPush } from "@/lib/push";
 import { runWeekly } from "@/lib/weekly";
+import { backfillWorkLinks } from "@/lib/work-links-build";
 
 // the sends go about one a second; each step stops well before this and carries on next run
 export const maxDuration = 300;
@@ -33,5 +34,9 @@ export async function GET(request: NextRequest) {
   const push = await sendDailyPush(admin).catch((e) => ({ people: 0, sent: 0, gone: 0, error: String(e) }));
   console.log("[push]", JSON.stringify(push));
 
-  return NextResponse.json({ ...result, weekly, push });
+  // 4. "Open in …" links for works that have none yet, with whatever time is left
+  const workLinks = await backfillWorkLinks(admin, deadline).catch((e) => ({ checked: 0, linked: 0, error: String(e) }));
+  console.log("[work_links]", JSON.stringify(workLinks));
+
+  return NextResponse.json({ ...result, weekly, push, workLinks });
 }

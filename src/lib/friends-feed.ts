@@ -2,7 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { Item } from "@/lib/supabase/types";
 import { PUBLIC_PER_CATEGORY } from "@/lib/share-rules";
 import { compareForProfile } from "@/lib/item-order";
-import { withWorkInfo } from "@/lib/work-info";
+import { viewerLinkPrefs, withWorkInfo } from "@/lib/work-info";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -33,7 +33,7 @@ export async function feedRows(
     query = query.or(`created_at.lt."${cursor.at}",and(created_at.eq."${cursor.at}",id.lt.${cursor.id})`);
   }
   const { data } = await query.returns<Item[]>();
-  const rows = await withWorkInfo(supabase, data ?? []);
+  const rows = await withWorkInfo(supabase, data ?? [], await viewerLinkPrefs(supabase));
   return { items: rows.slice(0, FEED_PAGE_SIZE), hasOlder: rows.length > FEED_PAGE_SIZE };
 }
 

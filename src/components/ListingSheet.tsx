@@ -10,6 +10,7 @@ import { ADD_PREFILL_EVENT, type AddPrefill } from "@/lib/item-order";
 import SaveSomeday from "@/components/SaveSomeday";
 import { placeDisplay } from "@/lib/place-fields";
 import PoweredByBgg from "@/components/PoweredByBgg";
+import OpenIn from "@/components/OpenIn";
 
 // Defense in depth: addItem already rejects non-http(s) links before they're saved, but this
 // guards any row that predates that check so a "javascript:" URL can never end up in an href.
@@ -82,6 +83,7 @@ export default function ListingSheetBody({
             Open {item.source_label || "link"}
           </a>
         )}
+        {item.open_link && <OpenIn link={item.open_link} />}
         {shareable && (
           <SharePanel key={item.id} handle={handle} itemId={item.id} title={item.title} by={item.by} mine={mine} friendsOnly={friendsOnly} />
         )}

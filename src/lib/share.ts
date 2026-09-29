@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Category, Item, Profile } from "@/lib/supabase/types";
 import { canViewItem, canViewProfileItems, type Viewer } from "@/lib/share-rules";
 import { friendStateWith } from "@/lib/friends";
-import { withWorkInfo } from "@/lib/work-info";
+import { viewerLinkPrefs, withWorkInfo } from "@/lib/work-info";
 
 export const SHARE_FORMATS = {
   og: { width: 1200, height: 630 },
@@ -49,7 +49,7 @@ export async function getSharedListing(
     .returns<Item[]>()
     .maybeSingle();
   if (!row) return null;
-  const [item] = await withWorkInfo(supabase, [row]);
+  const [item] = await withWorkInfo(supabase, [row], await viewerLinkPrefs(supabase));
 
   // The public window is "the pinned listing first, then the newest". `pinned` may not exist
   // yet (before that migration), so it is read defensively and the pin query may just fail.

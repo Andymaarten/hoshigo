@@ -9,6 +9,8 @@ import Wordmark from "@/components/Wordmark";
 import Link from "next/link";
 import InstallButton from "@/components/InstallButton";
 import PushSetting from "@/components/PushSetting";
+import LinkPrefsSetting from "@/components/LinkPrefsSetting";
+import { cleanPrefs } from "@/lib/platforms";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -55,6 +57,14 @@ export default async function SettingsPage() {
           initialEmailUpdates={profile.email_updates}
           initialWeekly={profile.weekly_email}
         />
+      </section>
+
+      <section className="settings-app" style={{ maxWidth: 480 }}>
+        <h2>Open links in</h2>
+        <p className="bio">
+          Next to each hoshigo&apos;s own link, we show a button for the app you use. Only you see this choice.
+        </p>
+        <LinkPrefsSetting initial={cleanPrefs((profile as Profile & { link_prefs?: unknown }).link_prefs)} />
       </section>
 
       <section className="settings-app" style={{ maxWidth: 480 }}>
