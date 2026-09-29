@@ -5,6 +5,7 @@ import SiteNav from "@/components/SiteNav";
 import HeaderStamp from "@/components/HeaderStamp";
 import SiteFooter from "@/components/SiteFooter";
 import SettingsForm from "./form";
+import Section from "./Section";
 import Wordmark from "@/components/Wordmark";
 import Link from "next/link";
 import InstallButton from "@/components/InstallButton";
@@ -69,19 +70,14 @@ export default async function SettingsPage() {
           }
         />
 
-        <details className="settings-group">
-          <summary>links.</summary>
-          <div className="settings-body">
+        <Section title="links.">
             <p className="bio">
               Next to each hoshigo&apos;s own link, we show a button for the app you use. Only you see this choice. Saved as you pick.
             </p>
             <LinkPrefsSetting initial={cleanPrefs((profile as Profile & { link_prefs?: unknown }).link_prefs)} />
-          </div>
-        </details>
+        </Section>
 
-        <details className="settings-group">
-          <summary>account.</summary>
-          <div className="settings-body">
+        <Section title="account.">
             <form action={signOut}>
               <button type="submit" className="btn">
                 Log out
@@ -90,8 +86,7 @@ export default async function SettingsPage() {
             <p className="hint">
               Want your account and page removed? Write to <a href="mailto:hi@hoshigo.cc">hi@hoshigo.cc</a>.
             </p>
-          </div>
-        </details>
+        </Section>
       </main>
 
       <SiteFooter loggedIn />

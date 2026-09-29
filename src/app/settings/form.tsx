@@ -8,9 +8,8 @@ import SomedayChoice from "@/components/SomedayChoice";
 import WeeklyChoice from "@/components/WeeklyChoice";
 import VisibilityChoice from "@/components/VisibilityChoice";
 import type { SocialLink } from "@/lib/supabase/types";
+import Section from "./Section";
 
-// One form, three folding sections. Closed sections still send their fields, so a single
-// Save keeps working exactly as before.
 export default function SettingsForm({
   handle,
   initialBio,
@@ -44,54 +43,51 @@ export default function SettingsForm({
 }) {
   const [error, action, pending] = useActionState(saveProfile, null);
 
-  return (
-    <form action={action} className="settings-form">
-      <details className="settings-group" open>
-        <summary>your page.</summary>
-        <div className="settings-body">
-          <p className="hint">hoshigo.cc/{handle}</p>
-          <div className="field">
-            <label htmlFor="display_name">Name</label>
-            <input id="display_name" name="display_name" maxLength={15} defaultValue={initialName} placeholder="Your name" />
-          </div>
-          <div className="field">
-            <label htmlFor="bio">Bio</label>
-            <textarea id="bio" name="bio" defaultValue={initialBio} placeholder="A line about you" />
-          </div>
-          <SocialLinksEditor initialLinks={initialSocialLinks} />
-          <VisibilityChoice initialPrivate={initialIsPrivate} />
-        </div>
-      </details>
-
-      {(friendsEnabled || initialSomedayPublic !== undefined) && (
-        <details className="settings-group">
-          <summary>friends and privacy.</summary>
-          <div className="settings-body">
-            {friendsEnabled && <FriendRequestChoice initialAuto={initialAutoAccept} initialEmail={initialEmail} />}
-            {initialSomedayPublic !== undefined && <SomedayChoice initialPublic={initialSomedayPublic} />}
-          </div>
-        </details>
-      )}
-
-      <details className="settings-group">
-        <summary>notifications and emails.</summary>
-        <div className="settings-body">
-          {initialEmailUpdates !== undefined && (
-            <label className="check-row">
-              <input type="hidden" name="updates_choice" value="1" />
-              <input type="checkbox" name="email_updates" defaultChecked={initialEmailUpdates} />
-              Email me now and then about what&apos;s new on hoshigo
-            </label>
-          )}
-          {initialWeekly !== undefined && <WeeklyChoice initialOn={initialWeekly} />}
-          {deviceSettings}
-        </div>
-      </details>
-
+  // Every section's Save submits the same single form, closed sections included, so one tap
+  // keeps saving everything exactly as before.
+  const save = (
+    <div className="settings-save">
       {error && <p className="error">{error}</p>}
-      <button type="submit" className="cta settings-save" disabled={pending} style={{ border: "none" }}>
+      <button type="submit" className="cta" disabled={pending} style={{ border: "none" }}>
         {pending ? "Saving…" : "Save changes"}
       </button>
+    </div>
+  );
+
+  return (
+    <form action={action} className="settings-form">
+      <Section title="your page." save={save}>
+        <p className="hint">hoshigo.cc/{handle}</p>
+        <div className="field">
+          <label htmlFor="display_name">Name</label>
+          <input id="display_name" name="display_name" maxLength={15} defaultValue={initialName} placeholder="Your name" />
+        </div>
+        <div className="field">
+          <label htmlFor="bio">Bio</label>
+          <textarea id="bio" name="bio" defaultValue={initialBio} placeholder="A line about you" />
+        </div>
+        <SocialLinksEditor initialLinks={initialSocialLinks} />
+        <VisibilityChoice initialPrivate={initialIsPrivate} />
+      </Section>
+
+      {(friendsEnabled || initialSomedayPublic !== undefined) && (
+        <Section title="friends and privacy." save={save}>
+          {friendsEnabled && <FriendRequestChoice initialAuto={initialAutoAccept} initialEmail={initialEmail} />}
+          {initialSomedayPublic !== undefined && <SomedayChoice initialPublic={initialSomedayPublic} />}
+        </Section>
+      )}
+
+      <Section title="notifications and emails." save={initialEmailUpdates !== undefined || initialWeekly !== undefined ? save : undefined}>
+        {initialEmailUpdates !== undefined && (
+          <label className="check-row">
+            <input type="hidden" name="updates_choice" value="1" />
+            <input type="checkbox" name="email_updates" defaultChecked={initialEmailUpdates} />
+            Email me now and then about what&apos;s new on hoshigo
+          </label>
+        )}
+        {initialWeekly !== undefined && <WeeklyChoice initialOn={initialWeekly} />}
+        {deviceSettings}
+      </Section>
     </form>
   );
 }
