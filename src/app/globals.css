@@ -2922,6 +2922,7 @@ footer {
 
 .install-hint-actions {
   display: flex;
+  align-items: center;
   gap: 18px;
   justify-content: flex-end;
   margin-top: 8px;
