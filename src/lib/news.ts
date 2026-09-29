@@ -70,16 +70,26 @@ export function weekOf(at: string): string {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back)).toISOString().slice(0, 10);
 }
 
+type Hoshigo = { id: string; title: string };
+type ItemKind = "saved" | "loved";
+
 export type NewsLine =
   | { type: "one"; event: NewsEvent }
-  | { type: "bundle"; kind: Exclude<NewsKind, "request">; at: string; people: NewsPerson[]; count: number };
+  /** one person, the hoshigo(s) they saved or loved that week */
+  | { type: "person"; kind: ItemKind; at: string; who: NewsPerson; items: Hoshigo[] }
+  /** many people: one line per hoshigo, naming who */
+  | { type: "item"; kind: ItemKind; at: string; item: Hoshigo; people: NewsPerson[] }
+  | { type: "bundle"; kind: "follower" | "accepted"; at: string; people: NewsPerson[] };
+
+const lineAt = (l: NewsLine) => (l.type === "one" ? l.event.at : l.at);
 
 /**
- * Lines per week, newest first: several of one kind in a week become one line ("Sara, Cas and
- * 5 others saved your hoshigos for someday this week."). Requests are never bundled: each has
- * its own Accept and Decline.
+ * Lines per week, newest first. Saves and loves always name the hoshigo: per person ("Julia
+ * saved Perfect Days and The Remains of the Day for someday."), and from `many` people in a
+ * week per hoshigo instead ("Perfect Days was saved for someday by Mark, Julia and 4 others.").
+ * Followers and new friends bundle from `many` too. Requests are never bundled.
  */
-export function bundle(events: NewsEvent[], min = 3): { week: string; lines: NewsLine[] }[] {
+export function bundle(events: NewsEvent[], many = 5): { week: string; lines: NewsLine[] }[] {
   const weeks = new Map<string, NewsEvent[]>();
   events.forEach((e) => {
     const w = weekOf(e.at);
@@ -92,12 +102,27 @@ export function bundle(events: NewsEvent[], min = 3): { week: string; lines: New
       const byKind = new Map<NewsKind, NewsEvent[]>();
       list.forEach((e) => byKind.set(e.kind, [...(byKind.get(e.kind) ?? []), e]));
       for (const [kind, evs] of byKind) {
-        if (kind !== "request" && evs.length >= min) {
-          const people = [...new Map(evs.map((e) => [e.who.id, e.who])).values()];
-          lines.push({ type: "bundle", kind, at: evs[0].at, people, count: evs.length });
+        const people = [...new Map(evs.map((e) => [e.who.id, e.who])).values()];
+        if (kind === "saved" || kind === "loved") {
+          const withItem = evs.filter((e) => e.item);
+          if (people.length >= many) {
+            const byItem = new Map<string, NewsEvent[]>();
+            withItem.forEach((e) => byItem.set(e.item!.id, [...(byItem.get(e.item!.id) ?? []), e]));
+            byItem.forEach((es) =>
+              lines.push({ type: "item", kind, at: es[0].at, item: es[0].item!, people: [...new Map(es.map((e) => [e.who.id, e.who])).values()] })
+            );
+          } else {
+            const byWho = new Map<string, NewsEvent[]>();
+            withItem.forEach((e) => byWho.set(e.who.id, [...(byWho.get(e.who.id) ?? []), e]));
+            byWho.forEach((es) =>
+              lines.push({ type: "person", kind, at: es[0].at, who: es[0].who, items: [...new Map(es.map((e) => [e.item!.id, e.item!])).values()] })
+            );
+          }
+        } else if ((kind === "follower" || kind === "accepted") && people.length >= many) {
+          lines.push({ type: "bundle", kind, at: evs[0].at, people });
         } else evs.forEach((event) => lines.push({ type: "one", event }));
       }
-      lines.sort((a, b) => (b.type === "one" ? b.event.at : b.at).localeCompare(a.type === "one" ? a.event.at : a.at));
+      lines.sort((a, b) => lineAt(b).localeCompare(lineAt(a)));
       return { week, lines };
     });
 }

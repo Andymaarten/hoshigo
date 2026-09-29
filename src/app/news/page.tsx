@@ -61,21 +61,31 @@ function Line({ line, myHandle, thisWeek }: { line: NewsLine; myHandle: string; 
       </p>
     );
   }
+  const titles = (items: { id: string; title: string }[]) =>
+    items.map((it, i) => (
+      <Fragment key={it.id}>
+        {i > 0 && (i === items.length - 1 ? " and " : ", ")}
+        {item(it.id, it.title)}
+      </Fragment>
+    ));
+  if (line.type === "person") {
+    return (
+      <p className="news-line">
+        <Person p={line.who} /> {line.kind === "saved" ? NEWS.saved : NEWS.loved} {titles(line.items)}{" "}
+        {line.kind === "saved" ? NEWS.savedTail : NEWS.lovedThem(line.items.length)}
+      </p>
+    );
+  }
+  if (line.type === "item") {
+    return (
+      <p className="news-line">
+        {item(line.item.id, line.item.title)} {line.kind === "saved" ? NEWS.wasSaved : NEWS.wasLoved} {names(line.people, line.people.length)}.
+      </p>
+    );
+  }
   const tail = NEWS.weekTail(thisWeek);
   return (
     <p className="news-line">
-      {line.kind === "saved" && (
-        <>
-          {names(line.people, line.people.length)} {NEWS.bundleSaved}
-          {tail}
-        </>
-      )}
-      {line.kind === "loved" && (
-        <>
-          {NEWS.bundleLoved(line.people.length)}
-          {tail}
-        </>
-      )}
       {line.kind === "follower" && (
         <>
           {NEWS.bundleFollowers(line.people.length)}
