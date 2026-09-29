@@ -3140,7 +3140,7 @@ footer {
   font-family: var(--serif);
   font-size: 19px;
   line-height: 1.2;
-  color: var(--accent);
+  color: var(--ink);
 }
 
 .settings-group > summary::-webkit-details-marker {
