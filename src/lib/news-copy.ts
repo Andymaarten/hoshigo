@@ -21,8 +21,9 @@ export const NEWS = {
   lovedTail: "and added it to their own.",
   // bundles: "Sara, Cas and 5 others" + tail
   others: (n: number) => (n === 1 ? "1 other" : `${n} others`),
-  bundleSaved: "saved your hoshigos for someday",
-  bundleLoved: (n: number) => `${n} people loved your hoshigos and added them to their own`,
+  wasSaved: "was saved for someday by",
+  wasLoved: "was loved and added to their own by",
+  lovedThem: (n: number) => (n === 1 ? "and added it to their own." : "and added them to their own."),
   bundleFollowers: (n: number) => `${n} new people follow your page`,
   bundleAccepted: "are your friends now",
   weekTail: (thisWeek: boolean) => (thisWeek ? " this week." : "."),
