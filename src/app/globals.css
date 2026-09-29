@@ -528,8 +528,14 @@ dialog.sheet[open] {
   }
 }
 
+/* The dim is a shadow around the sheet, not only ::backdrop: Safari leaves the strip under
+   its toolbar uncovered by ::backdrop, and the shadow reaches past every edge. */
+dialog.sheet[open] {
+  box-shadow: 0 0 0 200vmax rgba(10, 10, 9, 0.5);
+}
+
 dialog.sheet::backdrop {
-  background: rgba(10, 10, 9, 0.5);
+  background: transparent;
 }
 
 dialog.sheet.sheet-fallback {
