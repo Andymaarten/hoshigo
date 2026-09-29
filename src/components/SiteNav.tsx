@@ -5,12 +5,15 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "@/app/[handle]/actions";
 import { navFlags } from "@/app/friends/actions";
+import { newsFresh } from "@/app/news/actions";
+import { NEWS } from "@/lib/news-copy";
 import { SOMEDAY } from "@/lib/someday";
 
 export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boolean; handle?: string }) {
   const pathname = usePathname();
   const [requests, setRequests] = useState(0);
   const [fresh, setFresh] = useState(false);
+  const [news, setNews] = useState(false);
   // Server pages can take a moment; mark the tapped item right away so it's clear something happens.
   const [pending, setPending] = useState<{ href: string; from: string } | null>(null);
   const current = pending && pending.from === pathname ? pending.href : pathname;
@@ -20,6 +23,9 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
   useEffect(() => {
     if (!loggedIn) return;
     let live = true;
+    newsFresh()
+      .then((n) => live && setNews(n))
+      .catch(() => {});
     navFlags()
       .then((f) => {
         if (!live) return;
@@ -64,6 +70,10 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
               </span>
             )}
             {requests === 0 && fresh && current !== "/friends" && <span className="nav-dot" aria-label="new from friends" />}
+          </Link>
+          <Link href="/news" aria-current={current === "/news" ? "page" : undefined} onClick={go("/news")}>
+            <span>{NEWS.nav}</span>
+            {news && current !== "/news" && <span className="nav-dot" aria-label="something new" />}
           </Link>
           <Link href="/explore" aria-current={current === "/explore" ? "page" : undefined} onClick={go("/explore")}>
             <span>Explore</span>

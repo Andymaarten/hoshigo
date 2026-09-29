@@ -5,6 +5,8 @@ import { SITE, sendOne, unsubscribeToken } from "@/lib/changelog";
 import { compareForProfile } from "@/lib/item-order";
 import { PUBLIC_PER_CATEGORY } from "@/lib/share-rules";
 import { WEEKLY } from "@/lib/weekly-copy";
+import { weekCounts } from "@/lib/news";
+import { NEWS } from "@/lib/news-copy";
 
 const DAY = 86400000;
 const FRIENDS_MAX = 6;
@@ -135,12 +137,15 @@ export async function composeWeekly(admin: SupabaseClient, week: Week, profileId
   }
 
   if (!fromFriends.length && !trending.length) return null;
+  // what happened around their own hoshigos this week, when anything did
+  const counts = await weekCounts(admin, profileId).catch(() => ({ saved: 0, loved: 0 }));
+  const inspired = counts.saved || counts.loved ? [NEWS.inspirational(counts.saved, counts.loved)] : [];
   const t = encodeURIComponent(unsubscribeToken(profileId));
   const links = { unsubscribeUrl: `${SITE()}/unsubscribe?t=${t}`, oneClickUrl: `${SITE()}/api/unsubscribe?t=${t}` };
   const mail = renderEmail({
     preheader: WEEKLY.preheader,
     heading: WEEKLY.heading,
-    paragraphs: [WEEKLY.line],
+    paragraphs: [WEEKLY.line, ...inspired],
     sections: [
       { heading: WEEKLY.friendsHeading, picks: fromFriends },
       { heading: WEEKLY.trendingHeading, intro: WEEKLY.trendingIntro, picks: trending },

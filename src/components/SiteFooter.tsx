@@ -38,6 +38,7 @@ export default async function SiteFooter({ loggedIn = false, handle }: { loggedI
             {someday && <Link href={SOMEDAY.page}>{SOMEDAY.name}</Link>}
             <Link href="/settings">Edit profile</Link>
             <Link href="/friends">Friends</Link>
+            <Link href="/news">news</Link>
             <Link href="/explore">Explore</Link>
             <Link href="/app">hoshigo as an app</Link>
             <InstallButton className="footer-link" />
