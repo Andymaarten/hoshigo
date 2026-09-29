@@ -2,7 +2,8 @@ import webpush from "web-push";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Web push for the installed app. At most one bundled notification per person per day,
-// only when friends or people they follow added something since the last one. Never per item.
+// only when friends or people they follow added something, or others saved or loved your
+// hoshigos, since the last one. Never per item.
 
 type Sub = { id: string; profile_id: string; endpoint: string; p256dh: string; auth: string; last_sent_at: string | null; created_at: string };
 export type PushPayload = { title: string; body: string; url: string };
@@ -92,12 +93,29 @@ export async function sendDailyPush(admin: SupabaseClient): Promise<{ people: nu
   for (const f of follows.error ? [] : (follows.data ?? [])) circle.get(f.follower as string)?.add(f.followee as string);
 
   const everyone = [...new Set([...circle.values()].flatMap((s) => [...s]))];
-  if (!everyone.length) return { people: 0, sent: 0, gone: 0, error: null };
   const since = new Date(Date.now() - 3 * 86400000).toISOString();
-  const [{ data: items }, { data: people }] = await Promise.all([
-    admin.from("items").select("profile_id, created_at").in("profile_id", everyone.slice(0, 1000)).gte("created_at", since).limit(20000),
-    admin.from("profiles").select("id, handle, display_name, is_private").in("id", everyone.slice(0, 1000)),
+  const [{ data: items }, { data: people }, { data: ownItems }] = await Promise.all([
+    everyone.length
+      ? admin.from("items").select("profile_id, created_at").in("profile_id", everyone.slice(0, 1000)).gte("created_at", since).limit(20000)
+      : Promise.resolve({ data: [] as { profile_id: string; created_at: string }[] }),
+    everyone.length
+      ? admin.from("profiles").select("id, handle, display_name, is_private").in("id", everyone.slice(0, 1000))
+      : Promise.resolve({ data: [] as { id: string; handle: string; display_name: string | null; is_private: boolean }[] }),
+    admin.from("items").select("id, profile_id").in("profile_id", ids).limit(20000),
   ]);
+
+  // the same someday signals as the news page (src/lib/news.ts): others saving your hoshigos,
+  // and later marking them loved; before the status migration only saves exist
+  const ownerOfItem = new Map((ownItems ?? []).map((i) => [i.id as string, i.profile_id as string]));
+  const itemIds = [...ownerOfItem.keys()].slice(0, 1000);
+  type SomedayRow = { profile_id: string; source_item_id: string; created_at: string; status?: string; resolved_at?: string | null };
+  let someday: SomedayRow[] = [];
+  if (itemIds.length) {
+    const withStatus = await admin.from("someday_items").select("profile_id, source_item_id, created_at, status, resolved_at").in("source_item_id", itemIds).gte("created_at", new Date(Date.now() - 60 * 86400000).toISOString());
+    someday = (withStatus.error
+      ? (await admin.from("someday_items").select("profile_id, source_item_id, created_at").in("source_item_id", itemIds).gte("created_at", since)).data ?? []
+      : withStatus.data ?? []) as SomedayRow[];
+  }
   // a private page's additions only count for its friends, not for followers
   const isPrivate = new Set((people ?? []).filter((p) => p.is_private).map((p) => p.id as string));
   const nameOf = new Map((people ?? []).map((p) => [p.id as string, ((p.display_name as string) || (p.handle as string)).split(" ")[0]]));
@@ -116,10 +134,19 @@ export async function sendDailyPush(admin: SupabaseClient): Promise<{ people: nu
       if (!mine.has(owner) || Date.parse(i.created_at as string) <= from) return false;
       return !isPrivate.has(owner) || friends.has(`${profileId}|${owner}`);
     });
-    if (!fresh.length) continue;
     const names = fresh.map((i) => nameOf.get(i.profile_id as string)).filter((n): n is string => !!n);
-    if (!names.length) continue;
-    const r = await sendToProfile(admin, devices, { title: "hoshigo", body: bundleText(names, fresh.length), url: "/friends" });
+    const aboutMe = someday.filter((s) => ownerOfItem.get(s.source_item_id) === profileId && s.profile_id !== profileId);
+    const savers = new Set(aboutMe.filter((s) => Date.parse(s.created_at) > from).map((s) => s.profile_id)).size;
+    const lovers = new Set(aboutMe.filter((s) => s.status === "loved" && s.resolved_at && Date.parse(s.resolved_at) > from).map((s) => s.profile_id)).size;
+    const parts = [
+      names.length ? bundleText(names, fresh.length) : "",
+      savers ? `${savers} ${savers === 1 ? "person" : "people"} saved yours for someday` : "",
+      lovers ? `${lovers} ${lovers === 1 ? "person" : "people"} loved yours` : "",
+    ].filter(Boolean);
+    if (!parts.length) continue;
+    // tapping goes where most of the news is
+    const url = savers + lovers > names.length ? "/news" : "/friends";
+    const r = await sendToProfile(admin, devices, { title: "hoshigo", body: parts.join(" \u00b7 "), url });
     sent += r.sent;
     gone += r.gone;
     if (r.sent) {
