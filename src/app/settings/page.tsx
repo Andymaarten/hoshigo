@@ -11,6 +11,7 @@ import InstallButton from "@/components/InstallButton";
 import PushSetting from "@/components/PushSetting";
 import LinkPrefsSetting from "@/components/LinkPrefsSetting";
 import { cleanPrefs } from "@/lib/platforms";
+import { signOut } from "@/app/[handle]/actions";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -44,8 +45,9 @@ export default async function SettingsPage() {
         <h1 style={{ fontSize: "clamp(40px,10vw,72px)" }}>edit profile</h1>
       </header>
 
-      <section style={{ maxWidth: 480 }}>
+      <main className="settings">
         <SettingsForm
+          handle={profile.handle}
           initialBio={profile.bio ?? ""}
           initialName={profile.display_name ?? ""}
           initialSocialLinks={profile.social_links ?? []}
@@ -56,25 +58,41 @@ export default async function SettingsPage() {
           initialSomedayPublic={profile.someday_public}
           initialEmailUpdates={profile.email_updates}
           initialWeekly={profile.weekly_email}
+          deviceSettings={
+            <div className="settings-device">
+              <PushSetting />
+              <p className="bio">
+                hoshigo as an app: on your home screen, adding from any app. <Link href="/app">How it works</Link>
+              </p>
+              <InstallButton />
+            </div>
+          }
         />
-      </section>
 
-      <section className="settings-app" style={{ maxWidth: 480 }}>
-        <h2>Open links in</h2>
-        <p className="bio">
-          Next to each hoshigo&apos;s own link, we show a button for the app you use. Only you see this choice.
-        </p>
-        <LinkPrefsSetting initial={cleanPrefs((profile as Profile & { link_prefs?: unknown }).link_prefs)} />
-      </section>
+        <details className="settings-group">
+          <summary>links.</summary>
+          <div className="settings-body">
+            <p className="bio">
+              Next to each hoshigo&apos;s own link, we show a button for the app you use. Only you see this choice. Saved as you pick.
+            </p>
+            <LinkPrefsSetting initial={cleanPrefs((profile as Profile & { link_prefs?: unknown }).link_prefs)} />
+          </div>
+        </details>
 
-      <section className="settings-app" style={{ maxWidth: 480 }}>
-        <h2>hoshigo as an app</h2>
-        <p className="bio">
-          Put hoshigo on your home screen, and add to it from any app. <Link href="/app">How it works</Link>
-        </p>
-        <InstallButton />
-        <PushSetting />
-      </section>
+        <details className="settings-group">
+          <summary>account.</summary>
+          <div className="settings-body">
+            <form action={signOut}>
+              <button type="submit" className="btn">
+                Log out
+              </button>
+            </form>
+            <p className="hint">
+              Want your account and page removed? Write to <a href="mailto:hi@hoshigo.cc">hi@hoshigo.cc</a>.
+            </p>
+          </div>
+        </details>
+      </main>
 
       <SiteFooter loggedIn />
     </div>
