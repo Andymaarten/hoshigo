@@ -21,7 +21,7 @@ async function sendTo(sub: Sub, payload: PushPayload): Promise<"ok" | "gone" | "
   try {
     await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), {
       TTL: 60 * 60 * 12,
-      urgency: "low",
+      urgency: "normal",
     });
     return "ok";
   } catch (e) {

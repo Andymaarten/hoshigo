@@ -7,7 +7,7 @@
 // Never cached: API routes, admin, login, auth, onboarding, settings and adding.
 // Bump VERSION to drop every cache on the next visit.
 
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC = `hoshigo-static-${VERSION}`;
 const PAGES = `hoshigo-pages-${VERSION}`;
 const NAV_TIMEOUT = 1200;
@@ -98,7 +98,6 @@ self.addEventListener("push", (event) => {
       body: data.body || "",
       icon: "/icons/icon-192.png",
       badge: "/icons/maskable-192.png",
-      tag: "hoshigo-daily",
       data: { url: data.url || "/friends" },
     })
   );
