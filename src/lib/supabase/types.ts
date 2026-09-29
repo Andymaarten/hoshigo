@@ -40,6 +40,8 @@ export interface Item {
   profile_id: string;
   category_id: number;
   work_id: string | null;
+  /** the catalogue the work came from; only set where withWorkInfo ran */
+  work_source?: string | null;
   title: string;
   by: string | null;
   year: number | null;

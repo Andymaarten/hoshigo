@@ -2983,3 +2983,17 @@ footer {
   margin: 0 0 6px;
   font-size: 15px;
 }
+
+/* "Powered by BGG": small, quiet, required by BoardGameGeek wherever their data shows */
+.bgg-credit {
+  display: inline-block;
+  align-self: flex-start;
+  margin-top: 8px;
+  line-height: 0;
+  opacity: 0.85;
+}
+
+.bgg-credit img {
+  height: 20px;
+  width: auto;
+}

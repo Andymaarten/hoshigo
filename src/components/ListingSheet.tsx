@@ -9,6 +9,7 @@ import { PUBLIC_PER_CATEGORY } from "@/lib/share-rules";
 import { ADD_PREFILL_EVENT, type AddPrefill } from "@/lib/item-order";
 import SaveSomeday from "@/components/SaveSomeday";
 import { placeDisplay } from "@/lib/place-fields";
+import PoweredByBgg from "@/components/PoweredByBgg";
 
 // Defense in depth: addItem already rejects non-http(s) links before they're saved, but this
 // guards any row that predates that check so a "javascript:" URL can never end up in an href.
@@ -112,6 +113,7 @@ export default function ListingSheetBody({
         {canAdd && <SaveSomeday itemId={item.id} />}
         {href && <span className="link-dest">{displayUrl(item.url!)}</span>}
       </div>
+      {item.work_source === "bgg" && <PoweredByBgg />}
       {!shareable && mine && (
         <p className="meta">Only your newest {PUBLIC_PER_CATEGORY} per list are public, so this one can&rsquo;t be shared yet.</p>
       )}

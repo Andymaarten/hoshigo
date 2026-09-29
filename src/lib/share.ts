@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Category, Item, Profile } from "@/lib/supabase/types";
 import { canViewItem, canViewProfileItems, type Viewer } from "@/lib/share-rules";
 import { friendStateWith } from "@/lib/friends";
+import { withWorkInfo } from "@/lib/work-info";
 
 export const SHARE_FORMATS = {
   og: { width: 1200, height: 630 },
@@ -40,14 +41,15 @@ export async function getSharedListing(
   // Decided before looking the item up, so a private profile doesn't reveal which ids exist.
   if (!canViewProfileItems(viewer, profile.is_private)) return { kind: "private", profile };
 
-  const { data: item } = await supabase
+  const { data: row } = await supabase
     .from("items")
     .select("*")
     .eq("id", itemId)
     .eq("profile_id", profile.id)
     .returns<Item[]>()
     .maybeSingle();
-  if (!item) return null;
+  if (!row) return null;
+  const [item] = await withWorkInfo(supabase, [row]);
 
   // The public window is "the pinned listing first, then the newest". `pinned` may not exist
   // yet (before that migration), so it is read defensively and the pin query may just fail.

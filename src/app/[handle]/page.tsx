@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { ADD_COOKIE } from "@/lib/add-link";
 import { createClient } from "@/lib/supabase/server";
 import type { Category, Item, Profile } from "@/lib/supabase/types";
+import { withWorkInfo } from "@/lib/work-info";
 import Link from "next/link";
 import CategorySection from "./CategorySection";
 import AddStamp from "./AddStamp";
@@ -90,7 +91,7 @@ export default async function ProfilePage({
   // A private profile shows non-friends only its name, bio and the friend button.
   const hideAll = profile.is_private && !canBrowseAll;
 
-  const { data: items } = hideAll
+  const { data: rawItems } = hideAll
     ? { data: [] as Item[] }
     : await supabase
         .from("items")
@@ -99,6 +100,7 @@ export default async function ProfilePage({
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .returns<Item[]>();
+  const items = await withWorkInfo(supabase, rawItems ?? []);
 
   const itemsByCategory = new Map<number, Item[]>();
   (items ?? []).forEach((item) => {
