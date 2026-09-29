@@ -41,6 +41,10 @@ export async function saveProfile(_prev: string | null, formData: FormData) {
       .eq("id", user.id);
   }
 
+  if (formData.get("weekly_choice") === "1") {
+    await supabase.from("profiles").update({ weekly_email: formData.get("weekly_email") === "on" }).eq("id", user.id);
+  }
+
   if (formData.get("updates_choice") === "1") {
     await supabase.from("profiles").update({ email_updates: formData.get("email_updates") === "on" }).eq("id", user.id);
   }

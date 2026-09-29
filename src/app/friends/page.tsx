@@ -172,13 +172,15 @@ async function FeedSection({
 }) {
   // Every filter's first page is loaded up front so the chips switch without a round trip.
   const filters: { key: string; id: number | null }[] = [{ key: "all", id: null }, ...categories.map((c) => ({ key: c.slug, id: c.id }))];
-  const [firstPages, shareIds] = await Promise.all([
+  const [firstPages, shareIds, seen] = await Promise.all([
     Promise.all(filters.map((f) => feedRows(supabase, friendIds, f.id))),
     shareableIds(supabase, friendIds),
+    // read before this visit is marked (the feed marks it after it showed what's new)
+    supabase.from("friends_seen").select("seen_at").maybeSingle(),
   ]);
   const initialFeed: Record<string, FeedPage> = {};
   filters.forEach((f, i) => {
     initialFeed[f.key] = { items: withShareable(firstPages[i].items, shareIds), hasOlder: firstPages[i].hasOlder };
   });
-  return <FriendsFeed categories={categories} initial={initialFeed} friends={friends} initialSlug={initialSlug} />;
+  return <FriendsFeed categories={categories} initial={initialFeed} friends={friends} initialSlug={initialSlug} seenAt={(seen.data?.seen_at as string | undefined) ?? null} />;
 }

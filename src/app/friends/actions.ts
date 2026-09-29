@@ -113,3 +113,31 @@ export async function findPeople(q: string): Promise<FoundPerson[]> {
   if (!user) return [];
   return searchPeople(supabase, user.id, String(q ?? ""));
 }
+
+/** When I last looked at the Friends page; null before the first visit or the migration. */
+export async function friendsSeenAt(): Promise<string | null> {
+  const { supabase, user } = await session();
+  if (!user) return null;
+  const { data } = await supabase.from("friends_seen").select("seen_at").eq("profile_id", user.id).maybeSingle();
+  return (data?.seen_at as string | undefined) ?? null;
+}
+
+/** Called by the Friends page after it showed what's new. */
+export async function markFriendsSeen(): Promise<void> {
+  const { supabase, user } = await session();
+  if (!user) return;
+  await supabase.from("friends_seen").upsert({ profile_id: user.id, seen_at: new Date().toISOString() });
+}
+
+/** For the nav, after paint: the request count, and whether friends kept something new. */
+export async function navFlags(): Promise<{ requests: number; fresh: boolean }> {
+  const { supabase, user } = await session();
+  if (!user) return { requests: 0, fresh: false };
+  const [requests, seen] = await Promise.all([pendingRequestCount(), friendsSeenAt()]);
+  if (!seen) return { requests, fresh: false };
+  const rel = await myFriendships(supabase, user.id);
+  const people = [...new Set([...(rel?.friendIds ?? []), ...(await myFolloweeIds(supabase, user.id))])];
+  if (!people.length) return { requests, fresh: false };
+  const { data } = await supabase.from("items").select("id").in("profile_id", people).gt("created_at", seen).limit(1);
+  return { requests, fresh: (data ?? []).length > 0 };
+}

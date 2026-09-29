@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "@/app/[handle]/actions";
-import { pendingRequestCount } from "@/app/friends/actions";
+import { navFlags } from "@/app/friends/actions";
 import { SOMEDAY } from "@/lib/someday";
 
 export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boolean; handle?: string }) {
   const pathname = usePathname();
   const [requests, setRequests] = useState(0);
+  const [fresh, setFresh] = useState(false);
   // Server pages can take a moment; mark the tapped item right away so it's clear something happens.
   const [pending, setPending] = useState<{ href: string; from: string } | null>(null);
   const current = pending && pending.from === pathname ? pending.href : pathname;
@@ -19,8 +20,12 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
   useEffect(() => {
     if (!loggedIn) return;
     let live = true;
-    pendingRequestCount()
-      .then((n) => live && setRequests(n))
+    navFlags()
+      .then((f) => {
+        if (!live) return;
+        setRequests(f.requests);
+        setFresh(f.fresh);
+      })
       .catch(() => {});
     return () => {
       live = false;
@@ -58,6 +63,7 @@ export default function SiteNav({ loggedIn = false, handle }: { loggedIn?: boole
                 {requests}
               </span>
             )}
+            {requests === 0 && fresh && current !== "/friends" && <span className="nav-dot" aria-label="new from friends" />}
           </Link>
           <Link href="/explore" aria-current={current === "/explore" ? "page" : undefined} onClick={go("/explore")}>
             <span>Explore</span>

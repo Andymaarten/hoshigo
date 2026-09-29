@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import type { Category } from "@/lib/supabase/types";
 import type { FeedItem, FeedPage } from "@/lib/friends-feed";
@@ -8,7 +8,7 @@ import { SHAPE } from "@/lib/category-display";
 import CoverImage from "@/components/CoverImage";
 import Sheet from "@/components/Sheet";
 import ListingSheetBody from "@/components/ListingSheet";
-import { loadOlderFeed } from "./actions";
+import { loadOlderFeed, markFriendsSeen } from "./actions";
 
 export type FeedFriend = { handle: string; name: string; isPrivate: boolean };
 
@@ -21,14 +21,22 @@ export default function FriendsFeed({
   initial,
   friends,
   initialSlug,
+  seenAt = null,
 }: {
   categories: Category[];
   /** "all" plus one entry per category slug */
   initial: Record<string, FeedPage>;
   friends: Record<string, FeedFriend>;
   initialSlug: string;
+  /** your previous visit: newer items get a mark and a divider below them */
+  seenAt?: string | null;
 }) {
   const [pages, setPages] = useState(initial);
+
+  // this visit counts as seen once the page has shown what was new
+  useEffect(() => {
+    markFriendsSeen().catch(() => {});
+  }, []);
   const [slug, setSlug] = useState(initial[initialSlug] ? initialSlug : "all");
   const [active, setActive] = useState<FeedItem | null>(null);
   const [loading, startLoading] = useTransition();
@@ -84,12 +92,20 @@ export default function FriendsFeed({
         <p className="bio">No {activeCat ? activeCat.label : "additions"} from friends yet.</p>
       ) : (
         <ul className="feed-list">
-          {page.items.map((item) => {
+          {page.items.map((item, idx) => {
+            const isNew = !!seenAt && item.created_at > seenAt;
+            const prevNew = idx > 0 && !!seenAt && page.items[idx - 1].created_at > seenAt;
             const friend = friends[item.profile_id];
             const cat = catById.get(item.category_id);
             const shape = cat ? SHAPE[cat.slug] : undefined;
             return (
-              <li key={item.id} className="feed-row">
+              <Fragment key={item.id}>
+              {prevNew && !isNew && (
+                <li className="feed-divider" aria-label="Older than your last visit">
+                  <span>new since your last visit</span>
+                </li>
+              )}
+              <li className={`feed-row${isNew ? " feed-new" : ""}`}>
                 <button
                   type="button"
                   className={`feed-cover thumb${shape === "tall" ? " tall" : ""}`}
@@ -114,6 +130,7 @@ export default function FriendsFeed({
                   </span>
                 </div>
               </li>
+              </Fragment>
             );
           })}
         </ul>

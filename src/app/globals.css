@@ -2124,6 +2124,43 @@ footer .footer-nav form {
   accent-color: var(--ink);
 }
 
+/* a quiet "something new from friends" mark in the nav; the red number stays for requests */
+.menu a .nav-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 4px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
+.feed-divider {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.feed-divider::before,
+.feed-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--rule);
+}
+
+.feed-new {
+  box-shadow: inset 3px 0 0 var(--accent);
+  padding-left: 10px;
+}
+
 .feed-cover {
   border: 0;
   cursor: pointer;

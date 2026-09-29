@@ -53,6 +53,7 @@ export default async function SettingsPage() {
           friendsEnabled={profile.auto_accept_friends !== undefined}
           initialSomedayPublic={profile.someday_public}
           initialEmailUpdates={profile.email_updates}
+          initialWeekly={profile.weekly_email}
         />
       </section>
 
