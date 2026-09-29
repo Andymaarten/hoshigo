@@ -156,3 +156,21 @@ export async function sendDailyPush(admin: SupabaseClient): Promise<{ people: nu
   }
   return { people: notified, sent, gone, error: null };
 }
+
+/**
+ * Temporary, owner only (OWNER_HANDLES): a notification straight away when someone saves one
+ * of your hoshigos for someday, to check that push works end to end. Everyone else keeps the
+ * daily bundle. Remove once the owner is happy.
+ */
+export async function sendInstantSomedayPush(admin: SupabaseClient, ownerId: string, saverId: string, title: string) {
+  if (!configured()) return;
+  const { data: people } = await admin.from("profiles").select("id, handle, display_name").in("id", [ownerId, saverId]);
+  const owner = people?.find((p) => p.id === ownerId);
+  const saver = people?.find((p) => p.id === saverId);
+  const { ownerHandles } = await import("@/lib/owner");
+  if (!owner || !saver || !ownerHandles().includes(String(owner.handle).toLowerCase())) return;
+  const { data: subs } = await admin.from("push_subscriptions").select("*").eq("profile_id", ownerId);
+  if (!subs?.length) return;
+  const name = saver.display_name || saver.handle;
+  await sendToProfile(admin, subs as Sub[], { title: "hoshigo", body: `${name} saved ${title} for someday`, url: "/news" });
+}

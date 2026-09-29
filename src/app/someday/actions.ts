@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Item } from "@/lib/supabase/types";
+import { after } from "next/server";
+import { adminClient } from "@/lib/supabase/admin";
+import { sendInstantSomedayPush } from "@/lib/push";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
@@ -63,6 +66,10 @@ export async function saveForSomeday(itemId: string): Promise<string | boolean> 
   }).select("id").single();
   // no revalidatePath: it would re-render the page you're on (the whole Friends feed)
   if (error) return error.code === "23505";
+  after(async () => {
+    const admin = adminClient();
+    if (admin) await sendInstantSomedayPush(admin, item.profile_id, user.id, item.title).catch(() => {});
+  });
   return (inserted?.id as string | undefined) ?? true;
 }
 
