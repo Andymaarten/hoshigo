@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import FeedbackTab from "@/components/FeedbackTab";
 import AppChrome from "@/components/AppChrome";
+import PushAsk from "@/components/PushAsk";
 import { Analytics } from "@vercel/analytics/next";
 
 // Portrait launch images for current iPhones: pixel width, height, device pixel ratio.
@@ -68,6 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <FeedbackTab />
         <AppChrome />
+        <PushAsk />
         {/* Vercel Web Analytics: cookieless page views, so no consent banner */}
         <Analytics />
       </body>

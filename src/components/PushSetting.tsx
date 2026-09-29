@@ -3,21 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { isStandalone } from "@/lib/install";
-import { removePushSubscription, savePushSubscription } from "@/lib/push-actions";
+import { removePushSubscription } from "@/lib/push-actions";
+import { pushSupported, subscribePush } from "@/lib/push-client";
 
 type State = "loading" | "unsupported" | "install-first" | "blocked" | "off" | "on";
 
 const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
-function urlBase64ToUint8Array(base64: string) {
-  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
-  const raw = atob((base64 + padding).replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
-}
-
-async function registration() {
-  return navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
-}
 
 // "Notifications on this device: Off / Once a day". On iPhone, web push only exists inside
 // the installed app, so the browser gets a pointer to /app instead of a button that can't work.
@@ -29,7 +20,7 @@ export default function PushSetting() {
 
   useEffect(() => {
     (async () => {
-      if (!key || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      if (!pushSupported()) {
         setState(isIos() && !isStandalone() ? "install-first" : "unsupported");
         return;
       }
@@ -43,27 +34,11 @@ export default function PushSetting() {
   const turnOn = async () => {
     setBusy(true);
     setError(null);
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setState(permission === "denied" ? "blocked" : "off");
-        return;
-      }
-      const reg = await registration();
-      await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key!) });
-      const problem = await savePushSubscription(JSON.parse(JSON.stringify(sub)));
-      if (problem) {
-        await sub.unsubscribe();
-        setError(problem);
-        return;
-      }
-      setState("on");
-    } catch {
-      setError("Notifications couldn't be turned on here. Try again in a moment.");
-    } finally {
-      setBusy(false);
-    }
+    const r = await subscribePush();
+    if (r.ok) setState("on");
+    else if (r.reason === "blocked") setState("blocked");
+    else if (r.message) setError(r.message);
+    setBusy(false);
   };
 
   const turnOff = async () => {
