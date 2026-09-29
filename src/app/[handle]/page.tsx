@@ -59,48 +59,45 @@ export default async function ProfilePage({
 
   const isOwner = user?.user?.id === profile.id;
 
-  let myHandle: string | undefined;
-  if (user?.user) {
-    myHandle = isOwner
-      ? profile.handle
-      : (
-          await supabase
-            .from("profiles")
-            .select("handle")
-            .eq("id", user.user.id)
-            .single()
-        ).data?.handle;
-  }
+  const me = user?.user?.id;
 
-  let friendState: FriendState = "unavailable";
-  if (user?.user && !isOwner)
-    friendState = await friendStateWith(supabase, user.user.id, profile.id);
-  const canBrowseAll = isOwner || friendState === "friends";
-
-  // Follow: public profiles only, and pointless once you're friends. Friends list: logged in
-  // visitors only (the database also hides a private profile's list from non friends).
-  // Followers: only ever on your own page.
-  const [followState, friendList, followers] = await Promise.all([
-    user?.user && !isOwner && !profile.is_private && friendState !== "friends" && friendState !== "unavailable"
-      ? followStateWith(supabase, user.user.id, profile.id)
-      : Promise.resolve<FollowState>("unavailable"),
-    user?.user ? friendsPage(supabase, profile.id, 3, 0) : Promise.resolve(null),
-    isOwner ? myFollowers(supabase, profile.id) : Promise.resolve(null),
+  // Everything that only needs the profile runs at once. Items and the "more" check are
+  // asked for up front; RLS already limits what a stranger gets, and the results are
+  // dropped below when the page turns out to be closed to this visitor.
+  const [myHandle, friendState, rawItemsRes, linkPrefs, pins, moreRes] = await Promise.all([
+    me
+      ? isOwner
+        ? Promise.resolve(profile.handle as string | undefined)
+        : supabase.from("profiles").select("handle").eq("id", me).single().then((r) => r.data?.handle as string | undefined)
+      : Promise.resolve(undefined),
+    me && !isOwner ? friendStateWith(supabase, me, profile.id) : Promise.resolve<FriendState>("unavailable"),
+    supabase
+      .from("items")
+      .select("*")
+      .eq("profile_id", profile.id)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .returns<Item[]>(),
+    viewerLinkPrefs(supabase),
+    isOwner ? myPins(supabase, profile.id) : Promise.resolve(null),
+    isOwner ? Promise.resolve({ data: null, error: null }) : supabase.rpc("categories_with_more", { p_profile: profile.id }),
   ]);
+  const canBrowseAll = isOwner || friendState === "friends";
 
   // A private profile shows non-friends only its name, bio and the friend button.
   const hideAll = profile.is_private && !canBrowseAll;
 
-  const { data: rawItems } = hideAll
-    ? { data: [] as Item[] }
-    : await supabase
-        .from("items")
-        .select("*")
-        .eq("profile_id", profile.id)
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .returns<Item[]>();
-  const items = await withWorkInfo(supabase, rawItems ?? [], await viewerLinkPrefs(supabase));
+  // Follow: public profiles only, and pointless once you're friends. Friends list: logged in
+  // visitors only (the database also hides a private profile's list from non friends).
+  // Followers: only ever on your own page.
+  const [followState, friendList, followers, items] = await Promise.all([
+    me && !isOwner && !profile.is_private && friendState !== "friends" && friendState !== "unavailable"
+      ? followStateWith(supabase, me, profile.id)
+      : Promise.resolve<FollowState>("unavailable"),
+    me ? friendsPage(supabase, profile.id, 3, 0) : Promise.resolve(null),
+    isOwner ? myFollowers(supabase, profile.id) : Promise.resolve(null),
+    withWorkInfo(supabase, hideAll ? [] : (rawItemsRes.data ?? []), linkPrefs),
+  ]);
 
   const itemsByCategory = new Map<number, Item[]>();
   (items ?? []).forEach((item) => {
@@ -110,17 +107,12 @@ export default async function ProfilePage({
   });
   // pinned first, then newest; before the pinning migration nothing is pinned
   for (const list of itemsByCategory.values()) list.sort(compareForProfile);
-  const pins = isOwner ? await myPins(supabase, profile.id) : null;
 
   // Non-friends only ever receive the newest 5 per category. After the friends migration RLS
   // already guarantees this; the slice keeps it true before the migration too.
   const categoriesWithMore = new Set<number>();
   if (!canBrowseAll && !hideAll) {
-    const { data: more, error } = await supabase.rpc("categories_with_more", {
-      p_profile: profile.id,
-    });
-    if (!error)
-      (more as number[] | null)?.forEach((id) => categoriesWithMore.add(id));
+    if (!moreRes.error) (moreRes.data as number[] | null)?.forEach((id) => categoriesWithMore.add(id));
     for (const [categoryId, list] of itemsByCategory) {
       if (list.length > PUBLIC_WINDOW) {
         categoriesWithMore.add(categoryId);

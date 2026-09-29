@@ -30,6 +30,20 @@ export default function AppChrome() {
   const [depth, setDepth] = useState(0);
   const first = useRef(true);
 
+  // The service worker: registered for everyone (fast starts, offline pages), and asked
+  // whether this page came from its cache because the network was slow; then refresh once.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {});
+    const sw = navigator.serviceWorker.controller;
+    if (!sw) return;
+    const channel = new MessageChannel();
+    channel.port1.onmessage = (e) => {
+      if (e.data === true) router.refresh();
+    };
+    sw.postMessage({ type: "stale?" }, [channel.port2]);
+  }, [router]);
+
   useEffect(() => {
     const visits = Number(store.get(VISITS) ?? "0") + 1;
     store.set(VISITS, String(visits));
