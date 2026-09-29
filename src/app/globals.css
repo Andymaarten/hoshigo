@@ -219,7 +219,7 @@ a.word {
 }
 
 .gloss .ja {
-  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", var(--serif);
+  font-family: var(--font-ja), "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", var(--serif);
   color: var(--ink);
   font-size: 18px;
 }
@@ -818,7 +818,7 @@ footer .footer-tag {
   flex: none;
   padding: 20px 32px;
   border-right: 1.5px solid var(--ink);
-  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", var(--serif);
+  font-family: var(--font-ja), "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", var(--serif);
   font-size: 28px;
   font-weight: 700;
   color: var(--ink);
@@ -3059,4 +3059,45 @@ footer {
   .gloss { margin-top: 2px; }
   .entry hr { margin: 6px 0 5px; }
   .masthead + * h1, .hero > h1 { margin-top: 8px; }
+}
+
+/* loading skeletons (src/components/PageSkeleton.tsx) */
+.skel {
+  background: rgba(29, 28, 26, 0.06);
+  border-radius: 2px;
+  animation: skel-breathe 1.6s ease-in-out infinite;
+}
+
+.skel-title {
+  width: min(420px, 70%);
+  height: clamp(44px, 10vw, 80px);
+  margin-top: 24px;
+}
+
+.skel-row {
+  margin-top: 40px;
+}
+
+.skel-line {
+  width: 140px;
+  height: 16px;
+}
+
+.skel-covers {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.skel-cover {
+  aspect-ratio: 2 / 3;
+}
+
+@keyframes skel-breathe {
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel { animation: none; }
 }

@@ -63,7 +63,7 @@ export default function HeroField({ links }: { links: string[] }) {
                   const href = links[circleCount++ % links.length];
                   items.push(
                     <Link key={`c${b}`} href={href} className="hero-circle" style={wobble(seed + 3, 5, 4)}>
-                      <img src={`/hero/redhoshigos_${v + 1}.png`} width={w} height={h} alt="" loading="lazy" decoding="async" />
+                      <img src={`/hero/redhoshigos_${v + 1}.webp`} width={w} height={h} alt="" loading="lazy" decoding="async" />
                       <span className="sr-only">Open a hoshigo page</span>
                     </Link>,
                   );
@@ -75,7 +75,7 @@ export default function HeroField({ links }: { links: string[] }) {
                 const [w, h] = BAR_SIZES[v];
                 items.push(
                   <span key={`b${b}`} className="hero-bar" aria-hidden="true" style={wobble(seed, 4, 1)}>
-                    <img src={`/hero/bluelines_${v + 1}.png`} width={w} height={h} alt="" loading="lazy" decoding="async" />
+                    <img src={`/hero/bluelines_${v + 1}.webp`} width={w} height={h} alt="" loading="lazy" decoding="async" />
                   </span>,
                 );
               }

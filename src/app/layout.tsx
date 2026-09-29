@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Schibsted_Grotesk, Newsreader } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import FeedbackTab from "@/components/FeedbackTab";
 import AppChrome from "@/components/AppChrome";
@@ -15,6 +16,18 @@ const display = Schibsted_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["400", "500", "700", "800", "900"],
+});
+
+// Shippori Mincho cut down to the only two glyphs we set in it, 星五 (about 1 KB per weight),
+// from Google Fonts' text= subset. Self hosted, so there is no render blocking stylesheet.
+const ja = localFont({
+  variable: "--font-ja",
+  src: [
+    { path: "./fonts/shippori-mincho-400.woff2", weight: "400" },
+    { path: "./fonts/shippori-mincho-700.woff2", weight: "700" },
+  ],
+  display: "swap",
+  fallback: ["Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", "serif"],
 });
 
 const serif = Newsreader({
@@ -50,17 +63,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${serif.variable}`}>
-      <head>
-        {/* Shippori Mincho's Japanese glyph subset isn't in next/font's bundled index yet,
-            so this one loads the ordinary way instead of via next/font/google. */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700&display=swap"
-        />
-      </head>
+    <html lang="en" className={`${display.variable} ${serif.variable} ${ja.variable}`}>
       <body>
         {children}
         <FeedbackTab />

@@ -275,5 +275,6 @@ export async function setFeatured(handle: string, itemId: string, categoryId: nu
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/");
+  // ?out tells the service worker (public/sw.js) to forget cached pages
+  redirect("/?out=1");
 }

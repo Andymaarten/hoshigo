@@ -255,7 +255,7 @@ export default function HumanCheck({ onDone, onCancel }: { onDone: (token: strin
               onClick={onClick(i)}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`/hero/redhoshigos_${i + 1}.png`} alt="" width={300} height={310} draggable={false} />
+              <img src={`/hero/redhoshigos_${i + 1}.webp`} alt="" width={300} height={310} draggable={false} />
             </button>
           ))}
         </div>

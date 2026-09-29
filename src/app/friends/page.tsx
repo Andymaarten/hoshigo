@@ -41,10 +41,13 @@ export default async function FriendsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/friends");
 
-  const [{ data: me }, { data: rawCategories }, rel] = await Promise.all([
+  const [{ data: me }, { data: rawCategories }, rel, allFolloweeIds, inviteToken, results] = await Promise.all([
     supabase.from("profiles").select("handle").eq("id", user.id).single(),
     supabase.from("categories").select("*").order("sort_order").returns<Category[]>(),
     myFriendships(supabase, user.id),
+    myFolloweeIds(supabase, user.id),
+    myInviteToken(supabase, user.id),
+    searchPeople(supabase, user.id, q),
   ]);
   const myHandle = me?.handle as string | undefined;
   const categories = sortCategories(rawCategories);
@@ -72,16 +75,13 @@ export default async function FriendsPage({
     );
   }
 
-  const followeeIds = (await myFolloweeIds(supabase, user.id)).filter((id) => !rel.friendIds.includes(id));
+  const followeeIds = allFolloweeIds.filter((id) => !rel.friendIds.includes(id));
   // whose keeps show in the feed: friends, and people you follow (public window only, by RLS)
   const feedIds = [...rel.friendIds, ...followeeIds];
   const peopleIds = [...new Set([...rel.friendIds, ...rel.incomingIds, ...followeeIds])];
-  const [{ data: people }, inviteToken] = await Promise.all([
-    peopleIds.length
-      ? supabase.from("profiles").select("id, handle, display_name, is_private").in("id", peopleIds).returns<Person[]>()
-      : Promise.resolve({ data: [] as Person[] }),
-    myInviteToken(supabase, user.id),
-  ]);
+  const { data: people } = peopleIds.length
+    ? await supabase.from("profiles").select("id, handle, display_name, is_private").in("id", peopleIds).returns<Person[]>()
+    : { data: [] as Person[] };
   const byId = new Map((people ?? []).map((p) => [p.id, p]));
   const incoming = rel.incomingIds.map((id) => byId.get(id)).filter((p): p is Person => !!p);
   const friends = rel.friendIds
@@ -89,7 +89,6 @@ export default async function FriendsPage({
     .filter((p): p is Person => !!p)
     .sort((a, b) => name(a).localeCompare(name(b)));
 
-  const results = await searchPeople(supabase, user.id, q);
 
   const feedFriends: Record<string, FeedFriend> = {};
   feedIds.forEach((id) => {
