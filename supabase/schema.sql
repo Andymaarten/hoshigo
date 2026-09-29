@@ -914,3 +914,14 @@ create table if not exists public.weekly_emails (
   primary key (profile_id, week_start)
 );
 alter table public.weekly_emails enable row level security;
+
+-- news seen (see docs/migrations/2026-09-29-news.sql)
+
+create table if not exists public.news_seen (
+  profile_id uuid primary key default auth.uid() references public.profiles (id) on delete cascade,
+  seen_at timestamptz not null default now()
+);
+alter table public.news_seen enable row level security;
+drop policy if exists "own news_seen" on public.news_seen;
+create policy "own news_seen" on public.news_seen
+  for all to authenticated using (profile_id = auth.uid()) with check (profile_id = auth.uid());

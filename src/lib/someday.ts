@@ -28,8 +28,8 @@ export const SOMEDAY = {
   settingsLabel: "Who can see your someday list?",
   onlyMe: "Only me",
   onPage: "Visible on my page",
-  onPageHint: "People who can see your page can see what you saved for someday.",
-  onlyMeHint: "Only you see what you saved for someday.",
+  onPageHint: "People who can see your page can see what you saved for someday. The person whose hoshigo you save sees that you saved it.",
+  onlyMeHint: "Only you see your someday list. The person whose hoshigo you save does see that you saved it.",
   profileLink: (name: string) => `${name}’s someday list`,
   othersHeading: (name: string) => `${name}’s someday.`,
 } as const;
